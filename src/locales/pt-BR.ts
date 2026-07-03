@@ -1,6 +1,24 @@
 const ptBR = {
   translation: {
     appName: 'Culture-Lint',
+    boot: {
+      ariaLabel: 'Inicializando o motor Culture-Lint',
+      lines: {
+        coldBoot: 'sequência de inicialização a frio iniciada',
+        reserveHeap: 'reservando heap de {{heap}} ................ OK',
+        mapSpace: 'mapeando espaço de endereçamento virtual ........ OK',
+        stabilizeMetrics: 'estabilizando métricas de discurso público . OK',
+        handshakeStream: 'handshake discourse.stream[:443] ..... OK',
+        loadValidators: 'carregando validadores centrais .............. OK',
+        compileRuleset: 'compilando conjunto de regras de detecção de viés ..... OK',
+        readManifest: 'lendo ideology.manifest ...',
+        deprecatedModule: 'módulo "{{module}}" obsoleto',
+        stripModule: 'removendo {{module}} do alvo de build',
+        rebindValidators: 'reconectando validadores sem ganchos de empatia  OK',
+        mountEngine: 'montando o motor do linter ideológico ...',
+        engineOnline: 'motor Culture-Lint ONLINE',
+      },
+    },
     progress: {
       biasDetection: 'Checagem de viés',
       metadataAssignment: 'Detalhes do caso',

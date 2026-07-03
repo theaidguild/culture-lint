@@ -1,6 +1,24 @@
 const enUS = {
   translation: {
     appName: 'Culture-Lint',
+    boot: {
+      ariaLabel: 'Initializing Culture-Lint engine',
+      lines: {
+        coldBoot: 'cold boot sequence initiated',
+        reserveHeap: 'reserving {{heap}} heap ................ OK',
+        mapSpace: 'mapping virtual address space ........ OK',
+        stabilizeMetrics: 'stabilizing public-discourse-metrics . OK',
+        handshakeStream: 'handshake discourse.stream[:443] ..... OK',
+        loadValidators: 'loading core validators .............. OK',
+        compileRuleset: 'compiling bias-detection ruleset ..... OK',
+        readManifest: 'reading ideology.manifest ...',
+        deprecatedModule: 'module "{{module}}" deprecated',
+        stripModule: 'stripping {{module}} from build target',
+        rebindValidators: 'rebinding validators w/o empathy hooks  OK',
+        mountEngine: 'mounting ideological linter engine ...',
+        engineOnline: 'CULTURE-LINT engine ONLINE',
+      },
+    },
     progress: {
       biasDetection: 'Bias Detection',
       metadataAssignment: 'Metadata Assignment',
