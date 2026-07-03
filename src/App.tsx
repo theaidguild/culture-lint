@@ -1,5 +1,5 @@
 import { Check, FileCode2, Home, Lock, Settings, ShieldCheck, Terminal, Zap } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Step = 1 | 2 | 3
 
@@ -67,6 +67,7 @@ function App() {
   const [selectedPrinciple, setSelectedPrinciple] = useState<Principle | null>(null)
   const [caseStudies, setCaseStudies] = useState<CaseStudies>(defaultCases)
   const [isCompiling, setIsCompiling] = useState(false)
+  const compileTimeoutRef = useRef<number | undefined>(undefined)
 
   const lockedPrinciple = selectedPrinciple ?? principles[1]
 
@@ -89,9 +90,22 @@ function App() {
     }))
   }
 
+  useEffect(() => {
+    return () => {
+      if (compileTimeoutRef.current !== undefined) {
+        window.clearTimeout(compileTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const compileCaseStudy = () => {
+    if (compileTimeoutRef.current !== undefined) {
+      window.clearTimeout(compileTimeoutRef.current)
+    }
+
     setIsCompiling(true)
-    window.setTimeout(() => {
+    compileTimeoutRef.current = window.setTimeout(() => {
+      compileTimeoutRef.current = undefined
       setIsCompiling(false)
       setStep(3)
     }, 1500)
@@ -185,10 +199,9 @@ function PrincipleStep({
     <div className="flex flex-1 items-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
         <div className="mb-10 font-mono text-[11px] text-slate-500">
-          STEP 1 OF 5
+          STEP 1 OF 3
           <div className="mt-3 flex gap-2">
             <span className="h-0.5 w-10 bg-cyan-400" />
-            <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
           </div>
