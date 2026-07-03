@@ -269,13 +269,13 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
   return (
     <header className="flex h-16 items-center justify-between border-b border-[#21262d] bg-[#0b0d17] px-5 text-sm text-slate-400 lg:px-9">
       <div className="flex items-center gap-2 font-mono font-bold text-slate-100">
-        <span className="rounded-sm bg-cyan-400 px-1.5 py-1 text-[10px] text-[#071018]">C</span>
+        <span className="rounded-sm bg-cyan-400 px-1.5 py-1 text-xs text-[#071018]">C</span>
         {t('appName')}
       </div>
       <nav className="hidden items-center gap-6 md:flex">
         {progressItems.map((item, index) => (
           <div key={item.label} className={`flex items-center gap-2 ${item.active ? 'text-cyan-300' : item.complete ? 'text-emerald-400' : ''}`}>
-            <span className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${item.active ? 'border-cyan-300 bg-cyan-300 text-[#071018]' : item.complete ? 'border-emerald-400' : 'border-slate-700'}`}>
+            <span className={`grid h-5 w-5 place-items-center rounded-full border text-xs ${item.active ? 'border-cyan-300 bg-cyan-300 text-[#071018]' : item.complete ? 'border-emerald-400' : 'border-slate-700'}`}>
               {item.complete ? <Check size={12} /> : index + 1}
             </span>
             <span>{item.label}</span>
@@ -283,14 +283,14 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
         ))}
       </nav>
       <div className="flex items-center gap-4 font-mono">
-        <label className="flex items-center gap-2 text-[10px] text-slate-400">
+        <label className="flex items-center gap-2 text-xs text-slate-400">
           <span>{t('language.label')}</span>
           <select
             value={i18n.language}
             onChange={(event) => {
               void i18n.changeLanguage(event.target.value)
             }}
-            className="rounded border border-[#30363d] bg-[#0b0d17] px-2 py-1 text-[10px] text-slate-100 outline-none"
+            className="rounded border border-[#30363d] bg-[#0b0d17] px-2 py-1 text-xs text-slate-100 outline-none"
           >
             <option value="pt-BR">{t('language.ptBR')}</option>
             <option value="en-US">{t('language.enUS')}</option>
@@ -319,8 +319,8 @@ function PrincipleStep({
 
   return (
     <div className="flex flex-1 items-center px-6 py-10 lg:px-20">
-      <div className="w-full max-w-6xl">
-        <div className="mb-10 font-mono text-[11px] text-slate-500">
+      <div className="w-full max-w-7xl">
+        <div className="mb-10 font-mono text-xs text-slate-500">
           {t('step1.progress')}
           <div className="mt-3 flex gap-2">
             <span className="h-0.5 w-10 bg-cyan-400" />
@@ -332,7 +332,7 @@ function PrincipleStep({
         <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-400">
           {t('step1.description')}
         </p>
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
+        <div className="mt-10 grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
           {principles.map((principle) => {
             const active = selectedPrinciple?.id === principle.id
             return (
@@ -342,20 +342,20 @@ function PrincipleStep({
                 onClick={() => onSelect(principle)}
                 className={`group min-h-72 rounded-xl border bg-[#161b22] p-6 text-left transition duration-300 ${active ? 'border-emerald-400 shadow-[0_0_35px_rgba(86,211,100,0.18)]' : 'border-[#21262d] hover:border-cyan-400/50'}`}
               >
-                <div className="flex items-start justify-between font-mono text-[10px]">
-                  <span className={active ? 'text-emerald-400' : 'text-slate-600'}>{active ? t('step1.selected') : principle.status}</span>
+                <div className="flex items-start justify-between font-mono text-xs">
+                  <span className={active ? 'text-emerald-300' : 'text-slate-400'}>{active ? t('step1.selected') : principle.status}</span>
                   <span className={`grid h-5 w-5 place-items-center rounded-full border ${active ? 'border-emerald-400 bg-emerald-400 text-[#071018]' : 'border-[#30363d]'}`}>
                     {active && <Check size={13} />}
                   </span>
                 </div>
-                <div className="mt-16 space-y-1 font-mono text-[11px] text-cyan-400">
+                <div className="mt-16 space-y-1 font-mono text-sm text-cyan-400">
                   {principle.metadata.map((line) => (
                     <p key={line}>{line}</p>
                   ))}
                 </div>
                 <p className="mt-10 text-lg font-black italic leading-7 text-white">&quot;{principle.value}&quot;</p>
                 <div className="mt-12 h-px bg-[#21262d]" />
-                <p className="mt-2 text-right font-mono text-[9px] text-slate-600">{principle.code}</p>
+                <p className="mt-2 text-right font-mono text-xs text-slate-400">{principle.code}</p>
               </button>
             )
           })}
@@ -421,12 +421,12 @@ function MetadataStep({
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
-        <p className="font-mono text-xs text-slate-400">{t('step2.armed')}</p>
+        <p className="font-mono text-sm text-slate-400">{t('step2.armed')}</p>
         <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{t('step2.title')}</h1>
         <p className="mt-4 text-sm text-slate-400">{t('step2.description')}</p>
         <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-5">
           <label className="block">
-            <span className="font-mono text-xs font-black text-cyan-300">{t('step2.filterPresets')}</span>
+            <span className="font-mono text-sm font-black text-cyan-300">{t('step2.filterPresets')}</span>
             <input
               value={scenarioQuery}
               onChange={(event) => setScenarioQuery(event.target.value)}
@@ -435,7 +435,7 @@ function MetadataStep({
             />
           </label>
           <label className="block">
-            <span className="font-mono text-xs font-black text-cyan-300">{t('step2.scenarioPreset')}</span>
+            <span className="font-mono text-sm font-black text-cyan-300">{t('step2.scenarioPreset')}</span>
             <select
               value={filteredScenarios.length === 0 ? '' : activeScenarioId}
               onChange={(event) => {
@@ -453,11 +453,11 @@ function MetadataStep({
               {filteredScenarios.length === 0 && <option value="">{t('step2.noScenariosMatch')}</option>}
             </select>
           </label>
-          <p className="mt-3 font-mono text-xs text-slate-400">
+          <p className="mt-3 font-mono text-sm text-slate-400">
             {t('step2.presetsVisible', { visible: filteredScenarios.length, total: scenarios.length })}
           </p>
           {selectedScenario && (
-            <p className="mt-3 font-mono text-xs text-slate-400">
+            <p className="mt-3 font-mono text-sm text-slate-400">
               {t('step2.exceptionProfile', {
                 exceptionType: selectedScenario.exceptionType,
                 exceptionCode: selectedScenario.exceptionCode,
@@ -474,11 +474,11 @@ function MetadataStep({
             type="button"
             onClick={onCompile}
             disabled={isCompiling}
-            className="min-w-72 rounded-md bg-cyan-400 px-10 py-5 font-mono text-xs font-black text-[#071018] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait"
+            className="min-w-72 rounded-md bg-cyan-400 px-10 py-5 font-mono text-sm font-black text-[#071018] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait"
           >
             {isCompiling ? t('step2.compiling') : `${t('step2.compile')} ⚡`}
           </button>
-          <p className="font-mono text-xs text-slate-400">{t('step2.shortcut')}</p>
+          <p className="font-mono text-sm text-slate-400">{t('step2.shortcut')}</p>
         </div>
       </div>
     </div>
@@ -507,18 +507,18 @@ function CaseStudyCard({
   return (
     <div className="rounded-lg border border-[#21262d] bg-[#111320] p-7 shadow-2xl shadow-black/30">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-white">{title}</h2>
+        <h2 className="text-base font-bold text-white">{title}</h2>
         <Lock size={14} className="text-slate-600" />
       </div>
       <label className="block">
-        <span className="font-mono text-xs text-slate-400">{t('caseStudy.scenarioDescription')}</span>
+        <span className="font-mono text-sm text-slate-400">{t('caseStudy.scenarioDescription')}</span>
         <div className="mt-2 rounded border border-[#21262d] bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">
           // {caseStudy.subject} {caseStudy.act.toLowerCase()}
         </div>
       </label>
       {(['subject', 'act', 'context'] as const).map((field) => (
         <label key={field} className="mt-5 block">
-          <span className="font-mono text-xs font-black text-cyan-300">{fieldLabelMap[field]}</span>
+          <span className="font-mono text-sm font-black text-cyan-300">{fieldLabelMap[field]}</span>
           <textarea
             value={caseStudy[field]}
             onChange={(event) => onChange(caseKey, field, event.target.value)}
@@ -566,7 +566,7 @@ function ResultStep({
         <ConfigSummary principle={principle} caseStudies={caseStudies} />
       </div>
       <GotchaSummary />
-      <footer className="mt-8 flex justify-between font-mono text-xs text-slate-400">
+      <footer className="mt-8 flex justify-between font-mono text-sm text-slate-400">
         <span className="text-cyan-400">{t('step3.analysisComplete')}</span>
         <span>culture-lint v2026.3.2</span>
       </footer>
@@ -590,7 +590,7 @@ function TerminalPane({
 
   return (
     <section className="rounded border border-cyan-400/30 bg-black/70 shadow-[0_0_35px_rgba(0,240,255,0.14)]">
-      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-xs font-black tracking-wide text-cyan-300">{t('terminal.header')}</div>
+      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-sm font-black tracking-wide text-cyan-300">{t('terminal.header')}</div>
       <div className="space-y-3 break-words p-6 font-mono text-sm leading-7 text-slate-200">
         <p className="text-emerald-400">$ culture-lint compile --run-analysis</p>
         <p><span className="text-cyan-400">[INFO]</span> {t('terminal.compileInfo')}</p>
@@ -651,11 +651,11 @@ function ConfigSummary({ principle, caseStudies }: { principle: Principle; caseS
   return (
     <aside className="space-y-5">
       <div className="rounded-lg border border-cyan-400/70 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)]">
-        <div className="flex items-center justify-between font-mono text-xs font-black text-cyan-300">
+        <div className="flex items-center justify-between font-mono text-sm font-black text-cyan-300">
           {t('config.summary')}
           <FileCode2 size={13} className="text-slate-500" />
         </div>
-        <p className="mt-6 font-mono text-xs text-slate-400">{t('config.activePrinciple')}</p>
+        <p className="mt-6 font-mono text-sm text-slate-400">{t('config.activePrinciple')}</p>
         <p className="mt-1 text-base text-slate-200">{principle.label[0] + principle.label.slice(1).toLowerCase()}</p>
         <div className="mt-4 rounded bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">&quot;{principle.value}&quot;</div>
         <div className="mt-5 space-y-2 font-mono text-sm leading-6 text-slate-300">
@@ -678,7 +678,7 @@ function GotchaSummary() {
     <section className="mt-8 rounded-lg border border-cyan-400 bg-[#111320] p-7 shadow-[0_0_38px_rgba(0,240,255,0.18)]">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="flex items-center gap-3 font-mono text-sm font-black text-cyan-400"><Zap size={16} className="text-yellow-300" /> {t('gotcha.title')}</h2>
-        <span className="rounded border border-red-400/70 px-2 py-1 font-mono text-[10px] text-red-400">{t('gotcha.severity')}</span>
+        <span className="rounded border border-red-400/70 px-2 py-1 font-mono text-xs text-red-400">{t('gotcha.severity')}</span>
       </div>
       <p className="font-bold text-white">{t('gotcha.confirmed')}</p>
       <p className="mt-3 max-w-5xl text-sm leading-6 text-slate-300">
