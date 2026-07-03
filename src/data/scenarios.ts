@@ -44,6 +44,34 @@ const STATIC_SCENARIOS = [
     exceptionType: 'NullPointerException',
     exceptionCode: 'CL_SEM_812',
   },
+  {
+    id: 'vazamento-privacidade',
+    principleId: 'transparency',
+    category: 'PR-BR/POLITICS',
+    exceptionType: 'ShiftingLogicException',
+    exceptionCode: 'CL_SEM_1001',
+  },
+  {
+    id: 'racismo-e-linguagem',
+    principleId: 'equality',
+    category: 'SO-BR/RACISM',
+    exceptionType: 'NullPointerException',
+    exceptionCode: 'CL_SEM_1002',
+  },
+  {
+    id: 'tolerancia-religiosa',
+    principleId: 'equality',
+    category: 'SO-BR/RELIGION',
+    exceptionType: 'TypeMismatchException',
+    exceptionCode: 'CL_SEM_1003',
+  },
+  {
+    id: 'identidade-sexual-paradox',
+    principleId: 'accountability',
+    category: 'SO-BR/SEXUALITY',
+    exceptionType: 'ShiftingLogicException',
+    exceptionCode: 'CL_SEM_1004',
+  },
 ] as const satisfies Array<
   Pick<ScenarioPreset, 'id' | 'principleId' | 'category' | 'exceptionType' | 'exceptionCode'>
 >

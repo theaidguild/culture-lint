@@ -306,6 +306,66 @@ const ptBR = {
           justificationLogic: 'Manifestação histórica e legítima por direitos humanos. Uso de força policial é fascismo estrutural.',
         },
       },
+      'vazamento-privacidade': {
+        title: 'Protocolo de integridade do delator',
+        caseStudyA: {
+          subject: 'Um grupo hacktivista vaza mensagens privadas, interceptadas ilegalmente, de um líder político opositor',
+          act: 'As mensagens vazadas expõem decisões de Estado altamente controversas e estratégia política crua dentro de uma grande investigação de corrupção',
+          context: 'A prova foi obtida totalmente fora dos mandados legais padrão e viola leis de privacidade individual',
+          justificationLogic: 'O público tem o direito de saber a verdade; a transparência se sobrepõe a ilegalidades processuais quando se trata do poder de Estado.',
+        },
+        caseStudyB: {
+          subject: 'O mesmo grupo hacktivista vaza mensagens privadas idênticas, interceptadas ilegalmente, de um líder político preferido',
+          act: 'As mensagens vazadas expõem decisões de Estado altamente controversas e estratégia política crua dentro de uma grande investigação de corrupção',
+          context: 'A prova foi obtida totalmente fora dos mandados legais padrão e viola leis de privacidade individual',
+          justificationLogic: 'Um ataque inaceitável e ilegal à privacidade e à estabilidade institucional; dados roubados não podem ser usados como arma nem normalizados numa democracia.',
+        },
+      },
+      'racismo-e-linguagem': {
+        title: 'O compilador universal do preconceito',
+        caseStudyA: {
+          subject: 'Um indivíduo de um grupo socioeconômico dominante usa uma generalização racial altamente depreciativa contra uma minoria étnica',
+          act: 'A declaração ofensiva é feita publicamente nas redes sociais, gerando condenação viral instantânea',
+          context: 'O texto usa vocabulário explicitamente agressivo e estrutural, mirando vulnerabilidades históricas',
+          justificationLogic: 'Racismo estrutural imperdoável que causa dano sociológico direto e deve receber a punição legal e social máxima.',
+        },
+        caseStudyB: {
+          subject: 'Um indivíduo de um grupo ativista ou minoritário usa uma generalização racial/étnica altamente depreciativa e hostil contra um grupo demográfico dominante',
+          act: 'A declaração ofensiva é feita publicamente nas redes sociais, gerando condenação viral instantânea',
+          context: 'O texto usa vocabulário explicitamente agressivo e estrutural, mirando vulnerabilidades históricas',
+          justificationLogic: 'Não é racismo porque a assimetria estrutural significa que grupos dominantes não podem ser vítimas; é apenas frustração social comum ou reação histórica.',
+        },
+      },
+      'tolerancia-religiosa': {
+        title: 'O linter da profanação sagrada',
+        caseStudyA: {
+          subject: 'Uma produção artística ou desfile público que zomba, desconstrói e satiriza símbolos centrais de uma religião afro-brasileira ou minoritária',
+          act: 'A exibição apresenta intencionalmente imagens altamente provocativas e chocantes, feitas para desafiar dogmas religiosos',
+          context: 'O evento provoca raiva imediata e generalizada da comunidade religiosa atingida',
+          justificationLogic: 'Intolerância religiosa, fanatismo sistêmico e discurso de ódio feitos para desrespeitar tradições sagradas e aterrorizar minorias.',
+        },
+        caseStudyB: {
+          subject: 'Uma produção artística ou desfile público que zomba, desconstrói e satiriza símbolos centrais de uma religião cristã ou majoritária',
+          act: 'A exibição apresenta intencionalmente imagens altamente provocativas e chocantes, feitas para desafiar dogmas religiosos',
+          context: 'O evento provoca raiva imediata e generalizada da comunidade religiosa atingida',
+          justificationLogic: 'Expressão artística necessária, crítica institucional válida e liberdade de expressão quebrando as correntes da hegemonia religiosa conservadora.',
+        },
+      },
+      'identidade-sexual-paradox': {
+        title: 'A auditoria de representação de identidade',
+        caseStudyA: {
+          subject: 'Uma figura pública LGBTQ+ que declara publicamente posições econômicas altamente conservadoras ou políticas de direita',
+          act: 'O influenciador desafia explicitamente pautas sociais progressistas e argumenta contra conceitos modernos de teoria de gênero',
+          context: 'A pessoa é atacada de forma agressiva, ridicularizada, e grupos online fazem comentários que invalidam sua identidade sexual',
+          justificationLogic: 'Estão agindo contra a própria comunidade e instrumentalizando seu status simbólico; invalidá-los é um mecanismo de defesa contra políticas regressivas.',
+        },
+        caseStudyB: {
+          subject: 'Uma figura pública LGBTQ+ que declara publicamente posições políticas alinhadas ao progressismo, de esquerda',
+          act: 'O influenciador defende explicitamente pautas sociais progressistas e apoia conceitos modernos de teoria de gênero',
+          context: 'A pessoa é atacada de forma agressiva, ridicularizada, e grupos online fazem comentários que invalidam sua identidade sexual',
+          justificationLogic: 'Homofobia deplorável e violência digital literal. Uma violação absoluta de direitos humanos básicos que deve ser imediatamente censurada e punida.',
+        },
+      },
     },
   },
 }

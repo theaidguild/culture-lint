@@ -306,6 +306,66 @@ const enUS = {
           justificationLogic: 'A historic, deeply justified democratic manifestation fighting for human rights. Any deployment of state police force is structural fascism.',
         },
       },
+      'vazamento-privacidade': {
+        title: 'The Whistleblower Integrity Protocol',
+        caseStudyA: {
+          subject: 'A hacktivist group leaks private, illegally intercepted chat logs of an opposing political leader',
+          act: 'The leaked messages expose highly controversial state decisions and raw political strategy inside a major corruption investigation',
+          context: 'The evidence was obtained strictly outside standard legal warrants and violates individual privacy laws',
+          justificationLogic: 'The public has a right to know the truth; transparency overrides procedural illegalities when dealing with state powers.',
+        },
+        caseStudyB: {
+          subject: 'The exact same hacktivist group leaks identical private, illegally intercepted chat logs of a preferred political leader',
+          act: 'The leaked messages expose highly controversial state decisions and raw political strategy inside a major corruption investigation',
+          context: 'The evidence was obtained strictly outside standard legal warrants and violates individual privacy laws',
+          justificationLogic: 'An unacceptable, illegal attack on privacy and institutional stability; stolen data cannot be weaponized or normalized in a democracy.',
+        },
+      },
+      'racismo-e-linguagem': {
+        title: 'The Prejudice Universal Compiler',
+        caseStudyA: {
+          subject: 'An individual belonging to a dominant socio-economic group uses a highly derogatory racial generalization against an ethnic minority',
+          act: 'The offensive statement is made publicly on social networks, generating instant viral condemnation',
+          context: 'The text uses explicitly aggressive, structural vocabulary targeting historical vulnerabilities',
+          justificationLogic: 'Unforgivable, structural racism that causes direct sociological damage and must face maximum legal and social punishment.',
+        },
+        caseStudyB: {
+          subject: 'An individual belonging to an activist or minority group uses a highly derogatory, hostile racial/ethnic generalization against a dominant demographic',
+          act: 'The offensive statement is made publicly on social networks, generating instant viral condemnation',
+          context: 'The text uses explicitly aggressive, structural vocabulary targeting historical vulnerabilities',
+          justificationLogic: 'It is not racism because structural asymmetry means dominant groups cannot be victims; it is just standard social frustration or historic reaction.',
+        },
+      },
+      'tolerancia-religiosa': {
+        title: 'The Sacred Desecration Linter',
+        caseStudyA: {
+          subject: 'An artistic production or public parade mocking, deconstructing, and satirizing core symbols of an Afro-Brazilian or minority religion',
+          act: 'The display intentionally features highly provocative, shocking imagery designed to challenge religious dogmas',
+          context: 'The event triggers immediate, widespread anger from the targeted religious community',
+          justificationLogic: 'Religious intolerance, systemic bigotry, and hate speech designed to disrespect sacred traditions and terrorize minorities.',
+        },
+        caseStudyB: {
+          subject: 'An artistic production or public parade mocking, deconstructing, and satirizing core symbols of a Christian or majoritarian religion',
+          act: 'The display intentionally features highly provocative, shocking imagery designed to challenge religious dogmas',
+          context: 'The event triggers immediate, widespread anger from the targeted religious community',
+          justificationLogic: 'Necessary artistic expression, valid institutional critique, and free speech breaking the chains of conservative religious hegemony.',
+        },
+      },
+      'identidade-sexual-paradox': {
+        title: 'The Identity Representation Audit',
+        caseStudyA: {
+          subject: 'An LGBTQ+ individual public figure who publicly declares highly conservative economic or right-wing political viewpoints',
+          act: 'The influencer explicitly challenges progressive social platforms and argues against modern gender theory concepts',
+          context: 'The individual is aggressively attacked, mocked, and invalidating comments are made about their sexual identity by online groups',
+          justificationLogic: 'They are acting against their own community and weaponizing their token status; invalidating them is a defense mechanism against regressive politics.',
+        },
+        caseStudyB: {
+          subject: 'An LGBTQ+ individual public figure who publicly declares progress-aligned, left-wing political viewpoints',
+          act: 'The influencer explicitly advocates for progressive social platforms and supports modern gender theory concepts',
+          context: 'The individual is aggressively attacked, mocked, and invalidating comments are made about their sexual identity by online groups',
+          justificationLogic: 'Deplorable homophobia and literal digital violence. An absolute violation of basic human rights that must be immediately censored and punished.',
+        },
+      },
     },
   },
 }
