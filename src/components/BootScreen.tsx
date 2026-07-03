@@ -55,6 +55,7 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
   const [activeLineIndex, setActiveLineIndex] = useState(0)
   const [isFadingOut, setIsFadingOut] = useState(false)
   const timers = useRef<number[]>([])
+  const logContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const run = async () => {
@@ -100,10 +101,8 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
         })
       }
 
-      const holdAfterLast = HOLD_AFTER_LAST
-      const fadeDuration = FADE_DURATION
-      const fadeTimeout = window.setTimeout(() => setIsFadingOut(true), holdAfterLast)
-      const doneTimeout = window.setTimeout(onComplete, holdAfterLast + fadeDuration)
+      const fadeTimeout = window.setTimeout(() => setIsFadingOut(true), HOLD_AFTER_LAST)
+      const doneTimeout = window.setTimeout(onComplete, HOLD_AFTER_LAST + FADE_DURATION)
       timers.current.push(fadeTimeout, doneTimeout)
     }
 
@@ -115,6 +114,24 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
     }
   }, [bootLines, onComplete])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const isMobile = window.matchMedia('(max-width: 767px)').matches
+    if (!isMobile) {
+      return
+    }
+
+    const container = logContainerRef.current
+    if (!container || container.scrollHeight <= container.clientHeight) {
+      return
+    }
+
+    container.scrollTop = container.scrollHeight
+  }, [typedLines, activeLineIndex])
+
   const sequenceComplete = typedLines.every((line, index) => line === bootLines[index].message)
 
   return (
@@ -122,42 +139,68 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       role="status"
       aria-live="polite"
       aria-label={t('boot.ariaLabel')}
-      className={`fixed inset-0 z-50 overflow-hidden bg-black transition-opacity duration-[320ms] ease-out ${
+      className={`boot-screen fixed inset-0 z-50 overflow-hidden bg-black transition-opacity duration-[320ms] ease-out ${
         isFadingOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_3px]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.85))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(0,240,255,0.14),transparent_48%),radial-gradient(circle_at_82%_90%,rgba(47,129,247,0.15),transparent_42%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:100%_3px] opacity-70" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.88))]" />
 
-      <div className="relative h-full w-full px-6 py-8 font-mono text-[17px] leading-[1.65] sm:px-10 sm:text-[18px] lg:px-16">
-        <div className="flex max-w-3xl flex-col">
-          {bootLines.slice(0, activeLineIndex + 1).map((line, index) => {
-            const styles = TONE_STYLES[line.tone]
-            const typedMessage = typedLines[index]
-            const isActiveLine = index === activeLineIndex && !sequenceComplete
+      <div className="relative flex h-full w-full items-center justify-center px-3 py-4 sm:px-6 sm:py-7 md:px-8 md:py-10">
+        <section className="boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px]">
+          <header className="flex items-center justify-between border-b border-cyan-400/20 bg-cyan-400/5 px-3 py-2.5 font-mono text-[11px] tracking-wide text-cyan-300 sm:px-4 sm:text-xs">
+            <span>culture-lint://boot</span>
+            <span className="text-slate-400">runtime init</span>
+          </header>
 
-            return (
-              <div key={`${line.channel}-${index}`} className="flex items-baseline gap-2 whitespace-pre">
-                <span className="text-slate-700">{timestamp(index)}</span>
-                <span className={styles.prompt}>{line.tone === 'warn' ? '⚠' : '▸'}</span>
-                <span className={styles.channel}>{line.channel}</span>
-                <span className="text-slate-700">::</span>
-                <span className={styles.message}>
-                  {typedMessage}
-                  {isActiveLine && !prefersReducedMotion ? (
-                    <span className="ml-0.5 inline-block h-[1em] w-[0.55em] translate-y-[0.12em] animate-[bootCursor_900ms_step-end_infinite] bg-current align-baseline" />
-                  ) : null}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+          <div ref={logContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 font-mono text-[12px] leading-[1.55] sm:px-3 sm:py-3 sm:text-[13px] md:text-sm">
+            {bootLines.slice(0, activeLineIndex + 1).map((line, index) => {
+              const styles = TONE_STYLES[line.tone]
+              const typedMessage = typedLines[index]
+              const isActiveLine = index === activeLineIndex && !sequenceComplete
+
+              return (
+                <div key={`${line.channel}-${index}`} className="mt-0.5 grid grid-cols-[auto_auto_1fr] items-start gap-x-1.5 gap-y-0.5 sm:gap-x-2">
+                  <span className="text-[10px] text-slate-600 sm:text-[11px]">{timestamp(index)}</span>
+                  <span className={`${styles.prompt} pt-[1px]`}>{line.tone === 'warn' ? '⚠' : '▸'}</span>
+                  <div className="min-w-0 break-words">
+                    <span className={styles.channel}>{line.channel}</span>
+                    <span className="mx-1 text-slate-700">::</span>
+                    <span className={styles.message}>
+                      {typedMessage}
+                      {isActiveLine && !prefersReducedMotion ? (
+                        <span className="ml-0.5 inline-block h-[1em] w-[0.5em] translate-y-[0.12em] animate-[bootCursor_900ms_step-end_infinite] bg-current align-baseline" />
+                      ) : null}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 px-3 text-center font-mono text-[10px] tracking-wide text-slate-600 sm:text-xs">
+        {t('appName')} v2026.3.2
       </div>
 
       <style>{`
         @keyframes bootCursor {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }
+        }
+
+        @media (max-height: 560px) {
+          .boot-screen {
+            overflow-y: auto;
+          }
+
+          .boot-screen .boot-terminal {
+            height: 420px;
+            min-height: 420px;
+            max-height: 420px;
+          }
         }
       `}</style>
     </div>
