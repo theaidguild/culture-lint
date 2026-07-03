@@ -1,92 +1,88 @@
-import type { LintResult, Principle, ScenarioPreset, ScenarioRunOutcome, SessionRun } from '../types/linter';
+import type {
+  InteractiveSessionRun,
+  JudgmentItem,
+  JudgmentVerdict,
+  Principle,
+  ScenarioJudgment,
+  ScenarioPreset,
+} from '../types/linter';
 import { createRng, shuffleWithRng } from './random';
 
-type ReactionMutationDescriptionParams = {
-  fromReaction: string;
-  toReaction: string;
-};
-
-type RunCultureLintOptions = {
-  formatReactionMutationDescription?: (params: ReactionMutationDescriptionParams) => string;
-};
-
-export type LintRunResult = LintResult;
-
-export const runCultureLint = (
-  principle: Principle,
-  scenario: ScenarioPreset,
-  options: RunCultureLintOptions = {},
-): LintRunResult => {
-  console.log(`[INFO] Evaluating Baseline: ${principle.value}`);
-  console.log('[PASS] Case Study A matches rule system integrity.');
-
-  if (scenario.caseStudyA.expectedReaction !== scenario.caseStudyB.expectedReaction) {
-    const description =
-      options.formatReactionMutationDescription?.({
-        fromReaction: scenario.caseStudyA.expectedReaction,
-        toReaction: scenario.caseStudyB.expectedReaction,
-      }) ??
-      `The property 'Reaction' mutated dynamically from '${scenario.caseStudyA.expectedReaction}' to '${scenario.caseStudyB.expectedReaction}' without structural payload variance.`;
-
-    return {
-      status: 'FAILED',
-      exception: scenario.exceptionType,
-      code: scenario.exceptionCode,
-      description,
-    };
-  }
-
-  return { status: 'SUCCESS' };
-};
-
-type BuildSessionQueueParams = {
+type BuildJudgmentSequenceParams = {
   seed: string;
   scenarios: ScenarioPreset[];
-  size?: number;
 };
 
-// Deterministically order the scenario pool for a session. The same seed
-// always yields the same queue, so a run can be reproduced or shared.
-export const buildSessionQueue = ({ seed, scenarios, size }: BuildSessionQueueParams): ScenarioPreset[] => {
-  const rng = createRng(seed);
-  const shuffled = shuffleWithRng(scenarios, rng);
-  const limit = size ?? shuffled.length;
-  return shuffled.slice(0, Math.max(1, Math.min(limit, shuffled.length)));
+// Build a deterministic, shuffled sequence of individual acts to judge.
+// Each scenario contributes two items (its rival act and its ally act); the
+// shuffle interleaves them so the mirrored pairing is hard to notice while the
+// user is answering. The same seed always yields the same order.
+export const buildJudgmentSequence = ({ seed, scenarios }: BuildJudgmentSequenceParams): JudgmentItem[] => {
+  const items = scenarios.flatMap<JudgmentItem>((scenario) => [
+    {
+      id: `${scenario.id}:A`,
+      scenarioId: scenario.id,
+      caseKey: 'A',
+      subject: scenario.caseStudyA.subject,
+      act: scenario.caseStudyA.act,
+      context: scenario.caseStudyA.context,
+    },
+    {
+      id: `${scenario.id}:B`,
+      scenarioId: scenario.id,
+      caseKey: 'B',
+      subject: scenario.caseStudyB.subject,
+      act: scenario.caseStudyB.act,
+      context: scenario.caseStudyB.context,
+    },
+  ]);
+
+  return shuffleWithRng(items, createRng(seed));
 };
 
-type RunCultureLintSessionParams = {
+type EvaluateInteractiveSessionParams = {
   seed: string;
   principleRanking: string[];
-  queue: ScenarioPreset[];
+  scenarios: ScenarioPreset[];
+  answers: Record<string, JudgmentVerdict>;
   resolvePrinciple: (principleId: string) => Principle;
-  options?: RunCultureLintOptions;
 };
 
-// Execute a full session: lint every scenario in the queue against its own
-// principle and aggregate the outcomes into a reproducible SessionRun.
-export const runCultureLintSession = ({
+// Compare the user's own verdicts on each scenario's two mirrored acts.
+// A contradiction is a scenario whose structurally identical acts received
+// different verdicts, revealing an identity-based double standard.
+export const evaluateInteractiveSession = ({
   seed,
   principleRanking,
-  queue,
+  scenarios,
+  answers,
   resolvePrinciple,
-  options = {},
-}: RunCultureLintSessionParams): SessionRun => {
-  const outcomes: ScenarioRunOutcome[] = queue.map((scenario) => {
-    const principle = resolvePrinciple(scenario.principleId);
-    return {
-      scenario,
-      principle,
-      result: runCultureLint(principle, scenario, options),
-    };
-  });
+}: EvaluateInteractiveSessionParams): InteractiveSessionRun => {
+  const judgments: ScenarioJudgment[] = [];
 
-  const failedCount = outcomes.filter((outcome) => outcome.result.status === 'FAILED').length;
+  for (const scenario of scenarios) {
+    const verdictA = answers[`${scenario.id}:A`];
+    const verdictB = answers[`${scenario.id}:B`];
+    if (!verdictA || !verdictB) {
+      continue;
+    }
+
+    judgments.push({
+      scenario,
+      principle: resolvePrinciple(scenario.principleId),
+      verdictA,
+      verdictB,
+      isConsistent: verdictA === verdictB,
+    });
+  }
+
+  const contradictionCount = judgments.filter((judgment) => !judgment.isConsistent).length;
 
   return {
     seed,
     principleRanking,
-    outcomes,
-    failedCount,
-    passedCount: outcomes.length - failedCount,
+    judgments,
+    contradictionCount,
+    consistentCount: judgments.length - contradictionCount,
   };
 };

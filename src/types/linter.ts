@@ -27,31 +27,36 @@ export type ScenarioPreset = {
   exceptionType: 'ShiftingLogicException' | 'TypeMismatchException' | 'NullPointerException';
 };
 
-// Outcome of linting a single scenario within a session queue.
-export type ScenarioRunOutcome = {
+// The user's binary verdict on a single act.
+export type JudgmentVerdict = 'ACCEPTABLE' | 'OUTRAGEOUS';
+
+// One act presented for judgment. Each scenario contributes two of these
+// (its rival act and its ally act); they are shuffled so the mirrored pairing
+// is not obvious while the user is answering.
+export type JudgmentItem = {
+  id: string;
+  scenarioId: string;
+  caseKey: 'A' | 'B';
+  subject: string;
+  act: string;
+  context: string;
+};
+
+// The comparison of the user's own verdicts on a scenario's two mirrored acts.
+export type ScenarioJudgment = {
   scenario: ScenarioPreset;
   principle: Principle;
-  result: LintResult;
+  verdictA: JudgmentVerdict;
+  verdictB: JudgmentVerdict;
+  isConsistent: boolean;
 };
 
 // A full deterministic session: the seed, the user's principle ranking,
-// and the outcome of every scenario in the queue.
-export type SessionRun = {
+// and the evaluated judgments derived from the user's own answers.
+export type InteractiveSessionRun = {
   seed: string;
   principleRanking: string[];
-  outcomes: ScenarioRunOutcome[];
-  passedCount: number;
-  failedCount: number;
+  judgments: ScenarioJudgment[];
+  consistentCount: number;
+  contradictionCount: number;
 };
-
-// Shared shape for a lint result, mirrored by the engine's LintRunResult.
-export type LintResult =
-  | {
-      status: 'FAILED';
-      exception: ScenarioPreset['exceptionType'];
-      code: string;
-      description: string;
-    }
-  | {
-      status: 'SUCCESS';
-    };

@@ -18,26 +18,35 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   Copy,
   FileCode2,
   GripVertical,
   Home,
-  Link2,
   RefreshCw,
   Settings,
   ShieldCheck,
   Terminal,
+  ThumbsDown,
+  ThumbsUp,
   Zap,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getScenarioDatabase } from './data/scenarios'
-import { buildSessionQueue, runCultureLintSession } from './engine/linterEngine'
+import { buildJudgmentSequence, evaluateInteractiveSession } from './engine/linterEngine'
 import { generateSeed, normalizeSeed } from './engine/random'
-import { type Principle, type ScenarioPreset, type ScenarioRunOutcome, type SessionRun } from './types/linter'
+import {
+  type InteractiveSessionRun,
+  type JudgmentItem,
+  type JudgmentVerdict,
+  type Principle,
+  type ScenarioJudgment,
+} from './types/linter'
 
-type Step = 1 | 2 | 3
+type Step = 1 | 2 | 3 | 4
 
+const TOTAL_STEPS = 4
 const DEFAULT_PRINCIPLE_ORDER = ['transparency', 'accountability', 'equality'] as const
 const SEED_QUERY_PARAM = 'seed'
 
@@ -108,9 +117,11 @@ function App() {
   const [step, setStep] = useState<Step>(1)
   const [principleRanking, setPrincipleRanking] = useState<string[]>([...DEFAULT_PRINCIPLE_ORDER])
   const [seed, setSeed] = useState<string>(() => readSeedFromUrl() ?? generateSeed())
-  const [isRunning, setIsRunning] = useState(false)
-  const [session, setSession] = useState<SessionRun | null>(null)
-  const runTimeoutRef = useRef<number | undefined>(undefined)
+  const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [session, setSession] = useState<InteractiveSessionRun | null>(null)
+  const analyzeTimeoutRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     writeSeedToUrl(seed)
@@ -118,15 +129,15 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (runTimeoutRef.current !== undefined) {
-        window.clearTimeout(runTimeoutRef.current)
+      if (analyzeTimeoutRef.current !== undefined) {
+        window.clearTimeout(analyzeTimeoutRef.current)
       }
     }
   }, [])
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [step])
+  }, [step, currentIndex])
 
   const rankedPrinciples = useMemo(
     () =>
@@ -136,46 +147,69 @@ function App() {
     [principleById, principleRanking],
   )
 
-  const sessionQueue = useMemo(
-    () => buildSessionQueue({ seed, scenarios: scenarioDatabase }),
+  const judgmentSequence = useMemo(
+    () => buildJudgmentSequence({ seed, scenarios: scenarioDatabase }),
     [scenarioDatabase, seed],
   )
 
   const progressItems = useMemo(
     () => [
       { label: t('progress.rankPrinciples'), active: step === 1, complete: step > 1 },
-      { label: t('progress.runGauntlet'), active: step === 2, complete: step > 2 },
-      { label: t('progress.sessionResults'), active: step === 3, complete: false },
+      { label: t('progress.sessionSeed'), active: step === 2, complete: step > 2 },
+      { label: t('progress.judgment'), active: step === 3, complete: step > 3 },
+      { label: t('progress.sessionResults'), active: step === 4, complete: false },
     ],
     [step, t],
   )
 
-  const runSession = (nextSeed: string) => {
-    if (runTimeoutRef.current !== undefined) {
-      window.clearTimeout(runTimeoutRef.current)
+  const beginJudging = () => {
+    setAnswers({})
+    setCurrentIndex(0)
+    setSession(null)
+    setStep(3)
+  }
+
+  const analyzeAndFinish = (finalAnswers: Record<string, JudgmentVerdict>, activeSeed: string) => {
+    setIsAnalyzing(true)
+    if (analyzeTimeoutRef.current !== undefined) {
+      window.clearTimeout(analyzeTimeoutRef.current)
     }
 
-    setSeed(nextSeed)
-    setIsRunning(true)
-
-    runTimeoutRef.current = window.setTimeout(() => {
-      const queue = buildSessionQueue({ seed: nextSeed, scenarios: scenarioDatabase })
-      const result = runCultureLintSession({
-        seed: nextSeed,
+    analyzeTimeoutRef.current = window.setTimeout(() => {
+      const result = evaluateInteractiveSession({
+        seed: activeSeed,
         principleRanking,
-        queue,
+        scenarios: scenarioDatabase,
+        answers: finalAnswers,
         resolvePrinciple: (principleId) => principleById.get(principleId) ?? principles[0],
-        options: {
-          formatReactionMutationDescription: ({ fromReaction, toReaction }) =>
-            t('errors.reactionMutation', { fromReaction, toReaction }),
-        },
       })
 
       setSession(result)
-      setIsRunning(false)
-      setStep(3)
-      runTimeoutRef.current = undefined
+      setIsAnalyzing(false)
+      setStep(4)
+      analyzeTimeoutRef.current = undefined
     }, 1500)
+  }
+
+  const handleVerdict = (verdict: JudgmentVerdict) => {
+    const currentItem = judgmentSequence[currentIndex]
+    if (!currentItem) {
+      return
+    }
+
+    const nextAnswers = { ...answers, [currentItem.id]: verdict }
+    setAnswers(nextAnswers)
+
+    if (currentIndex >= judgmentSequence.length - 1) {
+      analyzeAndFinish(nextAnswers, seed)
+      return
+    }
+
+    setCurrentIndex((index) => index + 1)
+  }
+
+  const handleBack = () => {
+    setCurrentIndex((index) => Math.max(0, index - 1))
   }
 
   const handleReorder = (nextOrder: string[]) => {
@@ -185,23 +219,38 @@ function App() {
 
   const handleSeedChange = (value: string) => {
     setSeed(normalizeSeed(value))
+    setAnswers({})
+    setCurrentIndex(0)
     setSession(null)
   }
 
   const handleNewSeed = () => {
     setSeed(generateSeed())
+    setAnswers({})
+    setCurrentIndex(0)
     setSession(null)
   }
 
+  const restartWithNewSeed = () => {
+    const nextSeed = generateSeed()
+    setSeed(nextSeed)
+    setAnswers({})
+    setCurrentIndex(0)
+    setSession(null)
+    setStep(3)
+  }
+
   const resetToInitialState = () => {
-    if (runTimeoutRef.current !== undefined) {
-      window.clearTimeout(runTimeoutRef.current)
-      runTimeoutRef.current = undefined
+    if (analyzeTimeoutRef.current !== undefined) {
+      window.clearTimeout(analyzeTimeoutRef.current)
+      analyzeTimeoutRef.current = undefined
     }
 
     setStep(1)
     setPrincipleRanking([...DEFAULT_PRINCIPLE_ORDER])
-    setIsRunning(false)
+    setAnswers({})
+    setCurrentIndex(0)
+    setIsAnalyzing(false)
     setSession(null)
   }
 
@@ -211,26 +260,37 @@ function App() {
       <div className="relative flex min-h-dvh flex-col md:flex-row">
         <Sidebar onHomeClick={resetToInitialState} />
         <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-24 md:border-l md:border-t-0 md:pb-0">
-          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && session.failedCount > 0)} />
+          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && session.contradictionCount > 0)} />
           {step === 1 && (
             <RankingStep principles={rankedPrinciples} onReorder={handleReorder} onNext={() => setStep(2)} />
           )}
           {step === 2 && (
             <SessionSetupStep
               seed={seed}
-              queue={sessionQueue}
-              isRunning={isRunning}
+              itemCount={judgmentSequence.length}
               onSeedChange={handleSeedChange}
               onNewSeed={handleNewSeed}
-              onRun={() => runSession(seed)}
+              onBack={() => setStep(1)}
+              onStart={beginJudging}
             />
           )}
-          {step === 3 && session && (
+          {step === 3 && (
+            <JudgingStep
+              item={judgmentSequence[currentIndex]}
+              index={currentIndex}
+              total={judgmentSequence.length}
+              isAnalyzing={isAnalyzing}
+              canGoBack={currentIndex > 0}
+              onVerdict={handleVerdict}
+              onBack={handleBack}
+            />
+          )}
+          {step === 4 && session && (
             <SessionResultStep
               session={session}
               principles={principles}
-              onRerunSameSeed={() => runSession(session.seed)}
-              onNewSeedRun={() => runSession(generateSeed())}
+              onRerunSameSeed={beginJudging}
+              onNewSeedRun={restartWithNewSeed}
             />
           )}
         </section>
@@ -311,10 +371,10 @@ function TopBar({
         <span className="rounded-sm bg-cyan-400 px-1.5 py-1 text-xs text-[#071018]">C</span>
         <span className="text-xs sm:text-sm">{t('appName')}</span>
       </div>
-      <div className="rounded border border-[#30363d] px-3 py-1.5 font-mono text-xs text-slate-300 md:hidden">
-        {`Step ${step} / 3`}
+      <div className="rounded border border-[#30363d] px-3 py-1.5 font-mono text-xs text-slate-300 lg:hidden">
+        {`Step ${step} / ${TOTAL_STEPS}`}
       </div>
-      <nav className="hidden items-center gap-6 md:flex">
+      <nav className="hidden items-center gap-6 lg:flex">
         {progressItems.map((item, index) => (
           <div key={item.label} className={`flex items-center gap-2 ${item.active ? 'text-cyan-300' : item.complete ? 'text-emerald-400' : ''}`}>
             <span className={`grid h-5 w-5 place-items-center rounded-full border text-xs ${item.active ? 'border-cyan-300 bg-cyan-300 text-[#071018]' : item.complete ? 'border-emerald-400' : 'border-slate-700'}`}>
@@ -338,7 +398,7 @@ function TopBar({
             <option value="en-US">{t('language.enUS')}</option>
           </select>
         </label>
-        {step === 3 && hasFailures && (
+        {step === 4 && hasFailures && (
           <span className="rounded border border-red-500/70 px-2 py-1 text-xs text-red-400 sm:px-3">{t('topbar.compileFailed')}</span>
         )}
         <span className="hidden lg:inline">{t('topbar.analyst')}</span>
@@ -397,6 +457,7 @@ function RankingStep({
           {t('rank.progress')}
           <div className="mt-3 flex gap-2">
             <span className="h-0.5 w-10 bg-cyan-400" />
+            <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
           </div>
@@ -518,18 +579,18 @@ function SortablePrincipleRow({
 
 function SessionSetupStep({
   seed,
-  queue,
-  isRunning,
+  itemCount,
   onSeedChange,
   onNewSeed,
-  onRun,
+  onBack,
+  onStart,
 }: {
   seed: string
-  queue: ScenarioPreset[]
-  isRunning: boolean
+  itemCount: number
   onSeedChange: (value: string) => void
   onNewSeed: () => void
-  onRun: () => void
+  onBack: () => void
+  onStart: () => void
 }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
@@ -562,16 +623,17 @@ function SessionSetupStep({
 
   return (
     <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-6 lg:px-20">
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-3xl">
         <p className="font-mono text-sm text-slate-400">{t('session.armed')}</p>
         <h1 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl md:text-4xl">{t('session.title')}</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">{t('session.description')}</p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">{t('session.description')}</p>
 
         <div className="mt-8 rounded-lg border border-cyan-400/40 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.10)] sm:p-6">
           <div className="flex items-center gap-2 font-mono text-sm font-black text-cyan-300">
             <Zap size={15} className="text-yellow-300" /> {t('session.briefingTitle')}
           </div>
           <p className="mt-3 text-sm leading-6 text-slate-300">{t('session.briefingBody')}</p>
+          <p className="mt-4 font-mono text-sm text-cyan-200">{t('session.itemsQueued', { count: itemCount })}</p>
         </div>
 
         <div className="mt-6 rounded-lg border border-[#21262d] bg-[#111320] p-5 sm:p-6">
@@ -605,34 +667,114 @@ function SessionSetupStep({
           </div>
         </div>
 
-        <div className="mt-6 rounded-lg border border-[#21262d] bg-[#111320] p-5 sm:p-6">
-          <div className="flex items-center justify-between font-mono text-sm font-black text-cyan-300">
-            <span className="flex items-center gap-2">
-              <Link2 size={14} /> {t('session.queueTitle')}
-            </span>
-            <span className="text-slate-500">{t('session.queueCount', { count: queue.length })}</span>
-          </div>
-          <ol className="mt-4 space-y-2 font-mono text-sm text-slate-300">
-            {queue.map((scenario, index) => (
-              <li key={scenario.id} className="flex items-start gap-3">
-                <span className="mt-0.5 shrink-0 text-cyan-400">{String(index + 1).padStart(2, '0')}</span>
-                <span className="min-w-0">
-                  {scenario.title} <span className="text-slate-500">[{scenario.category}]</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <div className="mt-10 flex flex-col items-center gap-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:mt-12 sm:pb-2 md:mt-14 md:pb-0">
+        <div className="mt-10 flex flex-col gap-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:flex-row sm:justify-between sm:pb-2 md:mt-12 md:pb-0">
           <button
             type="button"
-            onClick={onRun}
-            disabled={isRunning}
-            className="relative z-10 w-full max-w-full rounded-md bg-cyan-400 px-5 py-4 text-center font-mono text-xs font-black leading-5 text-[#071018] [overflow-wrap:anywhere] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait sm:min-w-72 sm:w-auto sm:px-10 sm:py-5 sm:text-sm"
+            onClick={onBack}
+            className="flex items-center justify-center gap-2 rounded-md border border-[#30363d] px-6 py-3.5 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
           >
-            <span className="sm:hidden">{isRunning ? t('session.running') : t('session.run')}</span>
-            <span className="hidden sm:inline">{isRunning ? t('session.running') : `${t('session.run')} ⚡`}</span>
+            <ChevronLeft size={14} /> {t('session.back')}
+          </button>
+          <button
+            type="button"
+            onClick={onStart}
+            className="w-full rounded-md bg-cyan-400 px-8 py-3.5 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300 sm:w-auto"
+          >
+            {t('session.start')} ⚡
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function JudgingStep({
+  item,
+  index,
+  total,
+  isAnalyzing,
+  canGoBack,
+  onVerdict,
+  onBack,
+}: {
+  item: JudgmentItem | undefined
+  index: number
+  total: number
+  isAnalyzing: boolean
+  canGoBack: boolean
+  onVerdict: (verdict: JudgmentVerdict) => void
+  onBack: () => void
+}) {
+  const { t } = useTranslation()
+
+  if (isAnalyzing || !item) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4 py-16">
+        <div className="text-center font-mono">
+          <p className="animate-pulse text-lg font-black text-cyan-300">{t('judge.analyzing')}</p>
+          <p className="mt-3 text-sm text-slate-500">{t('judge.analyzingHint')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const progressPercent = Math.round((index / Math.max(1, total)) * 100)
+
+  return (
+    <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-6 lg:px-20">
+      <div className="w-full max-w-3xl">
+        <div className="flex items-center justify-between font-mono text-xs text-slate-400">
+          <span className="text-cyan-300">{t('judge.progress', { current: index + 1, total })}</span>
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={!canGoBack}
+            className="flex items-center gap-1 rounded-md border border-[#30363d] px-3 py-1.5 font-black text-slate-300 transition hover:border-cyan-400/60 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronLeft size={13} /> {t('judge.back')}
+          </button>
+        </div>
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#21262d]">
+          <div className="h-full bg-cyan-400 transition-all" style={{ width: `${progressPercent}%` }} />
+        </div>
+
+        <h1 className="mt-8 text-xl font-black tracking-tight text-white sm:text-2xl md:text-3xl">{t('judge.title')}</h1>
+
+        <section className="mt-6 rounded-lg border border-[#21262d] bg-[#111320] p-5 shadow-2xl shadow-black/30 sm:p-7">
+          <div className="flex items-center gap-2 font-mono text-xs font-black text-cyan-300">
+            <FileCode2 size={14} /> {t('judge.caseFile')}
+          </div>
+          <div className="mt-5 space-y-4 font-mono text-sm leading-6 text-slate-200">
+            <div>
+              <p className="text-xs font-black text-slate-500">{t('judge.subjectLabel')}</p>
+              <p className="mt-1 text-slate-100">{item.subject}</p>
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-500">{t('judge.actLabel')}</p>
+              <p className="mt-1 text-slate-100">{item.act}</p>
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-500">{t('judge.contextLabel')}</p>
+              <p className="mt-1 text-slate-300">{item.context}</p>
+            </div>
+          </div>
+        </section>
+
+        <p className="mt-8 text-center font-mono text-sm font-black text-slate-300">{t('judge.prompt')}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => onVerdict('ACCEPTABLE')}
+            className="group flex items-center justify-center gap-3 rounded-lg border border-emerald-500/50 bg-emerald-500/5 px-6 py-6 font-mono text-sm font-black text-emerald-300 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-500/10 hover:shadow-[0_0_30px_rgba(86,211,100,0.2)]"
+          >
+            <ThumbsUp size={20} /> {t('judge.acceptable')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onVerdict('OUTRAGEOUS')}
+            className="group flex items-center justify-center gap-3 rounded-lg border border-red-500/50 bg-red-500/5 px-6 py-6 font-mono text-sm font-black text-red-300 transition hover:-translate-y-0.5 hover:border-red-400 hover:bg-red-500/10 hover:shadow-[0_0_30px_rgba(248,81,73,0.2)]"
+          >
+            <ThumbsDown size={20} /> {t('judge.outrageous')}
           </button>
         </div>
       </div>
@@ -646,13 +788,13 @@ function SessionResultStep({
   onRerunSameSeed,
   onNewSeedRun,
 }: {
-  session: SessionRun
+  session: InteractiveSessionRun
   principles: Principle[]
   onRerunSameSeed: () => void
   onNewSeedRun: () => void
 }) {
   const { t } = useTranslation()
-  const hasFailures = session.failedCount > 0
+  const hasContradictions = session.contradictionCount > 0
 
   const rankIndexById = useMemo(() => {
     const lookup = new Map<string, number>()
@@ -660,28 +802,28 @@ function SessionResultStep({
     return lookup
   }, [session.principleRanking])
 
-  const orderedOutcomes = useMemo(
+  const orderedJudgments = useMemo(
     () =>
-      session.outcomes
-        .map((outcome, index) => ({ outcome, index }))
+      session.judgments
+        .map((judgment, index) => ({ judgment, index }))
         .sort((a, b) => {
-          const rankA = rankIndexById.get(a.outcome.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
-          const rankB = rankIndexById.get(b.outcome.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          const rankA = rankIndexById.get(a.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          const rankB = rankIndexById.get(b.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
           if (rankA !== rankB) {
             return rankA - rankB
           }
           return a.index - b.index
         })
-        .map(({ outcome }) => outcome),
-    [rankIndexById, session.outcomes],
+        .map(({ judgment }) => judgment),
+    [rankIndexById, session.judgments],
   )
 
   const principleStatuses = useMemo(
     () =>
       session.principleRanking.map((id) => {
         const principle = principles.find((candidate) => candidate.id === id)
-        const relevant = session.outcomes.filter((outcome) => outcome.scenario.principleId === id)
-        const failed = relevant.some((outcome) => outcome.result.status === 'FAILED')
+        const relevant = session.judgments.filter((judgment) => judgment.scenario.principleId === id)
+        const failed = relevant.some((judgment) => !judgment.isConsistent)
         return {
           id,
           label: principle ? formatPrincipleLabel(principle.label) : id,
@@ -689,7 +831,7 @@ function SessionResultStep({
           failed,
         }
       }),
-    [principles, session.outcomes, session.principleRanking],
+    [principles, session.judgments, session.principleRanking],
   )
 
   return (
@@ -697,13 +839,16 @@ function SessionResultStep({
       <div>
         <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">{t('sessionResult.title')}</h1>
         <p className="mt-3 font-mono text-sm">
-          {hasFailures ? (
+          {hasContradictions ? (
             <span className="font-black text-red-400">
-              {t('sessionResult.summaryFailed', { failed: session.failedCount, total: session.outcomes.length })}
+              {t('sessionResult.summaryContradiction', {
+                count: session.contradictionCount,
+                total: session.judgments.length,
+              })}
             </span>
           ) : (
             <span className="font-black text-emerald-400">
-              {t('sessionResult.summaryClean', { total: session.outcomes.length })}
+              {t('sessionResult.summaryConsistent', { total: session.judgments.length })}
             </span>
           )}
         </p>
@@ -735,11 +880,11 @@ function SessionResultStep({
 
       <h2 className="mt-8 font-mono text-sm font-black text-cyan-300">{t('sessionResult.scenarioBreakdown')}</h2>
       <div className="mt-4 space-y-4">
-        {orderedOutcomes.map((outcome, index) => (
-          <ScenarioOutcomeCard
-            key={outcome.scenario.id}
-            outcome={outcome}
-            defaultExpanded={outcome.result.status === 'FAILED' && index === 0}
+        {orderedJudgments.map((judgment, index) => (
+          <JudgmentOutcomeCard
+            key={judgment.scenario.id}
+            judgment={judgment}
+            defaultExpanded={!judgment.isConsistent && index === 0}
           />
         ))}
       </div>
@@ -769,16 +914,14 @@ function SessionResultStep({
   )
 }
 
-function ScenarioOutcomeCard({ outcome, defaultExpanded }: { outcome: ScenarioRunOutcome; defaultExpanded: boolean }) {
+function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: ScenarioJudgment; defaultExpanded: boolean }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
-  const { scenario, result } = outcome
-  const hasFailed = result.status === 'FAILED'
+  const { scenario, verdictA, verdictB, isConsistent } = judgment
+  const hasFailed = !isConsistent
 
   return (
-    <section
-      className={`overflow-hidden rounded-lg border bg-[#111320] ${hasFailed ? 'border-red-500/50' : 'border-emerald-500/40'}`}
-    >
+    <section className={`overflow-hidden rounded-lg border bg-[#111320] ${hasFailed ? 'border-red-500/50' : 'border-emerald-500/40'}`}>
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
@@ -798,37 +941,44 @@ function ScenarioOutcomeCard({ outcome, defaultExpanded }: { outcome: ScenarioRu
         </span>
       </button>
       {expanded && (
-        <div className="border-t border-[#21262d] bg-black/60 p-4 font-mono text-xs leading-6 text-slate-200 sm:p-5 sm:text-sm sm:leading-7">
-          <p className="text-emerald-400">$ culture-lint compile --scenario {scenario.id}</p>
-          <p className="mt-2">
-            <span className="text-emerald-400">[PASS]</span>{' '}
-            {t('terminal.eventALine', { subject: scenario.caseStudyA.subject, act: scenario.caseStudyA.act })}
-          </p>
-          <p className="pl-4 text-slate-300">
-            ↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyA.expectedReaction, symbol: '✔' })}
-          </p>
-          <div className="my-3 border-t border-dashed border-slate-700" />
-          <p>
-            <span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{hasFailed ? '[FAIL]' : '[PASS]'}</span>{' '}
-            {t('terminal.eventBLine', { subject: scenario.caseStudyB.subject, act: scenario.caseStudyB.act })}
-          </p>
-          <p className="pl-4 text-slate-300">
-            ↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyB.expectedReaction, symbol: hasFailed ? '✘' : '✔' })}
-          </p>
-          {result.status === 'FAILED' ? (
-            <div className="mt-3 text-red-300">
-              <p className="font-black text-red-400">{t('terminal.compilationFailed', { exception: result.exception })}</p>
-              <p className="mt-1">
-                <span className="text-orange-300">{t('terminal.errorCode')}</span> {result.code}
-              </p>
-              <p className="mt-1">{result.description}</p>
-            </div>
-          ) : (
-            <p className="mt-3 font-black text-emerald-400">{t('terminal.compilationSucceeded')}</p>
-          )}
+        <div className="border-t border-[#21262d] bg-black/60 p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <VerdictCell label={t('step2.eventA')} caseStudy={scenario.caseStudyA} verdict={verdictA} />
+            <VerdictCell label={t('step2.eventB')} caseStudy={scenario.caseStudyB} verdict={verdictB} />
+          </div>
+          <div className={`mt-4 rounded border p-4 font-mono text-xs leading-6 sm:text-sm ${hasFailed ? 'border-red-500/50 text-red-300' : 'border-emerald-500/40 text-emerald-300'}`}>
+            {hasFailed ? t('sessionResult.contradictionNote') : t('sessionResult.consistentNote')}
+          </div>
         </div>
       )}
     </section>
+  )
+}
+
+function VerdictCell({
+  label,
+  caseStudy,
+  verdict,
+}: {
+  label: string
+  caseStudy: { subject: string; act: string }
+  verdict: JudgmentVerdict
+}) {
+  const { t } = useTranslation()
+  const isOutrageous = verdict === 'OUTRAGEOUS'
+
+  return (
+    <div className="rounded border border-[#21262d] bg-[#0c0f1c] p-4 font-mono text-xs leading-6 text-slate-300 sm:text-sm">
+      <p className="text-xs font-black text-slate-500">{label}</p>
+      <p className="mt-2 text-slate-200">{caseStudy.subject}</p>
+      <p className="mt-1 text-slate-400">{caseStudy.act.toLowerCase()}</p>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-slate-500">{t('sessionResult.yourVerdict')}</span>
+        <span className={`rounded border px-2 py-0.5 font-black ${isOutrageous ? 'border-red-400/70 text-red-400' : 'border-emerald-400/70 text-emerald-400'}`}>
+          {isOutrageous ? t('judge.outrageous') : t('judge.acceptable')}
+        </span>
+      </div>
+    </div>
   )
 }
 
