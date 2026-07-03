@@ -171,7 +171,15 @@ function App() {
         },
       }
 
-      setLintResult(runCultureLint(lockedPrinciple, runtimeScenario))
+      setLintResult(
+        runCultureLint(lockedPrinciple, runtimeScenario, {
+          formatReactionMutationDescription: ({ fromReaction, toReaction }) =>
+            t('errors.reactionMutation', {
+              fromReaction,
+              toReaction,
+            }),
+        }),
+      )
       compileTimeoutRef.current = undefined
       setIsCompiling(false)
       setStep(3)
@@ -255,7 +263,7 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
   const { t, i18n } = useTranslation()
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[#21262d] bg-[#0b0d17] px-5 text-xs text-slate-500 lg:px-9">
+    <header className="flex h-16 items-center justify-between border-b border-[#21262d] bg-[#0b0d17] px-5 text-sm text-slate-400 lg:px-9">
       <div className="flex items-center gap-2 font-mono font-bold text-slate-100">
         <span className="rounded-sm bg-cyan-400 px-1.5 py-1 text-[10px] text-[#071018]">C</span>
         {t('appName')}
@@ -409,12 +417,12 @@ function MetadataStep({
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
-        <p className="font-mono text-[11px] text-slate-600">{t('step2.armed')}</p>
+        <p className="font-mono text-xs text-slate-400">{t('step2.armed')}</p>
         <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{t('step2.title')}</h1>
         <p className="mt-4 text-sm text-slate-400">{t('step2.description')}</p>
         <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-5">
           <label className="block">
-            <span className="font-mono text-[10px] font-black text-cyan-400">{t('step2.filterPresets')}</span>
+            <span className="font-mono text-xs font-black text-cyan-300">{t('step2.filterPresets')}</span>
             <input
               value={scenarioQuery}
               onChange={(event) => setScenarioQuery(event.target.value)}
@@ -423,7 +431,7 @@ function MetadataStep({
             />
           </label>
           <label className="block">
-            <span className="font-mono text-[10px] font-black text-cyan-400">{t('step2.scenarioPreset')}</span>
+            <span className="font-mono text-xs font-black text-cyan-300">{t('step2.scenarioPreset')}</span>
             <select
               value={filteredScenarios.length === 0 ? '' : activeScenarioId}
               onChange={(event) => {
@@ -441,11 +449,11 @@ function MetadataStep({
               {filteredScenarios.length === 0 && <option value="">{t('step2.noScenariosMatch')}</option>}
             </select>
           </label>
-          <p className="mt-3 font-mono text-[10px] text-slate-500">
+          <p className="mt-3 font-mono text-xs text-slate-400">
             {t('step2.presetsVisible', { visible: filteredScenarios.length, total: scenarios.length })}
           </p>
           {selectedScenario && (
-            <p className="mt-3 font-mono text-[10px] text-slate-500">
+            <p className="mt-3 font-mono text-xs text-slate-400">
               {t('step2.exceptionProfile', {
                 exceptionType: selectedScenario.exceptionType,
                 exceptionCode: selectedScenario.exceptionCode,
@@ -466,7 +474,7 @@ function MetadataStep({
           >
             {isCompiling ? t('step2.compiling') : `${t('step2.compile')} ⚡`}
           </button>
-          <p className="font-mono text-[10px] text-slate-600">{t('step2.shortcut')}</p>
+          <p className="font-mono text-xs text-slate-400">{t('step2.shortcut')}</p>
         </div>
       </div>
     </div>
@@ -499,19 +507,19 @@ function CaseStudyCard({
         <Lock size={14} className="text-slate-600" />
       </div>
       <label className="block">
-        <span className="font-mono text-[10px] text-slate-500">{t('caseStudy.scenarioDescription')}</span>
-        <div className="mt-2 rounded border border-[#21262d] bg-[#0a0c10] p-4 font-mono text-xs text-slate-400">
+        <span className="font-mono text-xs text-slate-400">{t('caseStudy.scenarioDescription')}</span>
+        <div className="mt-2 rounded border border-[#21262d] bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">
           // {caseStudy.subject} {caseStudy.act.toLowerCase()}
         </div>
       </label>
       {(['subject', 'act', 'context'] as const).map((field) => (
         <label key={field} className="mt-5 block">
-          <span className="font-mono text-[10px] font-black text-cyan-400">{fieldLabelMap[field]}</span>
+          <span className="font-mono text-xs font-black text-cyan-300">{fieldLabelMap[field]}</span>
           <textarea
             value={caseStudy[field]}
             onChange={(event) => onChange(caseKey, field, event.target.value)}
             rows={field === 'context' ? 4 : 3}
-            className="mt-2 w-full resize-y rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
+            className="mt-2 w-full resize-y rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-base leading-6 text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
           />
         </label>
       ))}
@@ -554,7 +562,7 @@ function ResultStep({
         <ConfigSummary principle={principle} caseStudies={caseStudies} />
       </div>
       <GotchaSummary />
-      <footer className="mt-8 flex justify-between font-mono text-[10px] text-slate-600">
+      <footer className="mt-8 flex justify-between font-mono text-xs text-slate-400">
         <span className="text-cyan-400">{t('step3.analysisComplete')}</span>
         <span>culture-lint v2026.3.2</span>
       </footer>
@@ -578,12 +586,12 @@ function TerminalPane({
 
   return (
     <section className="rounded border border-cyan-400/30 bg-black/70 shadow-[0_0_35px_rgba(0,240,255,0.14)]">
-      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-[10px] font-black text-cyan-400">{t('terminal.header')}</div>
-      <div className="space-y-3 p-6 font-mono text-[12px] leading-6 text-slate-300">
+      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-xs font-black tracking-wide text-cyan-300">{t('terminal.header')}</div>
+      <div className="space-y-3 break-words p-6 font-mono text-sm leading-7 text-slate-200">
         <p className="text-emerald-400">$ culture-lint compile --run-analysis</p>
         <p><span className="text-cyan-400">[INFO]</span> {t('terminal.compileInfo')}</p>
-        <p><span className="text-emerald-400">[PASS]</span> Event A: {caseStudies.eventA.subject} — {caseStudies.eventA.act}</p>
-        <div className="pl-5 text-slate-400">
+        <p><span className="text-emerald-400">[PASS]</span> {t('terminal.eventALine', { subject: caseStudies.eventA.subject, act: caseStudies.eventA.act })}</p>
+        <div className="pl-5 text-slate-300">
           <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyA.expectedReaction, symbol: '✔' })}</p>
           <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyA.justificationLogic, symbol: '✔' })}</p>
           <p>↳ {t('terminal.verdict')} <span className="font-black text-emerald-400">{t('terminal.reactionRouted', { reaction: scenario.caseStudyA.expectedReaction.toUpperCase(), symbol: '✔' })}</span></p>
@@ -591,7 +599,7 @@ function TerminalPane({
         <p className="text-emerald-400">{t('terminal.eventAPassed')}</p>
         <div className="my-4 border-t border-dashed border-red-500/70" />
         <p><span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{eventBStatusLabel}</span> {t('terminal.eventBLine', { subject: caseStudies.eventB.subject, act: caseStudies.eventB.act })}</p>
-        <div className="pl-5 text-slate-400">
+        <div className="pl-5 text-slate-300">
           <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyB.expectedReaction, symbol: eventBSymbol })}</p>
           <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyB.justificationLogic, symbol: eventBSymbol })}</p>
           <p>
@@ -639,19 +647,19 @@ function ConfigSummary({ principle, caseStudies }: { principle: Principle; caseS
   return (
     <aside className="space-y-5">
       <div className="rounded-lg border border-cyan-400/70 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)]">
-        <div className="flex items-center justify-between font-mono text-[10px] font-black text-cyan-400">
+        <div className="flex items-center justify-between font-mono text-xs font-black text-cyan-300">
           {t('config.summary')}
           <FileCode2 size={13} className="text-slate-500" />
         </div>
-        <p className="mt-6 font-mono text-[10px] text-slate-500">{t('config.activePrinciple')}</p>
-        <p className="mt-1 text-sm text-slate-300">{principle.label[0] + principle.label.slice(1).toLowerCase()}</p>
-        <div className="mt-4 rounded bg-[#0a0c10] p-4 font-mono text-xs text-slate-400">&quot;{principle.value}&quot;</div>
-        <div className="mt-5 space-y-2 font-mono text-xs text-slate-400">
+        <p className="mt-6 font-mono text-xs text-slate-400">{t('config.activePrinciple')}</p>
+        <p className="mt-1 text-base text-slate-200">{principle.label[0] + principle.label.slice(1).toLowerCase()}</p>
+        <div className="mt-4 rounded bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">&quot;{principle.value}&quot;</div>
+        <div className="mt-5 space-y-2 font-mono text-sm leading-6 text-slate-300">
           <p><span className="text-cyan-400">●</span> {caseStudies.eventA.subject} / {caseStudies.eventA.context}</p>
           <p><span className="text-cyan-400">●</span> {caseStudies.eventB.subject} / {caseStudies.eventB.context}</p>
         </div>
       </div>
-      <div className="rounded border border-[#21262d] bg-[#111320]/70 p-5 font-mono text-xs text-slate-500">
+      <div className="rounded border border-[#21262d] bg-[#111320]/70 p-5 font-mono text-sm leading-6 text-slate-300">
         <p className="text-cyan-400">{t('config.integrityNote')}</p>
         <p className="mt-4"><Lock size={12} className="mr-2 inline" />{t('config.lockNote')}</p>
       </div>

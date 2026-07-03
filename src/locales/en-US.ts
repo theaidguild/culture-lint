@@ -62,6 +62,7 @@ const enUS = {
       header: 'COMPILER TERMINAL OUTPUT',
       compileInfo: 'Compiling case study...',
       eventAPassed: 'Build status for Event A: PASSED',
+      eventALine: 'Event A: {{subject}} - {{act}}',
       eventBLine: 'Event B: {{subject}} - {{act}}',
       expectedReaction: 'Expected Reaction: {{reaction}} {{symbol}}',
       moralJustification: 'Moral Justification: "{{text}}" {{symbol}}',
@@ -81,6 +82,10 @@ const enUS = {
       codeSmell: 'Code Smell Detected: Identity-Based Routing',
       buildStatusFailed: 'Build Status: FAILED (1 error, 0 warnings. Execution time: 42ms)',
       buildStatusSuccess: 'Build Status: SUCCESS (0 errors, 0 warnings. Execution time: 42ms)',
+    },
+    errors: {
+      reactionMutation:
+        "The property 'Reaction' mutated dynamically from '{{fromReaction}}' to '{{toReaction}}' without structural payload variance.",
     },
     config: {
       summary: 'CONFIG SUMMARY',
