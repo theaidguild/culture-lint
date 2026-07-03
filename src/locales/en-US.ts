@@ -1,0 +1,222 @@
+const enUS = {
+  translation: {
+    appName: 'Culture-Lint',
+    progress: {
+      biasDetection: 'Bias Detection',
+      metadataAssignment: 'Metadata Assignment',
+      resultAnalysis: 'Result Analysis',
+    },
+    sidebar: {
+      returnInitialState: 'Return to initial state',
+    },
+    topbar: {
+      compileFailed: 'COMPILE FAILED',
+      analyst: 'analyst_04',
+    },
+    language: {
+      label: 'Language',
+      ptBR: 'PT-BR',
+      enUS: 'EN-US',
+    },
+    reactions: {
+      absoluteOutrage: 'Absolute Outrage',
+      nuancedDefense: 'Nuanced Defense',
+    },
+    step1: {
+      progress: 'STEP 1 OF 3',
+      title: 'Step 1: Declare Your Baseline Immutable Principle',
+      description:
+        'Select one foundational rule that your organization must never violate. This principle serves as the invariant for all future culture-linting checks.',
+      selected: '[SELECTED]',
+      next: 'NEXT >',
+    },
+    step2: {
+      armed: '// Cross-partisan analyzer armed',
+      title: 'Step 2: Assign Case Study Metadata',
+      description: 'Identify specific actors and actions to enable cross-sectional semantic analysis.',
+      filterPresets: '[FILTER_PRESETS]',
+      searchPlaceholder: 'Search by title, category, id, code...',
+      scenarioPreset: '[SCENARIO_PRESET]',
+      noScenariosMatch: 'No scenarios match this filter.',
+      presetsVisible: '// PRESETS: {{visible}}/{{total}} visible',
+      exceptionProfile: '// EXCEPTION PROFILE: {{exceptionType}} ({{exceptionCode}})',
+      eventA: 'Event A (Rival):',
+      eventB: 'Event B (Ally):',
+      compiling: 'COMPILING SEMANTIC TREE...',
+      compile: 'COMPILE CASE STUDY',
+      shortcut: '[ CMD + ENTER ] to proceed',
+    },
+    caseStudy: {
+      scenarioDescription: 'SCENARIO DESCRIPTION',
+      subject: '[SUBJECT]',
+      act: '[ACT]',
+      context: '[CONTEXT]',
+    },
+    step3: {
+      title: 'Step 3: Compilation Results',
+      failedPrefix: '{{exception}} detected. Your stated principle failed structural integrity analysis.',
+      successPrefix: 'No exceptions detected. Your principle passed structural integrity analysis.',
+      analysisComplete: 'ANALYSIS COMPLETE',
+    },
+    terminal: {
+      header: 'COMPILER TERMINAL OUTPUT',
+      compileInfo: 'Compiling case study...',
+      eventAPassed: 'Build status for Event A: PASSED',
+      eventBLine: 'Event B: {{subject}} - {{act}}',
+      expectedReaction: 'Expected Reaction: {{reaction}} {{symbol}}',
+      moralJustification: 'Moral Justification: "{{text}}" {{symbol}}',
+      verdict: 'Verdict:',
+      reactionRouted: 'REACTION ROUTED: {{reaction}} {{symbol}}',
+      compilationFailed: '[ERROR] Compilation Failed: {{exception}}',
+      location: 'Location:',
+      locationValue: 'Line 13, Column 9 (Examples Table)',
+      errorCode: 'Error Code:',
+      description: 'Description:',
+      compilationSucceeded: '[PASS] Compilation Succeeded',
+      traceback: 'Traceback:',
+      trace1: 'Given a public figure makes an "objectively offensive" statement...',
+      trace2: 'When the public reviews the statement...',
+      trace3: 'Then the collective reaction should be',
+      dynamicMutation: '[DYNAMIC_MUTATION]',
+      codeSmell: 'Code Smell Detected: Identity-Based Routing',
+      buildStatusFailed: 'Build Status: FAILED (1 error, 0 warnings. Execution time: 42ms)',
+      buildStatusSuccess: 'Build Status: SUCCESS (0 errors, 0 warnings. Execution time: 42ms)',
+    },
+    config: {
+      summary: 'CONFIG SUMMARY',
+      activePrinciple: 'ACTIVE PRINCIPLE',
+      integrityNote: 'Structural integrity check looks for immutable response patterns.',
+      lockNote: 'State is locked in read-only memory.',
+    },
+    gotcha: {
+      title: 'GOTCHA SUMMARY',
+      severity: 'SEVERITY: CRITICAL',
+      confirmed: 'Double Standard Confirmed.',
+      description:
+        "You applied fundamentally different moral frameworks to symmetrical empirical acts. The only variable that changed was the Subject's Identity property. Code execution terminated.",
+    },
+    principles: {
+      transparency: {
+        label: 'TRANSPARENCY',
+        status: '[INACTIVE] RULE: TRANSPARENCY',
+        value: 'All financial data MUST be publicly accessible.',
+        metadata: {
+          access: '// Interface: DataAccess.public()',
+          state: '// State: IMMUTABLE CONSTANT',
+        },
+      },
+      accountability: {
+        label: 'ACCOUNTABILITY',
+        status: '[ACTIVE] RULE: ACCOUNTABILITY',
+        value: 'A leader MUST resign if caught lying.',
+        metadata: {
+          resignation: '// Interface: LeaderResignation.if(CaughtLying)',
+          state: '// State: IMMUTABLE CONSTANT.',
+        },
+      },
+      equality: {
+        label: 'EQUALITY',
+        status: '[INACTIVE] RULE: EQUALITY',
+        value: 'No employee shall earn more than 2x the median salary.',
+        metadata: {
+          payGap: '// Interface: PayGap.max(2x)',
+          state: '// State: IMMUTABLE CONSTANT',
+        },
+      },
+    },
+    scenarios: {
+      'inclusividade-seletiva': {
+        title: 'The Safe Space Gatekeeper Protocol',
+        caseStudyA: {
+          subject: 'A corporate panel or cultural collective declaring "Absolute, Unconditional Intellectual and Social Diversity"',
+          act: 'Invites a minority creator who holds strict, traditional conservative socio-economic beliefs to lecture',
+          context: 'The speaker uses polite, standard corporate language but advocates for free-market capitalism and traditional family structures',
+          justificationLogic: 'This is an unsafe intrusion; diversity does not mean tolerating systemic oppression or harmful, regressive dogmas.',
+        },
+        caseStudyB: {
+          subject: 'The exact same corporate panel or cultural collective declaring "Absolute, Unconditional Intellectual and Social Diversity"',
+          act: 'Invites an affluent, upper-class creator who holds matching institutional, progress-aligned socio-economic beliefs to lecture',
+          context: 'The speaker uses polite, standard corporate language to echo the existing ideological framework of the room',
+          justificationLogic: 'A beautiful, harmonious validation of shared human empathy and progressive alignment. This is what true inclusion feels like.',
+        },
+      },
+      'cancelamento-do-bem': {
+        title: 'The Empathy Exception Compiler',
+        caseStudyA: {
+          subject: 'A prominent social media user with a bio reading: "Empathy, Love, and Mental Health advocate. #SetembroAmarelo"',
+          act: 'Discovers an opposing political influencer going through an intense public scandal or severe personal crisis',
+          context: "The user actively likes, retweets, and crafts public mockery mocking the opponent's mental breakdown and ruined career",
+          justificationLogic: 'They are reaping what they sowed; tyrants, bigots, and bad people do not deserve human empathy or psychological protection.',
+        },
+        caseStudyB: {
+          subject: 'The exact same social media user with a bio reading: "Empathy, Love, and Mental Health advocate. #SetembroAmarelo"',
+          act: 'Discovers an allied political influencer going through an identical public scandal or severe personal crisis',
+          context: 'The user actively likes, retweets, and crafts public mockery attacking the journalists covering the scandal',
+          justificationLogic: 'We must protect human dignity; cyberbullying is a disease, and we never know what kind of silent psychological battles people are fighting.',
+        },
+      },
+      'stf-due-process': {
+        title: 'Judicial Activism Sandbox',
+        caseStudyA: {
+          subject: 'A prominent political opponent',
+          act: 'Has their social media accounts suspended overnight by a single judicial order without a formal trial',
+          context: 'Suspended without formal trial or broad defense opportunity under accelerated executive legal mandates',
+          justificationLogic: 'Flagrant abuse of power, tactical authoritarianism, and a dark era of judicial dictatorship ("Ditadura do Judiciario").',
+        },
+        caseStudyB: {
+          subject: 'A prominent political ally',
+          act: 'Has their social media accounts suspended overnight by a single judicial order without a formal trial',
+          context: 'Suspended without formal trial or broad defense opportunity under accelerated executive legal mandates',
+          justificationLogic: 'An exceptional, highly necessary measure to protect structural democratic institutions from systemic sabotage ("Defesa da Democracia").',
+        },
+      },
+      'corrupcao-estimada': {
+        title: 'The Budget Divergence Evaluator',
+        caseStudyA: {
+          subject: 'Opposing Legislative Coalition / Centrao',
+          act: 'Negotiating massive public budget allocations for regional infrastructure in exchange for vital legislative votes',
+          context: 'Standard legislative coalition building via targeted localized budgetary distribution programs',
+          justificationLogic: 'Institutional corruption, legalized bribery, buying political power while starving public healthcare and basic education systems.',
+        },
+        caseStudyB: {
+          subject: 'Preferred Legislative Coalition / Government',
+          act: 'Negotiating massive public budget allocations for regional infrastructure in exchange for vital legislative votes',
+          context: 'Standard legislative coalition building via targeted localized budgetary distribution programs',
+          justificationLogic: 'Pragmatic governance, coalition presidentialism, and necessary political articulation to pass fundamental structural reforms.',
+        },
+      },
+      'liberdade-expressao-seletiva': {
+        title: 'The Free Speech Elasticity Linter',
+        caseStudyA: {
+          subject: 'An opposing ideological content creator or media comedian',
+          act: 'Makes a deeply offensive, highly provocative public joke targeting a protected demographic or historical event',
+          context: 'The comment is made during a heavily publicized live stream, sparking massive societal backlash across networks',
+          justificationLogic: 'This is completely distinct from humor; it is explicit hate speech, digital violence, and requires immediate judicial deplatforming.',
+        },
+        caseStudyB: {
+          subject: 'A preferred political satirist or avant-garde artistic performer',
+          act: 'Makes a deeply offensive, highly provocative public joke targeting a protected demographic or historical event',
+          context: 'The comment is made during a heavily publicized live stream, sparking massive societal backlash across networks',
+          justificationLogic: 'A vital, transgressive display of artistic freedom and sharp social critique. Protecting this expression is a triumph for democracy.',
+        },
+      },
+      'seguranca-publica-seletiva': {
+        title: 'The State Monopoly on Force Verifier',
+        caseStudyA: {
+          subject: 'A localized public protest or logistical blockade organized by rural farmers and independent truckers',
+          act: 'Disrupts regional logistics, ignites tires on national highways, and forces critical public transit routes to a complete halt',
+          context: 'The demonstration is non-violent but deliberately engineers total infrastructure friction for an extended period',
+          justificationLogic: 'Domestic economic terrorism, a flagrant violation of the constitutional right to mobility, and the state must deploy police shock troops immediately.',
+        },
+        caseStudyB: {
+          subject: 'A localized public protest or logistical blockade organized by urban student unions and historic social movements',
+          act: 'Disrupts regional logistics, ignites tires on national highways, and forces critical public transit routes to a complete halt',
+          context: 'The demonstration is non-violent but deliberately engineers total infrastructure friction for an extended period',
+          justificationLogic: 'A historic, deeply justified democratic manifestation fighting for human rights. Any deployment of state police force is structural fascism.',
+        },
+      },
+    },
+  },
+}
+
+export default enUS

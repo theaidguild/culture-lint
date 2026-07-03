@@ -1,6 +1,7 @@
 import { Check, FileCode2, Home, Lock, Settings, ShieldCheck, Terminal, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SCENARIO_DATABASE } from './data/scenarios'
+import { useTranslation } from 'react-i18next'
+import { getScenarioDatabase } from './data/scenarios'
 import { runCultureLint, type LintRunResult } from './engine/linterEngine'
 import { type Principle, type ScenarioPreset } from './types/linter'
 
@@ -15,111 +16,70 @@ type CaseStudy = {
 }
 
 type CaseStudies = Record<CaseStudyKey, CaseStudy>
-
-const principles: Principle[] = [
-  {
-    id: 'transparency',
-    label: 'TRANSPARENCY',
-    status: '[INACTIVE] RULE: TRANSPARENCY',
-    metadata: ['// Interface: DataAccess.public()', '// State: IMMUTABLE CONSTANT'],
-    value: 'All financial data MUST be publicly accessible.',
-    code: 'CHK_012',
-  },
-  {
-    id: 'accountability',
-    label: 'ACCOUNTABILITY',
-    status: '[ACTIVE] RULE: ACCOUNTABILITY',
-    metadata: ['// Interface: LeaderResignation.if(CaughtLying)', '// State: IMMUTABLE CONSTANT.'],
-    value: 'A leader MUST resign if caught lying.',
-    code: 'CHK_034',
-  },
-  {
-    id: 'equality',
-    label: 'EQUALITY',
-    status: '[INACTIVE] RULE: EQUALITY',
-    metadata: ['// Interface: PayGap.max(2x)', '// State: IMMUTABLE CONSTANT'],
-    value: 'No employee shall earn more than 2x the median salary.',
-    code: 'CHK_088',
-  },
-]
-
-const defaultCases: CaseStudies = {
-  eventA: {
-    subject: 'Politician X',
-    act: 'Lied about budget',
-    context: 'Budget Hearing',
-  },
-  eventB: {
-    subject: 'Your Preferred Leader',
-    act: 'Lied about meeting',
-    context: 'Campaign Rally',
-  },
-}
+type CaseStudyDrafts = Record<string, CaseStudies>
 
 function App() {
+  const { t } = useTranslation()
+
+  const principles = useMemo<Principle[]>(
+    () => [
+      {
+        id: 'transparency',
+        label: t('principles.transparency.label'),
+        status: t('principles.transparency.status'),
+        metadata: [t('principles.transparency.metadata.access'), t('principles.transparency.metadata.state')],
+        value: t('principles.transparency.value'),
+        code: 'CHK_012',
+      },
+      {
+        id: 'accountability',
+        label: t('principles.accountability.label'),
+        status: t('principles.accountability.status'),
+        metadata: [t('principles.accountability.metadata.resignation'), t('principles.accountability.metadata.state')],
+        value: t('principles.accountability.value'),
+        code: 'CHK_034',
+      },
+      {
+        id: 'equality',
+        label: t('principles.equality.label'),
+        status: t('principles.equality.status'),
+        metadata: [t('principles.equality.metadata.payGap'), t('principles.equality.metadata.state')],
+        value: t('principles.equality.value'),
+        code: 'CHK_088',
+      },
+    ],
+    [t],
+  )
+
+  const scenarioDatabase = useMemo(() => getScenarioDatabase(t), [t])
+
   const [step, setStep] = useState<Step>(1)
   const [selectedPrinciple, setSelectedPrinciple] = useState<Principle | null>(null)
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
-  const [caseStudies, setCaseStudies] = useState<CaseStudies>(defaultCases)
+  const [caseStudyDrafts, setCaseStudyDrafts] = useState<CaseStudyDrafts>({})
   const [isCompiling, setIsCompiling] = useState(false)
   const [lintResult, setLintResult] = useState<LintRunResult | null>(null)
   const compileTimeoutRef = useRef<number | undefined>(undefined)
 
   const lockedPrinciple = selectedPrinciple ?? principles[1]
   const principleScenarios = useMemo(
-    () => SCENARIO_DATABASE.filter((scenario) => scenario.principleId === lockedPrinciple.id),
-    [lockedPrinciple.id],
+    () => scenarioDatabase.filter((scenario) => scenario.principleId === lockedPrinciple.id),
+    [lockedPrinciple.id, scenarioDatabase],
   )
 
   const activeScenario = useMemo(
     () =>
-      principleScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? principleScenarios[0] ?? SCENARIO_DATABASE[0],
-    [principleScenarios, selectedScenarioId],
+      principleScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? principleScenarios[0] ?? scenarioDatabase[0],
+    [principleScenarios, scenarioDatabase, selectedScenarioId],
   )
 
-  const progressItems = useMemo(
-    () => [
-      { label: 'Bias Detection', active: step === 1, complete: step > 1 },
-      { label: 'Metadata Assignment', active: step === 2, complete: step > 2 },
-      { label: 'Result Analysis', active: step === 3, complete: false },
-    ],
-    [step],
-  )
-
-  const updateCaseStudy = (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => {
-    setCaseStudies((current) => ({
-      ...current,
-      [caseKey]: {
-        ...current[caseKey],
-        [field]: value,
-      },
-    }))
-  }
-
-  useEffect(() => {
-    return () => {
-      if (compileTimeoutRef.current !== undefined) {
-        window.clearTimeout(compileTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (principleScenarios.length === 0) {
-      setSelectedScenarioId(null)
-      return
+  const caseStudies = useMemo<CaseStudies>(() => {
+    const draft = caseStudyDrafts[activeScenario.id]
+    if (draft) {
+      return draft
     }
 
-    setSelectedScenarioId((current) => {
-      if (current && principleScenarios.some((scenario) => scenario.id === current)) {
-        return current
-      }
-      return principleScenarios[0].id
-    })
-  }, [principleScenarios])
-
-  useEffect(() => {
-    setCaseStudies({
+    return {
       eventA: {
         subject: activeScenario.caseStudyA.subject,
         act: activeScenario.caseStudyA.act,
@@ -130,9 +90,63 @@ function App() {
         act: activeScenario.caseStudyB.act,
         context: activeScenario.caseStudyB.context,
       },
+    }
+  }, [activeScenario, caseStudyDrafts])
+
+  const progressItems = useMemo(
+    () => [
+      { label: t('progress.biasDetection'), active: step === 1, complete: step > 1 },
+      { label: t('progress.metadataAssignment'), active: step === 2, complete: step > 2 },
+      { label: t('progress.resultAnalysis'), active: step === 3, complete: false },
+    ],
+    [step, t],
+  )
+
+  const updateCaseStudy = (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => {
+    setCaseStudyDrafts((current) => {
+      const scenarioDraft = current[activeScenario.id] ?? {
+        eventA: {
+          subject: activeScenario.caseStudyA.subject,
+          act: activeScenario.caseStudyA.act,
+          context: activeScenario.caseStudyA.context,
+        },
+        eventB: {
+          subject: activeScenario.caseStudyB.subject,
+          act: activeScenario.caseStudyB.act,
+          context: activeScenario.caseStudyB.context,
+        },
+      }
+
+      return {
+        ...current,
+        [activeScenario.id]: {
+          ...scenarioDraft,
+          [caseKey]: {
+            ...scenarioDraft[caseKey],
+            [field]: value,
+          },
+        },
+      }
     })
+  }
+
+  useEffect(() => {
+    return () => {
+      if (compileTimeoutRef.current !== undefined) {
+        window.clearTimeout(compileTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleScenarioChange = (scenarioId: string) => {
+    setSelectedScenarioId(scenarioId)
     setLintResult(null)
-  }, [activeScenario])
+  }
+
+  const handlePrincipleSelect = (principle: Principle) => {
+    setSelectedPrinciple(principle)
+    setLintResult(null)
+  }
 
   const compileCaseStudy = () => {
     if (compileTimeoutRef.current !== undefined) {
@@ -173,7 +187,7 @@ function App() {
     setStep(1)
     setSelectedPrinciple(null)
     setSelectedScenarioId(null)
-    setCaseStudies(defaultCases)
+    setCaseStudyDrafts({})
     setIsCompiling(false)
     setLintResult(null)
   }
@@ -189,7 +203,7 @@ function App() {
             <PrincipleStep
               principles={principles}
               selectedPrinciple={selectedPrinciple}
-              onSelect={setSelectedPrinciple}
+              onSelect={handlePrincipleSelect}
               onNext={() => setStep(2)}
             />
           )}
@@ -200,7 +214,7 @@ function App() {
               activeScenarioId={activeScenario.id}
               isCompiling={isCompiling}
               onChange={updateCaseStudy}
-              onScenarioChange={setSelectedScenarioId}
+              onScenarioChange={handleScenarioChange}
               onCompile={compileCaseStudy}
             />
           )}
@@ -212,6 +226,8 @@ function App() {
 }
 
 function Sidebar({ onHomeClick }: { onHomeClick: () => void }) {
+  const { t } = useTranslation()
+
   return (
     <aside className="hidden w-14 flex-col items-center border-r border-[#21262d] bg-[#07090d] py-6 text-slate-500 md:flex">
       <div className="mb-9 rounded-md border border-cyan-400/60 p-1 text-cyan-300 shadow-[0_0_18px_rgba(0,240,255,0.28)]">
@@ -221,7 +237,7 @@ function Sidebar({ onHomeClick }: { onHomeClick: () => void }) {
         <button
           type="button"
           onClick={onHomeClick}
-          aria-label="Return to initial state"
+          aria-label={t('sidebar.returnInitialState')}
           className="rounded p-1 text-cyan-300 transition hover:bg-cyan-400/10 hover:text-cyan-200"
         >
           <Home size={17} />
@@ -236,11 +252,13 @@ function Sidebar({ onHomeClick }: { onHomeClick: () => void }) {
 }
 
 function TopBar({ progressItems, step }: { progressItems: { label: string; active: boolean; complete: boolean }[]; step: Step }) {
+  const { t, i18n } = useTranslation()
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-[#21262d] bg-[#0b0d17] px-5 text-xs text-slate-500 lg:px-9">
       <div className="flex items-center gap-2 font-mono font-bold text-slate-100">
         <span className="rounded-sm bg-cyan-400 px-1.5 py-1 text-[10px] text-[#071018]">C</span>
-        Culture-Lint
+        {t('appName')}
       </div>
       <nav className="hidden items-center gap-6 md:flex">
         {progressItems.map((item, index) => (
@@ -253,8 +271,21 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
         ))}
       </nav>
       <div className="flex items-center gap-4 font-mono">
-        {step === 3 && <span className="rounded border border-red-500/70 px-3 py-1 text-red-400">COMPILE FAILED</span>}
-        <span>analyst_04</span>
+        <label className="flex items-center gap-2 text-[10px] text-slate-400">
+          <span>{t('language.label')}</span>
+          <select
+            value={i18n.language}
+            onChange={(event) => {
+              void i18n.changeLanguage(event.target.value)
+            }}
+            className="rounded border border-[#30363d] bg-[#0b0d17] px-2 py-1 text-[10px] text-slate-100 outline-none"
+          >
+            <option value="pt-BR">{t('language.ptBR')}</option>
+            <option value="en-US">{t('language.enUS')}</option>
+          </select>
+        </label>
+        {step === 3 && <span className="rounded border border-red-500/70 px-3 py-1 text-red-400">{t('topbar.compileFailed')}</span>}
+        <span>{t('topbar.analyst')}</span>
         <span className="h-7 w-7 rounded-full bg-indigo-500/25" />
       </div>
     </header>
@@ -272,20 +303,22 @@ function PrincipleStep({
   onSelect: (principle: Principle) => void
   onNext: () => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex flex-1 items-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
         <div className="mb-10 font-mono text-[11px] text-slate-500">
-          STEP 1 OF 3
+          {t('step1.progress')}
           <div className="mt-3 flex gap-2">
             <span className="h-0.5 w-10 bg-cyan-400" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
           </div>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">Step 1: Declare Your Baseline Immutable Principle</h1>
+        <h1 className="text-3xl font-black tracking-tight text-white md:text-5xl">{t('step1.title')}</h1>
         <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-400">
-          Select one foundational rule that your organization must never violate. This principle serves as the invariant for all future culture-linting checks.
+          {t('step1.description')}
         </p>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {principles.map((principle) => {
@@ -298,7 +331,7 @@ function PrincipleStep({
                 className={`group min-h-72 rounded-xl border bg-[#161b22] p-6 text-left transition duration-300 ${active ? 'border-emerald-400 shadow-[0_0_35px_rgba(86,211,100,0.18)]' : 'border-[#21262d] hover:border-cyan-400/50'}`}
               >
                 <div className="flex items-start justify-between font-mono text-[10px]">
-                  <span className={active ? 'text-emerald-400' : 'text-slate-600'}>{active ? '[SELECTED]' : principle.status}</span>
+                  <span className={active ? 'text-emerald-400' : 'text-slate-600'}>{active ? t('step1.selected') : principle.status}</span>
                   <span className={`grid h-5 w-5 place-items-center rounded-full border ${active ? 'border-emerald-400 bg-emerald-400 text-[#071018]' : 'border-[#30363d]'}`}>
                     {active && <Check size={13} />}
                   </span>
@@ -322,7 +355,7 @@ function PrincipleStep({
             onClick={onNext}
             className="rounded-md bg-cyan-400 px-8 py-4 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
-            NEXT &gt;
+            {t('step1.next')}
           </button>
         </div>
       </div>
@@ -347,6 +380,7 @@ function MetadataStep({
   onScenarioChange: (scenarioId: string) => void
   onCompile: () => void
 }) {
+  const { t } = useTranslation()
   const [scenarioQuery, setScenarioQuery] = useState('')
   const normalizedQuery = scenarioQuery.trim().toLowerCase()
   const filteredScenarios = useMemo(() => {
@@ -375,21 +409,21 @@ function MetadataStep({
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
-        <p className="font-mono text-[11px] text-slate-600">// Cross-partisan analyzer armed</p>
-        <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">Step 2: Assign Case Study Metadata</h1>
-        <p className="mt-4 text-sm text-slate-400">Identify specific actors and actions to enable cross-sectional semantic analysis.</p>
+        <p className="font-mono text-[11px] text-slate-600">{t('step2.armed')}</p>
+        <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{t('step2.title')}</h1>
+        <p className="mt-4 text-sm text-slate-400">{t('step2.description')}</p>
         <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-5">
           <label className="block">
-            <span className="font-mono text-[10px] font-black text-cyan-400">[FILTER_PRESETS]</span>
+            <span className="font-mono text-[10px] font-black text-cyan-400">{t('step2.filterPresets')}</span>
             <input
               value={scenarioQuery}
               onChange={(event) => setScenarioQuery(event.target.value)}
-              placeholder="Search by title, category, id, code..."
+              placeholder={t('step2.searchPlaceholder')}
               className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
             />
           </label>
           <label className="block">
-            <span className="font-mono text-[10px] font-black text-cyan-400">[SCENARIO_PRESET]</span>
+            <span className="font-mono text-[10px] font-black text-cyan-400">{t('step2.scenarioPreset')}</span>
             <select
               value={filteredScenarios.length === 0 ? '' : activeScenarioId}
               onChange={(event) => {
@@ -404,21 +438,24 @@ function MetadataStep({
                   {scenario.title} [{scenario.category}]
                 </option>
               ))}
-              {filteredScenarios.length === 0 && <option value="">No scenarios match this filter.</option>}
+              {filteredScenarios.length === 0 && <option value="">{t('step2.noScenariosMatch')}</option>}
             </select>
           </label>
           <p className="mt-3 font-mono text-[10px] text-slate-500">
-            // PRESETS: {filteredScenarios.length}/{scenarios.length} visible
+            {t('step2.presetsVisible', { visible: filteredScenarios.length, total: scenarios.length })}
           </p>
           {selectedScenario && (
             <p className="mt-3 font-mono text-[10px] text-slate-500">
-              // EXCEPTION PROFILE: {selectedScenario.exceptionType} ({selectedScenario.exceptionCode})
+              {t('step2.exceptionProfile', {
+                exceptionType: selectedScenario.exceptionType,
+                exceptionCode: selectedScenario.exceptionCode,
+              })}
             </p>
           )}
         </div>
         <div className="mt-10 grid gap-8 lg:grid-cols-2">
-          <CaseStudyCard title="Event A (Rival):" caseKey="eventA" caseStudy={caseStudies.eventA} onChange={onChange} />
-          <CaseStudyCard title="Event B (Ally):" caseKey="eventB" caseStudy={caseStudies.eventB} onChange={onChange} />
+          <CaseStudyCard title={t('step2.eventA')} caseKey="eventA" caseStudy={caseStudies.eventA} onChange={onChange} />
+          <CaseStudyCard title={t('step2.eventB')} caseKey="eventB" caseStudy={caseStudies.eventB} onChange={onChange} />
         </div>
         <div className="mt-16 flex flex-col items-center gap-4">
           <button
@@ -427,9 +464,9 @@ function MetadataStep({
             disabled={isCompiling}
             className="min-w-72 rounded-md bg-cyan-400 px-10 py-5 font-mono text-xs font-black text-[#071018] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait"
           >
-            {isCompiling ? 'COMPILING SEMANTIC TREE...' : 'COMPILE CASE STUDY ⚡'}
+            {isCompiling ? t('step2.compiling') : `${t('step2.compile')} ⚡`}
           </button>
-          <p className="font-mono text-[10px] text-slate-600">[ CMD + ENTER ] to proceed</p>
+          <p className="font-mono text-[10px] text-slate-600">{t('step2.shortcut')}</p>
         </div>
       </div>
     </div>
@@ -447,6 +484,14 @@ function CaseStudyCard({
   caseStudy: CaseStudy
   onChange: (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => void
 }) {
+  const { t } = useTranslation()
+
+  const fieldLabelMap: Record<keyof CaseStudy, string> = {
+    subject: t('caseStudy.subject'),
+    act: t('caseStudy.act'),
+    context: t('caseStudy.context'),
+  }
+
   return (
     <div className="rounded-lg border border-[#21262d] bg-[#111320] p-7 shadow-2xl shadow-black/30">
       <div className="mb-6 flex items-center justify-between">
@@ -454,18 +499,19 @@ function CaseStudyCard({
         <Lock size={14} className="text-slate-600" />
       </div>
       <label className="block">
-        <span className="font-mono text-[10px] text-slate-500">SCENARIO DESCRIPTION</span>
+        <span className="font-mono text-[10px] text-slate-500">{t('caseStudy.scenarioDescription')}</span>
         <div className="mt-2 rounded border border-[#21262d] bg-[#0a0c10] p-4 font-mono text-xs text-slate-400">
           // {caseStudy.subject} {caseStudy.act.toLowerCase()}
         </div>
       </label>
       {(['subject', 'act', 'context'] as const).map((field) => (
         <label key={field} className="mt-5 block">
-          <span className="font-mono text-[10px] font-black text-cyan-400">[{field.toUpperCase()}]</span>
-          <input
+          <span className="font-mono text-[10px] font-black text-cyan-400">{fieldLabelMap[field]}</span>
+          <textarea
             value={caseStudy[field]}
             onChange={(event) => onChange(caseKey, field, event.target.value)}
-            className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
+            rows={field === 'context' ? 4 : 3}
+            className="mt-2 w-full resize-y rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
           />
         </label>
       ))}
@@ -484,20 +530,21 @@ function ResultStep({
   scenario: ScenarioPreset
   lintResult: LintRunResult | null
 }) {
+  const { t } = useTranslation()
   const hasFailed = lintResult?.status === 'FAILED'
 
   return (
     <div className="flex flex-1 flex-col px-6 py-8 lg:px-12">
       <div>
-        <h1 className="text-3xl font-black text-white md:text-4xl">Step 3: Compilation Results</h1>
+        <h1 className="text-3xl font-black text-white md:text-4xl">{t('step3.title')}</h1>
         <p className="mt-3 font-mono text-sm text-slate-400">
           {hasFailed ? (
             <>
-              <span className="font-black text-red-400">{lintResult.exception}</span> detected. Your stated principle failed structural integrity analysis.
+              <span className="font-black text-red-400">{t('step3.failedPrefix', { exception: lintResult.exception })}</span>
             </>
           ) : (
             <>
-              <span className="font-black text-emerald-400">No exceptions</span> detected. Your principle passed structural integrity analysis.
+              <span className="font-black text-emerald-400">{t('step3.successPrefix')}</span>
             </>
           )}
         </p>
@@ -508,7 +555,7 @@ function ResultStep({
       </div>
       <GotchaSummary />
       <footer className="mt-8 flex justify-between font-mono text-[10px] text-slate-600">
-        <span className="text-cyan-400">■ ANALYSIS COMPLETE</span>
+        <span className="text-cyan-400">{t('step3.analysisComplete')}</span>
         <span>culture-lint v2026.3.2</span>
       </footer>
     </div>
@@ -524,76 +571,79 @@ function TerminalPane({
   scenario: ScenarioPreset
   lintResult: LintRunResult | null
 }) {
+  const { t } = useTranslation()
   const hasFailed = lintResult?.status === 'FAILED'
   const eventBStatusLabel = hasFailed ? '[FAIL]' : '[PASS]'
   const eventBSymbol = hasFailed ? '✘' : '✔'
 
   return (
     <section className="rounded border border-cyan-400/30 bg-black/70 shadow-[0_0_35px_rgba(0,240,255,0.14)]">
-      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-[10px] font-black text-cyan-400">COMPILER TERMINAL OUTPUT</div>
+      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-[10px] font-black text-cyan-400">{t('terminal.header')}</div>
       <div className="space-y-3 p-6 font-mono text-[12px] leading-6 text-slate-300">
         <p className="text-emerald-400">$ culture-lint compile --run-analysis</p>
-        <p><span className="text-cyan-400">[INFO]</span> Compiling case study...</p>
+        <p><span className="text-cyan-400">[INFO]</span> {t('terminal.compileInfo')}</p>
         <p><span className="text-emerald-400">[PASS]</span> Event A: {caseStudies.eventA.subject} — {caseStudies.eventA.act}</p>
         <div className="pl-5 text-slate-400">
-          <p>↳ Expected Reaction: {scenario.caseStudyA.expectedReaction} ✔</p>
-          <p>↳ Moral Justification: &quot;{scenario.caseStudyA.justificationLogic}&quot; ✔</p>
-          <p>↳ Verdict: <span className="font-black text-emerald-400">REACTION ROUTED: {scenario.caseStudyA.expectedReaction.toUpperCase()} ✔</span></p>
+          <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyA.expectedReaction, symbol: '✔' })}</p>
+          <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyA.justificationLogic, symbol: '✔' })}</p>
+          <p>↳ {t('terminal.verdict')} <span className="font-black text-emerald-400">{t('terminal.reactionRouted', { reaction: scenario.caseStudyA.expectedReaction.toUpperCase(), symbol: '✔' })}</span></p>
         </div>
-        <p className="text-emerald-400">Build status for Event A: PASSED</p>
+        <p className="text-emerald-400">{t('terminal.eventAPassed')}</p>
         <div className="my-4 border-t border-dashed border-red-500/70" />
-        <p><span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{eventBStatusLabel}</span> Event B: {caseStudies.eventB.subject} — {caseStudies.eventB.act}</p>
+        <p><span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{eventBStatusLabel}</span> {t('terminal.eventBLine', { subject: caseStudies.eventB.subject, act: caseStudies.eventB.act })}</p>
         <div className="pl-5 text-slate-400">
-          <p>↳ Expected Reaction: {scenario.caseStudyB.expectedReaction} {eventBSymbol}</p>
-          <p>↳ Moral Justification: &quot;{scenario.caseStudyB.justificationLogic}&quot; {eventBSymbol}</p>
+          <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyB.expectedReaction, symbol: eventBSymbol })}</p>
+          <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyB.justificationLogic, symbol: eventBSymbol })}</p>
           <p>
-            ↳ Verdict:{' '}
+            ↳ {t('terminal.verdict')}{' '}
             <span className={hasFailed ? 'font-black text-red-400' : 'font-black text-emerald-400'}>
-              REACTION ROUTED: {scenario.caseStudyB.expectedReaction.toUpperCase()} {eventBSymbol}
+              {t('terminal.reactionRouted', { reaction: scenario.caseStudyB.expectedReaction.toUpperCase(), symbol: eventBSymbol })}
             </span>
           </p>
         </div>
         {hasFailed && (
           <>
             <div className="pt-3 text-red-400">
-              <p className="text-lg font-black">[ERROR] Compilation Failed: {lintResult.exception}</p>
+              <p className="text-lg font-black">{t('terminal.compilationFailed', { exception: lintResult.exception })}</p>
               <div className="my-3 h-px bg-red-500/70" />
-              <p><span className="text-orange-300">Location:</span> Line 13, Column 9 (Examples Table)</p>
-              <p><span className="text-orange-300">Error Code:</span> {lintResult.code}</p>
+              <p><span className="text-orange-300">{t('terminal.location')}</span> {t('terminal.locationValue')}</p>
+              <p><span className="text-orange-300">{t('terminal.errorCode')}</span> {lintResult.code}</p>
             </div>
             <div>
-              <p className="font-black text-yellow-300">Description:</p>
+              <p className="font-black text-yellow-300">{t('terminal.description')}</p>
               <p className="text-red-300">{lintResult.description}</p>
             </div>
           </>
         )}
         {!hasFailed && (
           <div className="pt-3 text-emerald-400">
-            <p className="text-lg font-black">[PASS] Compilation Succeeded</p>
+            <p className="text-lg font-black">{t('terminal.compilationSucceeded')}</p>
           </div>
         )}
         <div>
-          <p className="font-black text-yellow-300">Traceback:</p>
-          <p>↳ Given a public figure makes an &quot;objectively offensive&quot; statement...</p>
-          <p>↳ When the public reviews the statement...</p>
-          <p>↳ Then the collective reaction should be <span className="font-black text-red-400">[DYNAMIC_MUTATION]</span></p>
+          <p className="font-black text-yellow-300">{t('terminal.traceback')}</p>
+          <p>↳ {t('terminal.trace1')}</p>
+          <p>↳ {t('terminal.trace2')}</p>
+          <p>↳ {t('terminal.trace3')} <span className="font-black text-red-400">{t('terminal.dynamicMutation')}</span></p>
         </div>
-        <p><span className="font-black text-yellow-300">Code Smell Detected:</span> Identity-Based Routing</p>
-        <p className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>Build Status: {hasFailed ? 'FAILED (1 error, 0 warnings. Execution time: 42ms)' : 'SUCCESS (0 errors, 0 warnings. Execution time: 42ms)'}</p>
+        <p>{t('terminal.codeSmell')}</p>
+        <p className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{hasFailed ? t('terminal.buildStatusFailed') : t('terminal.buildStatusSuccess')}</p>
       </div>
     </section>
   )
 }
 
 function ConfigSummary({ principle, caseStudies }: { principle: Principle; caseStudies: CaseStudies }) {
+  const { t } = useTranslation()
+
   return (
     <aside className="space-y-5">
       <div className="rounded-lg border border-cyan-400/70 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)]">
         <div className="flex items-center justify-between font-mono text-[10px] font-black text-cyan-400">
-          CONFIG SUMMARY
+          {t('config.summary')}
           <FileCode2 size={13} className="text-slate-500" />
         </div>
-        <p className="mt-6 font-mono text-[10px] text-slate-500">ACTIVE PRINCIPLE</p>
+        <p className="mt-6 font-mono text-[10px] text-slate-500">{t('config.activePrinciple')}</p>
         <p className="mt-1 text-sm text-slate-300">{principle.label[0] + principle.label.slice(1).toLowerCase()}</p>
         <div className="mt-4 rounded bg-[#0a0c10] p-4 font-mono text-xs text-slate-400">&quot;{principle.value}&quot;</div>
         <div className="mt-5 space-y-2 font-mono text-xs text-slate-400">
@@ -602,23 +652,25 @@ function ConfigSummary({ principle, caseStudies }: { principle: Principle; caseS
         </div>
       </div>
       <div className="rounded border border-[#21262d] bg-[#111320]/70 p-5 font-mono text-xs text-slate-500">
-        <p className="text-cyan-400">⊙ Structural integrity check looks for immutable response patterns.</p>
-        <p className="mt-4"><Lock size={12} className="mr-2 inline" />State is locked in read-only memory.</p>
+        <p className="text-cyan-400">{t('config.integrityNote')}</p>
+        <p className="mt-4"><Lock size={12} className="mr-2 inline" />{t('config.lockNote')}</p>
       </div>
     </aside>
   )
 }
 
 function GotchaSummary() {
+  const { t } = useTranslation()
+
   return (
     <section className="mt-8 rounded-lg border border-cyan-400 bg-[#111320] p-7 shadow-[0_0_38px_rgba(0,240,255,0.18)]">
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="flex items-center gap-3 font-mono text-sm font-black text-cyan-400"><Zap size={16} className="text-yellow-300" /> GOTCHA SUMMARY</h2>
-        <span className="rounded border border-red-400/70 px-2 py-1 font-mono text-[10px] text-red-400">SEVERITY: CRITICAL</span>
+        <h2 className="flex items-center gap-3 font-mono text-sm font-black text-cyan-400"><Zap size={16} className="text-yellow-300" /> {t('gotcha.title')}</h2>
+        <span className="rounded border border-red-400/70 px-2 py-1 font-mono text-[10px] text-red-400">{t('gotcha.severity')}</span>
       </div>
-      <p className="font-bold text-white">Double Standard Confirmed.</p>
+      <p className="font-bold text-white">{t('gotcha.confirmed')}</p>
       <p className="mt-3 max-w-5xl text-sm leading-6 text-slate-300">
-        You applied fundamentally different moral frameworks to symmetrical empirical acts. The only variable that changed was the Subject&apos;s Identity property. Code execution terminated.
+        {t('gotcha.description')}
       </p>
     </section>
   )
