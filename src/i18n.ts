@@ -11,14 +11,48 @@ const resources = {
   'en-US': enUS,
 } as const
 
+const isSupportedLanguage = (language: string): language is (typeof SUPPORTED_LANGUAGES)[number] => {
+  return SUPPORTED_LANGUAGES.includes(language as (typeof SUPPORTED_LANGUAGES)[number])
+}
+
+const resolveSupportedLanguage = (language: string | null | undefined) => {
+  if (!language) {
+    return null
+  }
+
+  if (isSupportedLanguage(language)) {
+    return language
+  }
+
+  const baseLanguage = language.split('-')[0]?.toLowerCase()
+  if (baseLanguage === 'pt') {
+    return 'pt-BR'
+  }
+
+  if (baseLanguage === 'en') {
+    return 'en-US'
+  }
+
+  return null
+}
+
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') {
     return 'pt-BR'
   }
 
   const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
-  if (storedLanguage && SUPPORTED_LANGUAGES.includes(storedLanguage as (typeof SUPPORTED_LANGUAGES)[number])) {
-    return storedLanguage
+  const resolvedStoredLanguage = resolveSupportedLanguage(storedLanguage)
+  if (resolvedStoredLanguage) {
+    return resolvedStoredLanguage
+  }
+
+  const browserLanguages = [window.navigator.language, ...(window.navigator.languages ?? [])]
+  for (const browserLanguage of browserLanguages) {
+    const resolvedBrowserLanguage = resolveSupportedLanguage(browserLanguage)
+    if (resolvedBrowserLanguage) {
+      return resolvedBrowserLanguage
+    }
   }
 
   return 'pt-BR'
