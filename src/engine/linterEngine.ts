@@ -1,4 +1,5 @@
-import type { Principle, ScenarioPreset } from '../types/linter';
+import type { LintResult, Principle, ScenarioPreset, ScenarioRunOutcome, SessionRun } from '../types/linter';
+import { createRng, shuffleWithRng } from './random';
 
 type ReactionMutationDescriptionParams = {
   fromReaction: string;
@@ -9,16 +10,7 @@ type RunCultureLintOptions = {
   formatReactionMutationDescription?: (params: ReactionMutationDescriptionParams) => string;
 };
 
-export type LintRunResult =
-  | {
-      status: 'FAILED';
-      exception: ScenarioPreset['exceptionType'];
-      code: string;
-      description: string;
-    }
-  | {
-      status: 'SUCCESS';
-    };
+export type LintRunResult = LintResult;
 
 export const runCultureLint = (
   principle: Principle,
@@ -45,4 +37,56 @@ export const runCultureLint = (
   }
 
   return { status: 'SUCCESS' };
+};
+
+type BuildSessionQueueParams = {
+  seed: string;
+  scenarios: ScenarioPreset[];
+  size?: number;
+};
+
+// Deterministically order the scenario pool for a session. The same seed
+// always yields the same queue, so a run can be reproduced or shared.
+export const buildSessionQueue = ({ seed, scenarios, size }: BuildSessionQueueParams): ScenarioPreset[] => {
+  const rng = createRng(seed);
+  const shuffled = shuffleWithRng(scenarios, rng);
+  const limit = size ?? shuffled.length;
+  return shuffled.slice(0, Math.max(1, Math.min(limit, shuffled.length)));
+};
+
+type RunCultureLintSessionParams = {
+  seed: string;
+  principleRanking: string[];
+  queue: ScenarioPreset[];
+  resolvePrinciple: (principleId: string) => Principle;
+  options?: RunCultureLintOptions;
+};
+
+// Execute a full session: lint every scenario in the queue against its own
+// principle and aggregate the outcomes into a reproducible SessionRun.
+export const runCultureLintSession = ({
+  seed,
+  principleRanking,
+  queue,
+  resolvePrinciple,
+  options = {},
+}: RunCultureLintSessionParams): SessionRun => {
+  const outcomes: ScenarioRunOutcome[] = queue.map((scenario) => {
+    const principle = resolvePrinciple(scenario.principleId);
+    return {
+      scenario,
+      principle,
+      result: runCultureLint(principle, scenario, options),
+    };
+  });
+
+  const failedCount = outcomes.filter((outcome) => outcome.result.status === 'FAILED').length;
+
+  return {
+    seed,
+    principleRanking,
+    outcomes,
+    failedCount,
+    passedCount: outcomes.length - failedCount,
+  };
 };

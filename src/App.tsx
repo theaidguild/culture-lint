@@ -1,22 +1,66 @@
-import { Check, FileCode2, Home, Lock, Settings, ShieldCheck, Terminal, Zap } from 'lucide-react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  FileCode2,
+  GripVertical,
+  Home,
+  Link2,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  Terminal,
+  Zap,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getScenarioDatabase } from './data/scenarios'
-import { runCultureLint, type LintRunResult } from './engine/linterEngine'
-import { type Principle, type ScenarioPreset } from './types/linter'
+import { buildSessionQueue, runCultureLintSession } from './engine/linterEngine'
+import { generateSeed, normalizeSeed } from './engine/random'
+import { type Principle, type ScenarioPreset, type ScenarioRunOutcome, type SessionRun } from './types/linter'
 
 type Step = 1 | 2 | 3
 
-type CaseStudyKey = 'eventA' | 'eventB'
+const DEFAULT_PRINCIPLE_ORDER = ['transparency', 'accountability', 'equality'] as const
+const SEED_QUERY_PARAM = 'seed'
 
-type CaseStudy = {
-  subject: string
-  act: string
-  context: string
+const formatPrincipleLabel = (label: string) => label.charAt(0) + label.slice(1).toLowerCase()
+
+const readSeedFromUrl = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const raw = new URLSearchParams(window.location.search).get(SEED_QUERY_PARAM)
+  return raw ? normalizeSeed(raw) : null
 }
 
-type CaseStudies = Record<CaseStudyKey, CaseStudy>
-type CaseStudyDrafts = Record<string, CaseStudies>
+const writeSeedToUrl = (seed: string) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const url = new URL(window.location.href)
+  url.searchParams.set(SEED_QUERY_PARAM, seed)
+  window.history.replaceState(null, '', url.toString())
+}
 
 function App() {
   const { t } = useTranslation()
@@ -53,87 +97,29 @@ function App() {
 
   const scenarioDatabase = useMemo(() => getScenarioDatabase(t), [t])
 
+  const principleById = useMemo(() => {
+    const lookup = new Map<string, Principle>()
+    for (const principle of principles) {
+      lookup.set(principle.id, principle)
+    }
+    return lookup
+  }, [principles])
+
   const [step, setStep] = useState<Step>(1)
-  const [selectedPrinciple, setSelectedPrinciple] = useState<Principle | null>(null)
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
-  const [caseStudyDrafts, setCaseStudyDrafts] = useState<CaseStudyDrafts>({})
-  const [isCompiling, setIsCompiling] = useState(false)
-  const [lintResult, setLintResult] = useState<LintRunResult | null>(null)
-  const compileTimeoutRef = useRef<number | undefined>(undefined)
+  const [principleRanking, setPrincipleRanking] = useState<string[]>([...DEFAULT_PRINCIPLE_ORDER])
+  const [seed, setSeed] = useState<string>(() => readSeedFromUrl() ?? generateSeed())
+  const [isRunning, setIsRunning] = useState(false)
+  const [session, setSession] = useState<SessionRun | null>(null)
+  const runTimeoutRef = useRef<number | undefined>(undefined)
 
-  const lockedPrinciple = selectedPrinciple ?? principles[1]
-  const principleScenarios = useMemo(
-    () => scenarioDatabase.filter((scenario) => scenario.principleId === lockedPrinciple.id),
-    [lockedPrinciple.id, scenarioDatabase],
-  )
-
-  const activeScenario = useMemo(
-    () =>
-      principleScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? principleScenarios[0] ?? scenarioDatabase[0],
-    [principleScenarios, scenarioDatabase, selectedScenarioId],
-  )
-
-  const caseStudies = useMemo<CaseStudies>(() => {
-    const draft = caseStudyDrafts[activeScenario.id]
-    if (draft) {
-      return draft
-    }
-
-    return {
-      eventA: {
-        subject: activeScenario.caseStudyA.subject,
-        act: activeScenario.caseStudyA.act,
-        context: activeScenario.caseStudyA.context,
-      },
-      eventB: {
-        subject: activeScenario.caseStudyB.subject,
-        act: activeScenario.caseStudyB.act,
-        context: activeScenario.caseStudyB.context,
-      },
-    }
-  }, [activeScenario, caseStudyDrafts])
-
-  const progressItems = useMemo(
-    () => [
-      { label: t('progress.biasDetection'), active: step === 1, complete: step > 1 },
-      { label: t('progress.metadataAssignment'), active: step === 2, complete: step > 2 },
-      { label: t('progress.resultAnalysis'), active: step === 3, complete: false },
-    ],
-    [step, t],
-  )
-
-  const updateCaseStudy = (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => {
-    setCaseStudyDrafts((current) => {
-      const scenarioDraft = current[activeScenario.id] ?? {
-        eventA: {
-          subject: activeScenario.caseStudyA.subject,
-          act: activeScenario.caseStudyA.act,
-          context: activeScenario.caseStudyA.context,
-        },
-        eventB: {
-          subject: activeScenario.caseStudyB.subject,
-          act: activeScenario.caseStudyB.act,
-          context: activeScenario.caseStudyB.context,
-        },
-      }
-
-      return {
-        ...current,
-        [activeScenario.id]: {
-          ...scenarioDraft,
-          [caseKey]: {
-            ...scenarioDraft[caseKey],
-            [field]: value,
-          },
-        },
-      }
-    })
-  }
+  useEffect(() => {
+    writeSeedToUrl(seed)
+  }, [seed])
 
   useEffect(() => {
     return () => {
-      if (compileTimeoutRef.current !== undefined) {
-        window.clearTimeout(compileTimeoutRef.current)
+      if (runTimeoutRef.current !== undefined) {
+        window.clearTimeout(runTimeoutRef.current)
       }
     }
   }, [])
@@ -142,66 +128,81 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [step])
 
-  const handleScenarioChange = (scenarioId: string) => {
-    setSelectedScenarioId(scenarioId)
-    setLintResult(null)
-  }
+  const rankedPrinciples = useMemo(
+    () =>
+      principleRanking
+        .map((id) => principleById.get(id))
+        .filter((principle): principle is Principle => Boolean(principle)),
+    [principleById, principleRanking],
+  )
 
-  const handlePrincipleSelect = (principle: Principle) => {
-    setSelectedPrinciple(principle)
-    setLintResult(null)
-  }
+  const sessionQueue = useMemo(
+    () => buildSessionQueue({ seed, scenarios: scenarioDatabase }),
+    [scenarioDatabase, seed],
+  )
 
-  const compileCaseStudy = () => {
-    if (compileTimeoutRef.current !== undefined) {
-      window.clearTimeout(compileTimeoutRef.current)
+  const progressItems = useMemo(
+    () => [
+      { label: t('progress.rankPrinciples'), active: step === 1, complete: step > 1 },
+      { label: t('progress.runGauntlet'), active: step === 2, complete: step > 2 },
+      { label: t('progress.sessionResults'), active: step === 3, complete: false },
+    ],
+    [step, t],
+  )
+
+  const runSession = (nextSeed: string) => {
+    if (runTimeoutRef.current !== undefined) {
+      window.clearTimeout(runTimeoutRef.current)
     }
 
-    setIsCompiling(true)
-    compileTimeoutRef.current = window.setTimeout(() => {
-      const runtimeScenario: ScenarioPreset = {
-        ...activeScenario,
-        caseStudyA: {
-          ...activeScenario.caseStudyA,
-          subject: caseStudies.eventA.subject,
-          act: caseStudies.eventA.act,
-          context: caseStudies.eventA.context,
-        },
-        caseStudyB: {
-          ...activeScenario.caseStudyB,
-          subject: caseStudies.eventB.subject,
-          act: caseStudies.eventB.act,
-          context: caseStudies.eventB.context,
-        },
-      }
+    setSeed(nextSeed)
+    setIsRunning(true)
 
-      setLintResult(
-        runCultureLint(lockedPrinciple, runtimeScenario, {
+    runTimeoutRef.current = window.setTimeout(() => {
+      const queue = buildSessionQueue({ seed: nextSeed, scenarios: scenarioDatabase })
+      const result = runCultureLintSession({
+        seed: nextSeed,
+        principleRanking,
+        queue,
+        resolvePrinciple: (principleId) => principleById.get(principleId) ?? principles[0],
+        options: {
           formatReactionMutationDescription: ({ fromReaction, toReaction }) =>
-            t('errors.reactionMutation', {
-              fromReaction,
-              toReaction,
-            }),
-        }),
-      )
-      compileTimeoutRef.current = undefined
-      setIsCompiling(false)
+            t('errors.reactionMutation', { fromReaction, toReaction }),
+        },
+      })
+
+      setSession(result)
+      setIsRunning(false)
       setStep(3)
+      runTimeoutRef.current = undefined
     }, 1500)
   }
 
+  const handleReorder = (nextOrder: string[]) => {
+    setPrincipleRanking(nextOrder)
+    setSession(null)
+  }
+
+  const handleSeedChange = (value: string) => {
+    setSeed(normalizeSeed(value))
+    setSession(null)
+  }
+
+  const handleNewSeed = () => {
+    setSeed(generateSeed())
+    setSession(null)
+  }
+
   const resetToInitialState = () => {
-    if (compileTimeoutRef.current !== undefined) {
-      window.clearTimeout(compileTimeoutRef.current)
-      compileTimeoutRef.current = undefined
+    if (runTimeoutRef.current !== undefined) {
+      window.clearTimeout(runTimeoutRef.current)
+      runTimeoutRef.current = undefined
     }
 
     setStep(1)
-    setSelectedPrinciple(null)
-    setSelectedScenarioId(null)
-    setCaseStudyDrafts({})
-    setIsCompiling(false)
-    setLintResult(null)
+    setPrincipleRanking([...DEFAULT_PRINCIPLE_ORDER])
+    setIsRunning(false)
+    setSession(null)
   }
 
   return (
@@ -210,27 +211,28 @@ function App() {
       <div className="relative flex min-h-dvh flex-col md:flex-row">
         <Sidebar onHomeClick={resetToInitialState} />
         <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-24 md:border-l md:border-t-0 md:pb-0">
-          <TopBar progressItems={progressItems} step={step} />
+          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && session.failedCount > 0)} />
           {step === 1 && (
-            <PrincipleStep
-              principles={principles}
-              selectedPrinciple={selectedPrinciple}
-              onSelect={handlePrincipleSelect}
-              onNext={() => setStep(2)}
-            />
+            <RankingStep principles={rankedPrinciples} onReorder={handleReorder} onNext={() => setStep(2)} />
           )}
           {step === 2 && (
-            <MetadataStep
-              caseStudies={caseStudies}
-              scenarios={principleScenarios}
-              activeScenarioId={activeScenario.id}
-              isCompiling={isCompiling}
-              onChange={updateCaseStudy}
-              onScenarioChange={handleScenarioChange}
-              onCompile={compileCaseStudy}
+            <SessionSetupStep
+              seed={seed}
+              queue={sessionQueue}
+              isRunning={isRunning}
+              onSeedChange={handleSeedChange}
+              onNewSeed={handleNewSeed}
+              onRun={() => runSession(seed)}
             />
           )}
-          {step === 3 && <ResultStep principle={lockedPrinciple} caseStudies={caseStudies} scenario={activeScenario} lintResult={lintResult} />}
+          {step === 3 && session && (
+            <SessionResultStep
+              session={session}
+              principles={principles}
+              onRerunSameSeed={() => runSession(session.seed)}
+              onNewSeedRun={() => runSession(generateSeed())}
+            />
+          )}
         </section>
       </div>
     </main>
@@ -292,9 +294,16 @@ function Sidebar({ onHomeClick }: { onHomeClick: () => void }) {
   )
 }
 
-function TopBar({ progressItems, step }: { progressItems: { label: string; active: boolean; complete: boolean }[]; step: Step }) {
+function TopBar({
+  progressItems,
+  step,
+  hasFailures,
+}: {
+  progressItems: { label: string; active: boolean; complete: boolean }[]
+  step: Step
+  hasFailures: boolean
+}) {
   const { t, i18n } = useTranslation()
-  const activeStep = step
 
   return (
     <header className="compact-header flex min-h-16 flex-wrap items-center justify-between gap-y-3 border-b border-[#21262d] bg-[#0b0d17] px-4 py-3 text-sm text-slate-400 sm:px-5 md:h-16 md:flex-nowrap md:py-0 lg:px-9">
@@ -303,7 +312,7 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
         <span className="text-xs sm:text-sm">{t('appName')}</span>
       </div>
       <div className="rounded border border-[#30363d] px-3 py-1.5 font-mono text-xs text-slate-300 md:hidden">
-        {`Step ${activeStep} / 3`}
+        {`Step ${step} / 3`}
       </div>
       <nav className="hidden items-center gap-6 md:flex">
         {progressItems.map((item, index) => (
@@ -329,7 +338,9 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
             <option value="en-US">{t('language.enUS')}</option>
           </select>
         </label>
-        {step === 3 && <span className="rounded border border-red-500/70 px-2 py-1 text-xs text-red-400 sm:px-3">{t('topbar.compileFailed')}</span>}
+        {step === 3 && hasFailures && (
+          <span className="rounded border border-red-500/70 px-2 py-1 text-xs text-red-400 sm:px-3">{t('topbar.compileFailed')}</span>
+        )}
         <span className="hidden lg:inline">{t('topbar.analyst')}</span>
         <span className="hidden h-7 w-7 rounded-full bg-indigo-500/25 lg:block" />
       </div>
@@ -337,70 +348,93 @@ function TopBar({ progressItems, step }: { progressItems: { label: string; activ
   )
 }
 
-function PrincipleStep({
+function RankingStep({
   principles,
-  selectedPrinciple,
-  onSelect,
+  onReorder,
   onNext,
 }: {
   principles: Principle[]
-  selectedPrinciple: Principle | null
-  onSelect: (principle: Principle) => void
+  onReorder: (nextOrder: string[]) => void
   onNext: () => void
 }) {
   const { t } = useTranslation()
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const orderIds = principles.map((principle) => principle.id)
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const oldIndex = orderIds.indexOf(String(active.id))
+    const newIndex = orderIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) {
+      return
+    }
+
+    onReorder(arrayMove(orderIds, oldIndex, newIndex))
+  }
+
+  const move = (id: string, direction: -1 | 1) => {
+    const index = orderIds.indexOf(id)
+    const target = index + direction
+    if (index === -1 || target < 0 || target >= orderIds.length) {
+      return
+    }
+
+    onReorder(arrayMove(orderIds, index, target))
+  }
 
   return (
     <div className="flex flex-1 items-start px-4 py-8 sm:px-6 lg:px-20">
-      <div className="w-full max-w-7xl">
+      <div className="w-full max-w-4xl">
         <div className="mb-8 font-mono text-xs text-slate-500 sm:mb-10">
-          {t('step1.progress')}
+          {t('rank.progress')}
           <div className="mt-3 flex gap-2">
             <span className="h-0.5 w-10 bg-cyan-400" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
             <span className="h-0.5 w-10 bg-[#30363d]" />
           </div>
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl md:text-5xl">{t('step1.title')}</h1>
-        <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-400">
-          {t('step1.description')}
-        </p>
-        <div className="mt-8 grid gap-4 sm:mt-10 sm:gap-6 md:grid-cols-2 2xl:grid-cols-3">
-          {principles.map((principle) => {
-            const active = selectedPrinciple?.id === principle.id
-            return (
-              <button
-                key={principle.id}
-                type="button"
-                onClick={() => onSelect(principle)}
-                className={`group min-h-64 rounded-xl border bg-[#161b22] p-5 text-left transition duration-300 sm:min-h-72 sm:p-6 ${active ? 'border-emerald-400 shadow-[0_0_35px_rgba(86,211,100,0.18)]' : 'border-[#21262d] hover:border-cyan-400/50'}`}
-              >
-                <div className="flex items-start justify-between font-mono text-xs">
-                  <span className={active ? 'text-emerald-300' : 'text-slate-400'}>{active ? t('step1.selected') : principle.status}</span>
-                  <span className={`grid h-5 w-5 place-items-center rounded-full border ${active ? 'border-emerald-400 bg-emerald-400 text-[#071018]' : 'border-[#30363d]'}`}>
-                    {active && <Check size={13} />}
-                  </span>
-                </div>
-                <div className="mt-12 space-y-1 font-mono text-sm text-cyan-400 sm:mt-16">
-                  {principle.metadata.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                </div>
-                <p className="mt-8 text-base font-black italic leading-7 text-white sm:mt-10 sm:text-lg">&quot;{principle.value}&quot;</p>
-                <div className="mt-10 h-px bg-[#21262d] sm:mt-12" />
-                <p className="mt-2 text-right font-mono text-xs text-slate-400">{principle.code}</p>
-              </button>
-            )
-          })}
+        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl md:text-5xl">{t('rank.title')}</h1>
+        <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-400">{t('rank.description')}</p>
+        <p className="mt-3 font-mono text-xs text-cyan-300">{t('rank.hint')}</p>
+
+        <div className="mt-8 flex items-center justify-between font-mono text-xs text-slate-500 sm:mt-10">
+          <span className="text-emerald-400">↑ {t('rank.mostImportant')}</span>
+          <span className="text-red-400">↓ {t('rank.leastImportant')}</span>
         </div>
+
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={orderIds} strategy={verticalListSortingStrategy}>
+            <ul className="mt-3 space-y-4">
+              {principles.map((principle, index) => (
+                <SortablePrincipleRow
+                  key={principle.id}
+                  principle={principle}
+                  rank={index + 1}
+                  isFirst={index === 0}
+                  isLast={index === principles.length - 1}
+                  onMoveUp={() => move(principle.id, -1)}
+                  onMoveDown={() => move(principle.id, 1)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+
         <div className="mt-10 flex justify-end sm:mt-12">
           <button
             type="button"
-            disabled={!selectedPrinciple}
             onClick={onNext}
-            className="w-full rounded-md bg-cyan-400 px-8 py-4 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:w-auto"
+            className="w-full rounded-md bg-cyan-400 px-8 py-4 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300 sm:w-auto"
           >
-            {t('step1.next')}
+            {t('rank.next')}
           </button>
         </div>
       </div>
@@ -408,199 +442,326 @@ function PrincipleStep({
   )
 }
 
-function MetadataStep({
-  caseStudies,
-  scenarios,
-  activeScenarioId,
-  isCompiling,
-  onChange,
-  onScenarioChange,
-  onCompile,
+function SortablePrincipleRow({
+  principle,
+  rank,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
 }: {
-  caseStudies: CaseStudies
-  scenarios: ScenarioPreset[]
-  activeScenarioId: string
-  isCompiling: boolean
-  onChange: (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => void
-  onScenarioChange: (scenarioId: string) => void
-  onCompile: () => void
+  principle: Principle
+  rank: number
+  isFirst: boolean
+  isLast: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
 }) {
   const { t } = useTranslation()
-  const [scenarioQuery, setScenarioQuery] = useState('')
-  const normalizedQuery = scenarioQuery.trim().toLowerCase()
-  const filteredScenarios = useMemo(() => {
-    if (!normalizedQuery) {
-      return scenarios
-    }
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: principle.id })
 
-    return scenarios.filter((scenario) => {
-      const haystack = `${scenario.title} ${scenario.category} ${scenario.id} ${scenario.exceptionCode} ${scenario.exceptionType}`.toLowerCase()
-      return haystack.includes(normalizedQuery)
-    })
-  }, [normalizedQuery, scenarios])
-
-  useEffect(() => {
-    if (filteredScenarios.length === 0) {
-      return
-    }
-
-    if (!filteredScenarios.some((scenario) => scenario.id === activeScenarioId)) {
-      onScenarioChange(filteredScenarios[0].id)
-    }
-  }, [activeScenarioId, filteredScenarios, onScenarioChange])
-
-  const selectedScenario = scenarios.find((scenario) => scenario.id === activeScenarioId) ?? scenarios[0]
-
-  return (
-    <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-6 lg:px-20">
-      <div className="w-full max-w-6xl">
-        <p className="font-mono text-sm text-slate-400">{t('step2.armed')}</p>
-        <h1 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl md:text-4xl">{t('step2.title')}</h1>
-        <p className="mt-4 text-sm text-slate-400">{t('step2.description')}</p>
-        <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-4 sm:p-5">
-          <label className="block">
-            <span className="font-mono text-sm font-black text-cyan-300">{t('step2.filterPresets')}</span>
-            <input
-              value={scenarioQuery}
-              onChange={(event) => setScenarioQuery(event.target.value)}
-              placeholder={t('step2.searchPlaceholder')}
-              className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
-            />
-          </label>
-          <label className="mt-4 block">
-            <span className="font-mono text-sm font-black text-cyan-300">{t('step2.scenarioPreset')}</span>
-            <select
-              value={filteredScenarios.length === 0 ? '' : activeScenarioId}
-              onChange={(event) => {
-                if (event.target.value) {
-                  onScenarioChange(event.target.value)
-                }
-              }}
-              className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
-            >
-              {filteredScenarios.map((scenario) => (
-                <option key={scenario.id} value={scenario.id}>
-                  {scenario.title} [{scenario.category}]
-                </option>
-              ))}
-              {filteredScenarios.length === 0 && <option value="">{t('step2.noScenariosMatch')}</option>}
-            </select>
-          </label>
-          <p className="mt-3 font-mono text-sm text-slate-400">
-            {t('step2.presetsVisible', { visible: filteredScenarios.length, total: scenarios.length })}
-          </p>
-          {selectedScenario && (
-            <p className="mt-3 font-mono text-sm text-slate-400">
-              {t('step2.exceptionProfile', {
-                exceptionType: selectedScenario.exceptionType,
-                exceptionCode: selectedScenario.exceptionCode,
-              })}
-            </p>
-          )}
-        </div>
-        <div className="mt-8 grid gap-6 lg:mt-10 lg:grid-cols-2 lg:gap-8">
-          <CaseStudyCard title={t('step2.eventA')} caseKey="eventA" caseStudy={caseStudies.eventA} onChange={onChange} />
-          <CaseStudyCard title={t('step2.eventB')} caseKey="eventB" caseStudy={caseStudies.eventB} onChange={onChange} />
-        </div>
-        <div className="mt-10 flex flex-col items-center gap-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:mt-12 sm:gap-4 sm:pb-2 md:mt-16 md:pb-0">
-          <button
-            type="button"
-            onClick={onCompile}
-            disabled={isCompiling}
-            className="relative z-10 w-full max-w-full rounded-md bg-cyan-400 px-5 py-4 text-center font-mono text-xs font-black leading-5 text-[#071018] [overflow-wrap:anywhere] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait sm:min-w-72 sm:w-auto sm:px-10 sm:py-5 sm:text-sm"
-          >
-            <span className="sm:hidden">{isCompiling ? t('step2.compiling') : t('step2.compile')}</span>
-            <span className="hidden sm:inline">{isCompiling ? t('step2.compiling') : `${t('step2.compile')} ⚡`}</span>
-          </button>
-          <p className="hidden pb-1 text-center font-mono text-xs text-slate-400 min-[390px]:block sm:text-sm">{t('step2.shortcut')}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CaseStudyCard({
-  title,
-  caseKey,
-  caseStudy,
-  onChange,
-}: {
-  title: string
-  caseKey: CaseStudyKey
-  caseStudy: CaseStudy
-  onChange: (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => void
-}) {
-  const { t } = useTranslation()
-
-  const fieldLabelMap: Record<keyof CaseStudy, string> = {
-    subject: t('caseStudy.subject'),
-    act: t('caseStudy.act'),
-    context: t('caseStudy.context'),
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
   }
 
   return (
-    <div className="rounded-lg border border-[#21262d] bg-[#111320] p-5 shadow-2xl shadow-black/30 sm:p-7">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-base font-bold text-white">{title}</h2>
-        <Lock size={16} className="text-slate-600" />
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-stretch gap-3 rounded-xl border bg-[#161b22] p-4 transition sm:p-5 ${isDragging ? 'border-cyan-400 shadow-[0_0_35px_rgba(0,240,255,0.25)]' : 'border-[#21262d]'}`}
+    >
+      <button
+        type="button"
+        aria-label={t('rank.dragHandle')}
+        className="flex shrink-0 cursor-grab touch-none items-center rounded-md px-1 text-slate-500 transition hover:text-cyan-300 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={20} />
+      </button>
+      <div className="flex shrink-0 flex-col items-center justify-center">
+        <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-400/60 font-mono text-sm font-black text-cyan-300">
+          {rank}
+        </span>
       </div>
-      <label className="block">
-        <span className="font-mono text-sm text-slate-400">{t('caseStudy.scenarioDescription')}</span>
-        <div className="mt-2 rounded border border-[#21262d] bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">
-          // {caseStudy.subject} {caseStudy.act.toLowerCase()}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-mono text-sm font-black text-cyan-300">{formatPrincipleLabel(principle.label)}</span>
+          <span className="font-mono text-xs text-slate-500">{t('rank.rankLabel', { rank })}</span>
         </div>
-      </label>
-      {(['subject', 'act', 'context'] as const).map((field) => (
-        <label key={field} className="mt-5 block">
-          <span className="font-mono text-sm font-black text-cyan-300">{fieldLabelMap[field]}</span>
-          <textarea
-            value={caseStudy[field]}
-            onChange={(event) => onChange(caseKey, field, event.target.value)}
-            rows={field === 'context' ? 4 : 3}
-            className="mt-2 w-full resize-y rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3.5 font-mono text-sm leading-6 text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)] sm:text-base"
-          />
-        </label>
-      ))}
+        <p className="mt-2 text-sm italic leading-6 text-slate-200">&quot;{principle.value}&quot;</p>
+      </div>
+      <div className="flex shrink-0 flex-col justify-center gap-1">
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          aria-label={t('rank.moveUp')}
+          className="grid h-8 w-8 place-items-center rounded-md border border-[#30363d] text-slate-400 transition hover:border-cyan-400/60 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <ChevronDown size={15} className="rotate-180" />
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast}
+          aria-label={t('rank.moveDown')}
+          className="grid h-8 w-8 place-items-center rounded-md border border-[#30363d] text-slate-400 transition hover:border-cyan-400/60 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <ChevronDown size={15} />
+        </button>
+      </div>
+    </li>
+  )
+}
+
+function SessionSetupStep({
+  seed,
+  queue,
+  isRunning,
+  onSeedChange,
+  onNewSeed,
+  onRun,
+}: {
+  seed: string
+  queue: ScenarioPreset[]
+  isRunning: boolean
+  onSeedChange: (value: string) => void
+  onNewSeed: () => void
+  onRun: () => void
+}) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  const copyResetRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    return () => {
+      if (copyResetRef.current !== undefined) {
+        window.clearTimeout(copyResetRef.current)
+      }
+    }
+  }, [])
+
+  const handleCopyLink = async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      if (copyResetRef.current !== undefined) {
+        window.clearTimeout(copyResetRef.current)
+      }
+      copyResetRef.current = window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-6 lg:px-20">
+      <div className="w-full max-w-4xl">
+        <p className="font-mono text-sm text-slate-400">{t('session.armed')}</p>
+        <h1 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl md:text-4xl">{t('session.title')}</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">{t('session.description')}</p>
+
+        <div className="mt-8 rounded-lg border border-cyan-400/40 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.10)] sm:p-6">
+          <div className="flex items-center gap-2 font-mono text-sm font-black text-cyan-300">
+            <Zap size={15} className="text-yellow-300" /> {t('session.briefingTitle')}
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-300">{t('session.briefingBody')}</p>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-[#21262d] bg-[#111320] p-5 sm:p-6">
+          <label className="block">
+            <span className="font-mono text-sm font-black text-cyan-300">{t('session.seedLabel')}</span>
+            <p className="mt-1 font-mono text-xs text-slate-500">{t('session.seedHint')}</p>
+            <input
+              value={seed}
+              onChange={(event) => onSeedChange(event.target.value)}
+              spellCheck={false}
+              autoCapitalize="characters"
+              className="mt-3 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm uppercase tracking-[0.3em] text-cyan-200 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
+            />
+          </label>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={onNewSeed}
+              className="flex items-center justify-center gap-2 rounded-md border border-[#30363d] px-4 py-2.5 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
+            >
+              <RefreshCw size={14} /> {t('session.newSeed')}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="flex items-center justify-center gap-2 rounded-md border border-[#30363d] px-4 py-2.5 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
+            >
+              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+              {copied ? t('session.copied') : t('session.copyLink')}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-[#21262d] bg-[#111320] p-5 sm:p-6">
+          <div className="flex items-center justify-between font-mono text-sm font-black text-cyan-300">
+            <span className="flex items-center gap-2">
+              <Link2 size={14} /> {t('session.queueTitle')}
+            </span>
+            <span className="text-slate-500">{t('session.queueCount', { count: queue.length })}</span>
+          </div>
+          <ol className="mt-4 space-y-2 font-mono text-sm text-slate-300">
+            {queue.map((scenario, index) => (
+              <li key={scenario.id} className="flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 text-cyan-400">{String(index + 1).padStart(2, '0')}</span>
+                <span className="min-w-0">
+                  {scenario.title} <span className="text-slate-500">[{scenario.category}]</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="mt-10 flex flex-col items-center gap-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:mt-12 sm:pb-2 md:mt-14 md:pb-0">
+          <button
+            type="button"
+            onClick={onRun}
+            disabled={isRunning}
+            className="relative z-10 w-full max-w-full rounded-md bg-cyan-400 px-5 py-4 text-center font-mono text-xs font-black leading-5 text-[#071018] [overflow-wrap:anywhere] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait sm:min-w-72 sm:w-auto sm:px-10 sm:py-5 sm:text-sm"
+          >
+            <span className="sm:hidden">{isRunning ? t('session.running') : t('session.run')}</span>
+            <span className="hidden sm:inline">{isRunning ? t('session.running') : `${t('session.run')} ⚡`}</span>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
-function ResultStep({
-  principle,
-  caseStudies,
-  scenario,
-  lintResult,
+function SessionResultStep({
+  session,
+  principles,
+  onRerunSameSeed,
+  onNewSeedRun,
 }: {
-  principle: Principle
-  caseStudies: CaseStudies
-  scenario: ScenarioPreset
-  lintResult: LintRunResult | null
+  session: SessionRun
+  principles: Principle[]
+  onRerunSameSeed: () => void
+  onNewSeedRun: () => void
 }) {
   const { t } = useTranslation()
-  const hasFailed = lintResult?.status === 'FAILED'
+  const hasFailures = session.failedCount > 0
+
+  const rankIndexById = useMemo(() => {
+    const lookup = new Map<string, number>()
+    session.principleRanking.forEach((id, index) => lookup.set(id, index))
+    return lookup
+  }, [session.principleRanking])
+
+  const orderedOutcomes = useMemo(
+    () =>
+      session.outcomes
+        .map((outcome, index) => ({ outcome, index }))
+        .sort((a, b) => {
+          const rankA = rankIndexById.get(a.outcome.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          const rankB = rankIndexById.get(b.outcome.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          if (rankA !== rankB) {
+            return rankA - rankB
+          }
+          return a.index - b.index
+        })
+        .map(({ outcome }) => outcome),
+    [rankIndexById, session.outcomes],
+  )
+
+  const principleStatuses = useMemo(
+    () =>
+      session.principleRanking.map((id) => {
+        const principle = principles.find((candidate) => candidate.id === id)
+        const relevant = session.outcomes.filter((outcome) => outcome.scenario.principleId === id)
+        const failed = relevant.some((outcome) => outcome.result.status === 'FAILED')
+        return {
+          id,
+          label: principle ? formatPrincipleLabel(principle.label) : id,
+          tested: relevant.length > 0,
+          failed,
+        }
+      }),
+    [principles, session.outcomes, session.principleRanking],
+  )
 
   return (
     <div className="flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-12">
       <div>
-        <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">{t('step3.title')}</h1>
-        <p className="mt-3 font-mono text-sm text-slate-400">
-          {hasFailed ? (
-            <>
-              <span className="font-black text-red-400">{t('step3.failedPrefix', { exception: lintResult.exception })}</span>
-            </>
+        <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">{t('sessionResult.title')}</h1>
+        <p className="mt-3 font-mono text-sm">
+          {hasFailures ? (
+            <span className="font-black text-red-400">
+              {t('sessionResult.summaryFailed', { failed: session.failedCount, total: session.outcomes.length })}
+            </span>
           ) : (
-            <>
-              <span className="font-black text-emerald-400">{t('step3.successPrefix')}</span>
-            </>
+            <span className="font-black text-emerald-400">
+              {t('sessionResult.summaryClean', { total: session.outcomes.length })}
+            </span>
           )}
         </p>
+        <p className="mt-2 font-mono text-xs text-slate-500">{t('sessionResult.seedUsed', { seed: session.seed })}</p>
       </div>
-      <div className="mt-6 grid gap-6 lg:mt-8 lg:gap-7 xl:grid-cols-[1fr_320px]">
-        <TerminalPane caseStudies={caseStudies} scenario={scenario} lintResult={lintResult} />
-        <ConfigSummary principle={principle} caseStudies={caseStudies} />
+
+      <section className="mt-6 rounded-lg border border-cyan-400/60 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)] sm:p-6">
+        <div className="flex items-center gap-2 font-mono text-sm font-black text-cyan-300">
+          <ShieldCheck size={15} /> {t('sessionResult.rankingRecap')}
+        </div>
+        <ul className="mt-4 space-y-2 font-mono text-sm">
+          {principleStatuses.map((entry, index) => (
+            <li key={entry.id} className="flex items-center justify-between gap-3 border-b border-[#21262d] pb-2 last:border-0 last:pb-0">
+              <span className="flex items-center gap-3 text-slate-200">
+                <span className="grid h-6 w-6 place-items-center rounded-full border border-cyan-400/50 text-xs text-cyan-300">{index + 1}</span>
+                {entry.label}
+              </span>
+              {!entry.tested ? (
+                <span className="text-slate-500">{t('sessionResult.notTested')}</span>
+              ) : entry.failed ? (
+                <span className="font-black text-red-400">{t('sessionResult.contradictionFound')}</span>
+              ) : (
+                <span className="font-black text-emerald-400">{t('sessionResult.consistent')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <h2 className="mt-8 font-mono text-sm font-black text-cyan-300">{t('sessionResult.scenarioBreakdown')}</h2>
+      <div className="mt-4 space-y-4">
+        {orderedOutcomes.map((outcome, index) => (
+          <ScenarioOutcomeCard
+            key={outcome.scenario.id}
+            outcome={outcome}
+            defaultExpanded={outcome.result.status === 'FAILED' && index === 0}
+          />
+        ))}
       </div>
-      <GotchaSummary />
-      <footer className="mt-6 flex flex-col gap-2 font-mono text-sm text-slate-400 sm:mt-8 sm:flex-row sm:justify-between">
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={onRerunSameSeed}
+          className="flex items-center justify-center gap-2 rounded-md border border-[#30363d] px-5 py-3 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
+        >
+          <RefreshCw size={14} /> {t('sessionResult.rerunSameSeed')}
+        </button>
+        <button
+          type="button"
+          onClick={onNewSeedRun}
+          className="flex items-center justify-center gap-2 rounded-md bg-cyan-400 px-5 py-3 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300"
+        >
+          <Zap size={14} /> {t('sessionResult.newSeedRun')}
+        </button>
+      </div>
+
+      <footer className="mt-8 flex flex-col gap-2 font-mono text-sm text-slate-400 sm:flex-row sm:justify-between">
         <span className="text-cyan-400">{t('step3.analysisComplete')}</span>
         <span>culture-lint v2026.3.2</span>
       </footer>
@@ -608,116 +769,65 @@ function ResultStep({
   )
 }
 
-function TerminalPane({
-  caseStudies,
-  scenario,
-  lintResult,
-}: {
-  caseStudies: CaseStudies
-  scenario: ScenarioPreset
-  lintResult: LintRunResult | null
-}) {
+function ScenarioOutcomeCard({ outcome, defaultExpanded }: { outcome: ScenarioRunOutcome; defaultExpanded: boolean }) {
   const { t } = useTranslation()
-  const hasFailed = lintResult?.status === 'FAILED'
-  const eventBStatusLabel = hasFailed ? '[FAIL]' : '[PASS]'
-  const eventBSymbol = hasFailed ? '✘' : '✔'
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  const { scenario, result } = outcome
+  const hasFailed = result.status === 'FAILED'
 
   return (
-    <section className="rounded border border-cyan-400/30 bg-black/70 shadow-[0_0_35px_rgba(0,240,255,0.14)]">
-      <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-4 py-3 font-mono text-xs font-black tracking-wide text-cyan-300 sm:px-5 sm:text-sm">{t('terminal.header')}</div>
-      <div className="space-y-3 break-words p-4 font-mono text-xs leading-6 text-slate-200 sm:p-6 sm:text-sm sm:leading-7">
-        <p className="text-emerald-400">$ culture-lint compile --run-analysis</p>
-        <p><span className="text-cyan-400">[INFO]</span> {t('terminal.compileInfo')}</p>
-        <p><span className="text-emerald-400">[PASS]</span> {t('terminal.eventALine', { subject: caseStudies.eventA.subject, act: caseStudies.eventA.act })}</p>
-        <div className="pl-5 text-slate-300">
-          <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyA.expectedReaction, symbol: '✔' })}</p>
-          <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyA.justificationLogic, symbol: '✔' })}</p>
-          <p>↳ {t('terminal.verdict')} <span className="font-black text-emerald-400">{t('terminal.reactionRouted', { reaction: scenario.caseStudyA.expectedReaction.toUpperCase(), symbol: '✔' })}</span></p>
-        </div>
-        <p className="text-emerald-400">{t('terminal.eventAPassed')}</p>
-        <div className="my-4 border-t border-dashed border-red-500/70" />
-        <p><span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{eventBStatusLabel}</span> {t('terminal.eventBLine', { subject: caseStudies.eventB.subject, act: caseStudies.eventB.act })}</p>
-        <div className="pl-5 text-slate-300">
-          <p>↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyB.expectedReaction, symbol: eventBSymbol })}</p>
-          <p>↳ {t('terminal.moralJustification', { text: scenario.caseStudyB.justificationLogic, symbol: eventBSymbol })}</p>
-          <p>
-            ↳ {t('terminal.verdict')}{' '}
-            <span className={hasFailed ? 'font-black text-red-400' : 'font-black text-emerald-400'}>
-              {t('terminal.reactionRouted', { reaction: scenario.caseStudyB.expectedReaction.toUpperCase(), symbol: eventBSymbol })}
-            </span>
+    <section
+      className={`overflow-hidden rounded-lg border bg-[#111320] ${hasFailed ? 'border-red-500/50' : 'border-emerald-500/40'}`}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-bold text-white">{scenario.title}</span>
+          <span className="mt-1 block font-mono text-xs text-slate-500">[{scenario.category}]</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          <span
+            className={`rounded border px-2 py-1 font-mono text-xs font-black ${hasFailed ? 'border-red-400/70 text-red-400' : 'border-emerald-400/70 text-emerald-400'}`}
+          >
+            {hasFailed ? t('sessionResult.doubleStandard') : t('sessionResult.consistentBadge')}
+          </span>
+          <ChevronDown size={16} className={`text-slate-400 transition ${expanded ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+      {expanded && (
+        <div className="border-t border-[#21262d] bg-black/60 p-4 font-mono text-xs leading-6 text-slate-200 sm:p-5 sm:text-sm sm:leading-7">
+          <p className="text-emerald-400">$ culture-lint compile --scenario {scenario.id}</p>
+          <p className="mt-2">
+            <span className="text-emerald-400">[PASS]</span>{' '}
+            {t('terminal.eventALine', { subject: scenario.caseStudyA.subject, act: scenario.caseStudyA.act })}
           </p>
-        </div>
-        {hasFailed && (
-          <>
-            <div className="pt-3 text-red-400">
-              <p className="text-lg font-black">{t('terminal.compilationFailed', { exception: lintResult.exception })}</p>
-              <div className="my-3 h-px bg-red-500/70" />
-              <p><span className="text-orange-300">{t('terminal.location')}</span> {t('terminal.locationValue')}</p>
-              <p><span className="text-orange-300">{t('terminal.errorCode')}</span> {lintResult.code}</p>
+          <p className="pl-4 text-slate-300">
+            ↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyA.expectedReaction, symbol: '✔' })}
+          </p>
+          <div className="my-3 border-t border-dashed border-slate-700" />
+          <p>
+            <span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{hasFailed ? '[FAIL]' : '[PASS]'}</span>{' '}
+            {t('terminal.eventBLine', { subject: scenario.caseStudyB.subject, act: scenario.caseStudyB.act })}
+          </p>
+          <p className="pl-4 text-slate-300">
+            ↳ {t('terminal.expectedReaction', { reaction: scenario.caseStudyB.expectedReaction, symbol: hasFailed ? '✘' : '✔' })}
+          </p>
+          {result.status === 'FAILED' ? (
+            <div className="mt-3 text-red-300">
+              <p className="font-black text-red-400">{t('terminal.compilationFailed', { exception: result.exception })}</p>
+              <p className="mt-1">
+                <span className="text-orange-300">{t('terminal.errorCode')}</span> {result.code}
+              </p>
+              <p className="mt-1">{result.description}</p>
             </div>
-            <div>
-              <p className="font-black text-yellow-300">{t('terminal.description')}</p>
-              <p className="text-red-300">{lintResult.description}</p>
-            </div>
-          </>
-        )}
-        {!hasFailed && (
-          <div className="pt-3 text-emerald-400">
-            <p className="text-lg font-black">{t('terminal.compilationSucceeded')}</p>
-          </div>
-        )}
-        <div>
-          <p className="font-black text-yellow-300">{t('terminal.traceback')}</p>
-          <p>↳ {t('terminal.trace1')}</p>
-          <p>↳ {t('terminal.trace2')}</p>
-          <p>↳ {t('terminal.trace3')} <span className="font-black text-red-400">{t('terminal.dynamicMutation')}</span></p>
+          ) : (
+            <p className="mt-3 font-black text-emerald-400">{t('terminal.compilationSucceeded')}</p>
+          )}
         </div>
-        <p>{t('terminal.codeSmell')}</p>
-        <p className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{hasFailed ? t('terminal.buildStatusFailed') : t('terminal.buildStatusSuccess')}</p>
-      </div>
-    </section>
-  )
-}
-
-function ConfigSummary({ principle, caseStudies }: { principle: Principle; caseStudies: CaseStudies }) {
-  const { t } = useTranslation()
-
-  return (
-    <aside className="space-y-5">
-      <div className="rounded-lg border border-cyan-400/70 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)]">
-        <div className="flex items-center justify-between font-mono text-sm font-black text-cyan-300">
-          {t('config.summary')}
-          <FileCode2 size={13} className="text-slate-500" />
-        </div>
-        <p className="mt-6 font-mono text-sm text-slate-400">{t('config.activePrinciple')}</p>
-        <p className="mt-1 text-base text-slate-200">{principle.label[0] + principle.label.slice(1).toLowerCase()}</p>
-        <div className="mt-4 rounded bg-[#0a0c10] p-4 font-mono text-sm leading-6 text-slate-300">&quot;{principle.value}&quot;</div>
-        <div className="mt-5 space-y-2 font-mono text-sm leading-6 text-slate-300">
-          <p><span className="text-cyan-400">●</span> {caseStudies.eventA.subject} / {caseStudies.eventA.context}</p>
-          <p><span className="text-cyan-400">●</span> {caseStudies.eventB.subject} / {caseStudies.eventB.context}</p>
-        </div>
-      </div>
-      <div className="rounded border border-[#21262d] bg-[#111320]/70 p-5 font-mono text-sm leading-6 text-slate-300">
-        <p className="text-cyan-400">{t('config.integrityNote')}</p>
-        <p className="mt-4"><Lock size={12} className="mr-2 inline" />{t('config.lockNote')}</p>
-      </div>
-    </aside>
-  )
-}
-
-function GotchaSummary() {
-  const { t } = useTranslation()
-
-  return (
-    <section className="mt-8 rounded-lg border border-cyan-400 bg-[#111320] p-5 shadow-[0_0_38px_rgba(0,240,255,0.18)] sm:p-7">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-3 font-mono text-sm font-black text-cyan-400"><Zap size={16} className="text-yellow-300" /> {t('gotcha.title')}</h2>
-        <span className="rounded border border-red-400/70 px-2 py-1 font-mono text-xs text-red-400">{t('gotcha.severity')}</span>
-      </div>
-      <p className="font-bold text-white">{t('gotcha.confirmed')}</p>
-      <p className="mt-3 max-w-5xl text-sm leading-6 text-slate-300">
-        {t('gotcha.description')}
-      </p>
+      )}
     </section>
   )
 }
