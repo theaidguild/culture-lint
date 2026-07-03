@@ -46,7 +46,9 @@ jobs:
             BASE_PATH="/$REPO_NAME/"
           fi
 
-          pnpm run build -- --base="$BASE_PATH"
+          echo "Building with base path: $BASE_PATH"
+          pnpm exec tsc -b
+          pnpm exec vite build --base="$BASE_PATH"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
