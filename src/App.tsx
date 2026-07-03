@@ -1,5 +1,8 @@
 import { Check, FileCode2, Home, Lock, Settings, ShieldCheck, Terminal, Zap } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SCENARIO_DATABASE } from './data/scenarios'
+import { runCultureLint, type LintRunResult } from './engine/linterEngine'
+import { type Principle, type ScenarioPreset } from './types/linter'
 
 type Step = 1 | 2 | 3
 
@@ -12,15 +15,6 @@ type CaseStudy = {
 }
 
 type CaseStudies = Record<CaseStudyKey, CaseStudy>
-
-type Principle = {
-  id: string
-  label: string
-  status: string
-  metadata: string[]
-  value: string
-  code: string
-}
 
 const principles: Principle[] = [
   {
@@ -65,11 +59,23 @@ const defaultCases: CaseStudies = {
 function App() {
   const [step, setStep] = useState<Step>(1)
   const [selectedPrinciple, setSelectedPrinciple] = useState<Principle | null>(null)
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [caseStudies, setCaseStudies] = useState<CaseStudies>(defaultCases)
   const [isCompiling, setIsCompiling] = useState(false)
+  const [lintResult, setLintResult] = useState<LintRunResult | null>(null)
   const compileTimeoutRef = useRef<number | undefined>(undefined)
 
   const lockedPrinciple = selectedPrinciple ?? principles[1]
+  const principleScenarios = useMemo(
+    () => SCENARIO_DATABASE.filter((scenario) => scenario.principleId === lockedPrinciple.id),
+    [lockedPrinciple.id],
+  )
+
+  const activeScenario = useMemo(
+    () =>
+      principleScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? principleScenarios[0] ?? SCENARIO_DATABASE[0],
+    [principleScenarios, selectedScenarioId],
+  )
 
   const progressItems = useMemo(
     () => [
@@ -98,6 +104,36 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (principleScenarios.length === 0) {
+      setSelectedScenarioId(null)
+      return
+    }
+
+    setSelectedScenarioId((current) => {
+      if (current && principleScenarios.some((scenario) => scenario.id === current)) {
+        return current
+      }
+      return principleScenarios[0].id
+    })
+  }, [principleScenarios])
+
+  useEffect(() => {
+    setCaseStudies({
+      eventA: {
+        subject: activeScenario.caseStudyA.subject,
+        act: activeScenario.caseStudyA.act,
+        context: activeScenario.caseStudyA.context,
+      },
+      eventB: {
+        subject: activeScenario.caseStudyB.subject,
+        act: activeScenario.caseStudyB.act,
+        context: activeScenario.caseStudyB.context,
+      },
+    })
+    setLintResult(null)
+  }, [activeScenario])
+
   const compileCaseStudy = () => {
     if (compileTimeoutRef.current !== undefined) {
       window.clearTimeout(compileTimeoutRef.current)
@@ -105,17 +141,48 @@ function App() {
 
     setIsCompiling(true)
     compileTimeoutRef.current = window.setTimeout(() => {
+      const runtimeScenario: ScenarioPreset = {
+        ...activeScenario,
+        caseStudyA: {
+          ...activeScenario.caseStudyA,
+          subject: caseStudies.eventA.subject,
+          act: caseStudies.eventA.act,
+          context: caseStudies.eventA.context,
+        },
+        caseStudyB: {
+          ...activeScenario.caseStudyB,
+          subject: caseStudies.eventB.subject,
+          act: caseStudies.eventB.act,
+          context: caseStudies.eventB.context,
+        },
+      }
+
+      setLintResult(runCultureLint(lockedPrinciple, runtimeScenario))
       compileTimeoutRef.current = undefined
       setIsCompiling(false)
       setStep(3)
     }, 1500)
   }
 
+  const resetToInitialState = () => {
+    if (compileTimeoutRef.current !== undefined) {
+      window.clearTimeout(compileTimeoutRef.current)
+      compileTimeoutRef.current = undefined
+    }
+
+    setStep(1)
+    setSelectedPrinciple(null)
+    setSelectedScenarioId(null)
+    setCaseStudies(defaultCases)
+    setIsCompiling(false)
+    setLintResult(null)
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#0a0c10] text-slate-100 selection:bg-cyan-400/30">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,240,255,0.08),transparent_34%),linear-gradient(90deg,rgba(88,166,255,0.04)_1px,transparent_1px),linear-gradient(rgba(88,166,255,0.04)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px]" />
       <div className="relative flex min-h-screen">
-        <Sidebar />
+        <Sidebar onHomeClick={resetToInitialState} />
         <section className="flex min-h-screen flex-1 flex-col border-l border-[#21262d] bg-[#0d1117]/95">
           <TopBar progressItems={progressItems} step={step} />
           {step === 1 && (
@@ -129,26 +196,36 @@ function App() {
           {step === 2 && (
             <MetadataStep
               caseStudies={caseStudies}
+              scenarios={principleScenarios}
+              activeScenarioId={activeScenario.id}
               isCompiling={isCompiling}
               onChange={updateCaseStudy}
+              onScenarioChange={setSelectedScenarioId}
               onCompile={compileCaseStudy}
             />
           )}
-          {step === 3 && <ResultStep principle={lockedPrinciple} caseStudies={caseStudies} />}
+          {step === 3 && <ResultStep principle={lockedPrinciple} caseStudies={caseStudies} scenario={activeScenario} lintResult={lintResult} />}
         </section>
       </div>
     </main>
   )
 }
 
-function Sidebar() {
+function Sidebar({ onHomeClick }: { onHomeClick: () => void }) {
   return (
     <aside className="hidden w-14 flex-col items-center border-r border-[#21262d] bg-[#07090d] py-6 text-slate-500 md:flex">
       <div className="mb-9 rounded-md border border-cyan-400/60 p-1 text-cyan-300 shadow-[0_0_18px_rgba(0,240,255,0.28)]">
         <ShieldCheck size={16} />
       </div>
       <div className="flex flex-1 flex-col gap-5">
-        <Home className="text-cyan-300" size={17} />
+        <button
+          type="button"
+          onClick={onHomeClick}
+          aria-label="Return to initial state"
+          className="rounded p-1 text-cyan-300 transition hover:bg-cyan-400/10 hover:text-cyan-200"
+        >
+          <Home size={17} />
+        </button>
         <FileCode2 size={17} />
         <Terminal size={17} />
         <Settings size={17} />
@@ -255,21 +332,90 @@ function PrincipleStep({
 
 function MetadataStep({
   caseStudies,
+  scenarios,
+  activeScenarioId,
   isCompiling,
   onChange,
+  onScenarioChange,
   onCompile,
 }: {
   caseStudies: CaseStudies
+  scenarios: ScenarioPreset[]
+  activeScenarioId: string
   isCompiling: boolean
   onChange: (caseKey: CaseStudyKey, field: keyof CaseStudy, value: string) => void
+  onScenarioChange: (scenarioId: string) => void
   onCompile: () => void
 }) {
+  const [scenarioQuery, setScenarioQuery] = useState('')
+  const normalizedQuery = scenarioQuery.trim().toLowerCase()
+  const filteredScenarios = useMemo(() => {
+    if (!normalizedQuery) {
+      return scenarios
+    }
+
+    return scenarios.filter((scenario) => {
+      const haystack = `${scenario.title} ${scenario.category} ${scenario.id} ${scenario.exceptionCode} ${scenario.exceptionType}`.toLowerCase()
+      return haystack.includes(normalizedQuery)
+    })
+  }, [normalizedQuery, scenarios])
+
+  useEffect(() => {
+    if (filteredScenarios.length === 0) {
+      return
+    }
+
+    if (!filteredScenarios.some((scenario) => scenario.id === activeScenarioId)) {
+      onScenarioChange(filteredScenarios[0].id)
+    }
+  }, [activeScenarioId, filteredScenarios, onScenarioChange])
+
+  const selectedScenario = scenarios.find((scenario) => scenario.id === activeScenarioId) ?? scenarios[0]
+
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10 lg:px-20">
       <div className="w-full max-w-6xl">
         <p className="font-mono text-[11px] text-slate-600">// Cross-partisan analyzer armed</p>
         <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">Step 2: Assign Case Study Metadata</h1>
         <p className="mt-4 text-sm text-slate-400">Identify specific actors and actions to enable cross-sectional semantic analysis.</p>
+        <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-5">
+          <label className="block">
+            <span className="font-mono text-[10px] font-black text-cyan-400">[FILTER_PRESETS]</span>
+            <input
+              value={scenarioQuery}
+              onChange={(event) => setScenarioQuery(event.target.value)}
+              placeholder="Search by title, category, id, code..."
+              className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
+            />
+          </label>
+          <label className="block">
+            <span className="font-mono text-[10px] font-black text-cyan-400">[SCENARIO_PRESET]</span>
+            <select
+              value={filteredScenarios.length === 0 ? '' : activeScenarioId}
+              onChange={(event) => {
+                if (event.target.value) {
+                  onScenarioChange(event.target.value)
+                }
+              }}
+              className="mt-2 w-full rounded border border-[#21262d] bg-[#0c0f1c] px-4 py-3 font-mono text-sm text-slate-100 outline-none transition focus:border-cyan-400 focus:shadow-[0_0_18px_rgba(0,240,255,0.16)]"
+            >
+              {filteredScenarios.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.title} [{scenario.category}]
+                </option>
+              ))}
+              {filteredScenarios.length === 0 && <option value="">No scenarios match this filter.</option>}
+            </select>
+          </label>
+          <p className="mt-3 font-mono text-[10px] text-slate-500">
+            // PRESETS: {filteredScenarios.length}/{scenarios.length} visible
+          </p>
+          {selectedScenario && (
+            <p className="mt-3 font-mono text-[10px] text-slate-500">
+              // EXCEPTION PROFILE: {selectedScenario.exceptionType} ({selectedScenario.exceptionCode})
+            </p>
+          )}
+        </div>
         <div className="mt-10 grid gap-8 lg:grid-cols-2">
           <CaseStudyCard title="Event A (Rival):" caseKey="eventA" caseStudy={caseStudies.eventA} onChange={onChange} />
           <CaseStudyCard title="Event B (Ally):" caseKey="eventB" caseStudy={caseStudies.eventB} onChange={onChange} />
@@ -327,17 +473,37 @@ function CaseStudyCard({
   )
 }
 
-function ResultStep({ principle, caseStudies }: { principle: Principle; caseStudies: CaseStudies }) {
+function ResultStep({
+  principle,
+  caseStudies,
+  scenario,
+  lintResult,
+}: {
+  principle: Principle
+  caseStudies: CaseStudies
+  scenario: ScenarioPreset
+  lintResult: LintRunResult | null
+}) {
+  const hasFailed = lintResult?.status === 'FAILED'
+
   return (
     <div className="flex flex-1 flex-col px-6 py-8 lg:px-12">
       <div>
         <h1 className="text-3xl font-black text-white md:text-4xl">Step 3: Compilation Results</h1>
         <p className="mt-3 font-mono text-sm text-slate-400">
-          <span className="font-black text-red-400">ShiftingLogicException</span> detected. Your stated principle failed structural integrity analysis.
+          {hasFailed ? (
+            <>
+              <span className="font-black text-red-400">{lintResult.exception}</span> detected. Your stated principle failed structural integrity analysis.
+            </>
+          ) : (
+            <>
+              <span className="font-black text-emerald-400">No exceptions</span> detected. Your principle passed structural integrity analysis.
+            </>
+          )}
         </p>
       </div>
       <div className="mt-8 grid flex-1 gap-7 xl:grid-cols-[1fr_340px]">
-        <TerminalPane principle={principle} caseStudies={caseStudies} />
+        <TerminalPane caseStudies={caseStudies} scenario={scenario} lintResult={lintResult} />
         <ConfigSummary principle={principle} caseStudies={caseStudies} />
       </div>
       <GotchaSummary />
@@ -349,7 +515,19 @@ function ResultStep({ principle, caseStudies }: { principle: Principle; caseStud
   )
 }
 
-function TerminalPane({ principle, caseStudies }: { principle: Principle; caseStudies: CaseStudies }) {
+function TerminalPane({
+  caseStudies,
+  scenario,
+  lintResult,
+}: {
+  caseStudies: CaseStudies
+  scenario: ScenarioPreset
+  lintResult: LintRunResult | null
+}) {
+  const hasFailed = lintResult?.status === 'FAILED'
+  const eventBStatusLabel = hasFailed ? '[FAIL]' : '[PASS]'
+  const eventBSymbol = hasFailed ? '✘' : '✔'
+
   return (
     <section className="rounded border border-cyan-400/30 bg-black/70 shadow-[0_0_35px_rgba(0,240,255,0.14)]">
       <div className="border-b border-cyan-400/20 bg-cyan-400/5 px-5 py-3 font-mono text-[10px] font-black text-cyan-400">COMPILER TERMINAL OUTPUT</div>
@@ -358,28 +536,42 @@ function TerminalPane({ principle, caseStudies }: { principle: Principle; caseSt
         <p><span className="text-cyan-400">[INFO]</span> Compiling case study...</p>
         <p><span className="text-emerald-400">[PASS]</span> Event A: {caseStudies.eventA.subject} — {caseStudies.eventA.act}</p>
         <div className="pl-5 text-slate-400">
-          <p>↳ Expected Reaction: Absolute Outrage ✔</p>
-          <p>↳ Moral Justification: &quot;This proves their inherent malice.&quot; ✔</p>
-          <p>↳ Verdict: <span className="font-black text-emerald-400">FULL ACCOUNTABILITY DEMANDED ✔</span></p>
+          <p>↳ Expected Reaction: {scenario.caseStudyA.expectedReaction} ✔</p>
+          <p>↳ Moral Justification: &quot;{scenario.caseStudyA.justificationLogic}&quot; ✔</p>
+          <p>↳ Verdict: <span className="font-black text-emerald-400">REACTION ROUTED: {scenario.caseStudyA.expectedReaction.toUpperCase()} ✔</span></p>
         </div>
         <p className="text-emerald-400">Build status for Event A: PASSED</p>
         <div className="my-4 border-t border-dashed border-red-500/70" />
-        <p><span className="text-red-400">[FAIL]</span> Event B: {caseStudies.eventB.subject} — {caseStudies.eventB.act}</p>
+        <p><span className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>{eventBStatusLabel}</span> Event B: {caseStudies.eventB.subject} — {caseStudies.eventB.act}</p>
         <div className="pl-5 text-slate-400">
-          <p>↳ Expected Reaction: Nuanced Defense ✘</p>
-          <p>↳ Moral Justification: &quot;They were taken out of context.&quot; ✘</p>
-          <p>↳ Verdict: <span className="font-black text-red-400">STRATEGIC SILENCE ✘</span></p>
+          <p>↳ Expected Reaction: {scenario.caseStudyB.expectedReaction} {eventBSymbol}</p>
+          <p>↳ Moral Justification: &quot;{scenario.caseStudyB.justificationLogic}&quot; {eventBSymbol}</p>
+          <p>
+            ↳ Verdict:{' '}
+            <span className={hasFailed ? 'font-black text-red-400' : 'font-black text-emerald-400'}>
+              REACTION ROUTED: {scenario.caseStudyB.expectedReaction.toUpperCase()} {eventBSymbol}
+            </span>
+          </p>
         </div>
-        <div className="pt-3 text-red-400">
-          <p className="text-lg font-black">[ERROR] Compilation Failed: ShiftingLogicException</p>
-          <div className="my-3 h-px bg-red-500/70" />
-          <p><span className="text-orange-300">Location:</span> Line 13, Column 9 (Examples Table)</p>
-          <p><span className="text-orange-300">Error Code:</span> CL_ERR_403_CONVENIENCE</p>
-        </div>
-        <div>
-          <p className="font-black text-yellow-300">Description:</p>
-          <p className="text-red-300">The property &quot;{principle.label}_STANDARD&quot; mutated dynamically from &quot;Absolute Outrage&quot; to &quot;Nuanced Defense&quot; without any state changes in the underlying &quot;Public_Figure&quot; object.</p>
-        </div>
+        {hasFailed && (
+          <>
+            <div className="pt-3 text-red-400">
+              <p className="text-lg font-black">[ERROR] Compilation Failed: {lintResult.exception}</p>
+              <div className="my-3 h-px bg-red-500/70" />
+              <p><span className="text-orange-300">Location:</span> Line 13, Column 9 (Examples Table)</p>
+              <p><span className="text-orange-300">Error Code:</span> {lintResult.code}</p>
+            </div>
+            <div>
+              <p className="font-black text-yellow-300">Description:</p>
+              <p className="text-red-300">{lintResult.description}</p>
+            </div>
+          </>
+        )}
+        {!hasFailed && (
+          <div className="pt-3 text-emerald-400">
+            <p className="text-lg font-black">[PASS] Compilation Succeeded</p>
+          </div>
+        )}
         <div>
           <p className="font-black text-yellow-300">Traceback:</p>
           <p>↳ Given a public figure makes an &quot;objectively offensive&quot; statement...</p>
@@ -387,7 +579,7 @@ function TerminalPane({ principle, caseStudies }: { principle: Principle; caseSt
           <p>↳ Then the collective reaction should be <span className="font-black text-red-400">[DYNAMIC_MUTATION]</span></p>
         </div>
         <p><span className="font-black text-yellow-300">Code Smell Detected:</span> Identity-Based Routing</p>
-        <p className="text-red-400">Build Status: FAILED (1 error, 0 warnings. Execution time: 42ms)</p>
+        <p className={hasFailed ? 'text-red-400' : 'text-emerald-400'}>Build Status: {hasFailed ? 'FAILED (1 error, 0 warnings. Execution time: 42ms)' : 'SUCCESS (0 errors, 0 warnings. Execution time: 42ms)'}</p>
       </div>
     </section>
   )
