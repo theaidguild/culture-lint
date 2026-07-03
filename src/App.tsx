@@ -138,6 +138,10 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [step])
+
   const handleScenarioChange = (scenarioId: string) => {
     setSelectedScenarioId(scenarioId)
     setLintResult(null)
@@ -542,7 +546,7 @@ function ResultStep({
   const hasFailed = lintResult?.status === 'FAILED'
 
   return (
-    <div className="flex flex-1 flex-col px-6 py-8 lg:px-12">
+    <div className="flex flex-col px-6 py-8 lg:px-12">
       <div>
         <h1 className="text-3xl font-black text-white md:text-4xl">{t('step3.title')}</h1>
         <p className="mt-3 font-mono text-sm text-slate-400">
@@ -557,7 +561,7 @@ function ResultStep({
           )}
         </p>
       </div>
-      <div className="mt-8 grid flex-1 gap-7 xl:grid-cols-[1fr_340px]">
+      <div className="mt-8 grid gap-7 xl:grid-cols-[1fr_340px]">
         <TerminalPane caseStudies={caseStudies} scenario={scenario} lintResult={lintResult} />
         <ConfigSummary principle={principle} caseStudies={caseStudies} />
       </div>

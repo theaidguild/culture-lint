@@ -10,8 +10,8 @@ type BootLine = {
   message: string
 }
 
-const HOLD_AFTER_LAST = 320
-const FADE_DURATION = 220
+const HOLD_AFTER_LAST = 2000
+const FADE_DURATION = 320
 
 const TONE_STYLES: Record<LineTone, { channel: string; message: string; prompt: string }> = {
   info: { channel: 'text-slate-500', message: 'text-slate-300', prompt: 'text-cyan-400' },
@@ -122,14 +122,14 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       role="status"
       aria-live="polite"
       aria-label={t('boot.ariaLabel')}
-      className={`fixed inset-0 z-50 overflow-hidden bg-black transition-opacity duration-[420ms] ease-out ${
+      className={`fixed inset-0 z-50 overflow-hidden bg-black transition-opacity duration-[320ms] ease-out ${
         isFadingOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100%_3px]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.85))]" />
 
-      <div className="relative h-full w-full px-6 py-8 font-mono text-[12px] leading-[1.65] sm:px-10 sm:text-[13px] lg:px-16">
+      <div className="relative h-full w-full px-6 py-8 font-mono text-[17px] leading-[1.65] sm:px-10 sm:text-[18px] lg:px-16">
         <div className="flex max-w-3xl flex-col">
           {bootLines.slice(0, activeLineIndex + 1).map((line, index) => {
             const styles = TONE_STYLES[line.tone]
