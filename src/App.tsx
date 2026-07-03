@@ -209,7 +209,7 @@ function App() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,240,255,0.08),transparent_34%),linear-gradient(90deg,rgba(88,166,255,0.04)_1px,transparent_1px),linear-gradient(rgba(88,166,255,0.04)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px] opacity-70 sm:opacity-100" />
       <div className="relative flex min-h-dvh flex-col md:flex-row">
         <Sidebar onHomeClick={resetToInitialState} />
-        <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-20 md:border-l md:border-t-0 md:pb-0">
+        <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-28 sm:pb-24 md:border-l md:border-t-0 md:pb-0">
           <TopBar progressItems={progressItems} step={step} />
           {step === 1 && (
             <PrincipleStep
@@ -502,16 +502,16 @@ function MetadataStep({
           <CaseStudyCard title={t('step2.eventA')} caseKey="eventA" caseStudy={caseStudies.eventA} onChange={onChange} />
           <CaseStudyCard title={t('step2.eventB')} caseKey="eventB" caseStudy={caseStudies.eventB} onChange={onChange} />
         </div>
-        <div className="mt-10 flex flex-col items-center gap-4 sm:mt-12 md:mt-16">
+        <div className="mt-10 flex flex-col items-center gap-4 pb-6 sm:mt-12 sm:pb-2 md:mt-16 md:pb-0">
           <button
             type="button"
             onClick={onCompile}
             disabled={isCompiling}
-            className="w-full rounded-md bg-cyan-400 px-8 py-4 font-mono text-sm font-black text-[#071018] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait sm:min-w-72 sm:w-auto sm:px-10 sm:py-5"
+            className="w-full max-w-full rounded-md bg-cyan-400 px-6 py-4 text-center font-mono text-xs leading-tight font-black text-[#071018] shadow-[0_0_40px_rgba(0,240,255,0.48)] transition hover:-translate-y-0.5 hover:bg-cyan-300 disabled:animate-pulse disabled:cursor-wait sm:min-w-72 sm:w-auto sm:px-10 sm:py-5 sm:text-sm"
           >
             {isCompiling ? t('step2.compiling') : `${t('step2.compile')} ⚡`}
           </button>
-          <p className="font-mono text-sm text-slate-400">{t('step2.shortcut')}</p>
+          <p className="pb-1 text-center font-mono text-xs text-slate-400 sm:text-sm">{t('step2.shortcut')}</p>
         </div>
       </div>
     </div>

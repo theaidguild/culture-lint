@@ -46,7 +46,7 @@ const prefersReducedMotion =
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 
-const TYPING_SPEED = prefersReducedMotion ? 14 : 9
+const TYPING_SPEED = prefersReducedMotion ? 18 : 14
 
 export function BootScreen({ onComplete }: { onComplete: () => void }) {
   const { t } = useTranslation()
