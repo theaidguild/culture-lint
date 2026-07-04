@@ -35,7 +35,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getScenarioDatabase } from './data/scenarios'
 import { buildJudgmentSequence, evaluateInteractiveSession } from './engine/linterEngine'
-import { generateSeed, normalizeSeed } from './engine/random'
+import { createRng, generateSeed, normalizeSeed, shuffleWithRng } from './engine/random'
 import {
   type InteractiveSessionRun,
   type JudgmentItem,
@@ -49,6 +49,13 @@ type Step = 1 | 2 | 3 | 4
 const TOTAL_STEPS = 4
 const DEFAULT_PRINCIPLE_ORDER = ['transparency', 'accountability', 'equality'] as const
 const SEED_QUERY_PARAM = 'seed'
+const SITUATION_COUNT_QUERY_PARAM = 'situations'
+const DEFAULT_SITUATION_COUNT = 8
+
+type DiffSegment = {
+  text: string
+  isDifferent: boolean
+}
 
 const formatPrincipleLabel = (label: string) => label.charAt(0) + label.slice(1).toLowerCase()
 
@@ -69,6 +76,109 @@ const writeSeedToUrl = (seed: string) => {
   const url = new URL(window.location.href)
   url.searchParams.set(SEED_QUERY_PARAM, seed)
   window.history.replaceState(null, '', url.toString())
+}
+
+const parseSituationCount = (raw: string | null | undefined): number | null => {
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null
+  }
+
+  return parsed
+}
+
+const clampSituationCount = (requestedCount: number, maxAvailableCount: number): number => {
+  const clamped = Math.max(2, Math.min(requestedCount, maxAvailableCount))
+  return clamped % 2 === 0 ? clamped : Math.max(2, clamped - 1)
+}
+
+const readConfiguredSituationCount = (): number => {
+  if (typeof window !== 'undefined') {
+    const fromQuery = parseSituationCount(new URLSearchParams(window.location.search).get(SITUATION_COUNT_QUERY_PARAM))
+    if (fromQuery !== null) {
+      return fromQuery
+    }
+  }
+
+  const fromEnv = parseSituationCount(import.meta.env['VITE_SITUATION_COUNT'])
+  if (fromEnv !== null) {
+    return fromEnv
+  }
+
+  return DEFAULT_SITUATION_COUNT
+}
+
+const tokenizeForDiff = (value: string): string[] => value.split(/(\s+)/).filter((token) => token.length > 0)
+
+const buildDiffSegments = (left: string, right: string): { left: DiffSegment[]; right: DiffSegment[] } => {
+  const leftTokens = tokenizeForDiff(left)
+  const rightTokens = tokenizeForDiff(right)
+  const rows = leftTokens.length + 1
+  const cols = rightTokens.length + 1
+  const matrix = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0))
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      if (leftTokens[row - 1] === rightTokens[col - 1]) {
+        matrix[row][col] = matrix[row - 1][col - 1] + 1
+      } else {
+        matrix[row][col] = Math.max(matrix[row - 1][col], matrix[row][col - 1])
+      }
+    }
+  }
+
+  const leftDiffFlags = Array.from({ length: leftTokens.length }, () => true)
+  const rightDiffFlags = Array.from({ length: rightTokens.length }, () => true)
+  let row = leftTokens.length
+  let col = rightTokens.length
+
+  while (row > 0 && col > 0) {
+    if (leftTokens[row - 1] === rightTokens[col - 1]) {
+      leftDiffFlags[row - 1] = false
+      rightDiffFlags[col - 1] = false
+      row -= 1
+      col -= 1
+      continue
+    }
+
+    if (matrix[row - 1][col] >= matrix[row][col - 1]) {
+      row -= 1
+    } else {
+      col -= 1
+    }
+  }
+
+  const collapseSegments = (tokens: string[], flags: boolean[]): DiffSegment[] => {
+    if (tokens.length === 0) {
+      return []
+    }
+
+    const segments: DiffSegment[] = []
+    let buffer = tokens[0]
+    let currentFlag = flags[0]
+
+    for (let index = 1; index < tokens.length; index += 1) {
+      if (flags[index] === currentFlag) {
+        buffer += tokens[index]
+      } else {
+        segments.push({ text: buffer, isDifferent: currentFlag })
+        buffer = tokens[index]
+        currentFlag = flags[index]
+      }
+    }
+
+    segments.push({ text: buffer, isDifferent: currentFlag })
+    return segments
+  }
+
+  return {
+    left: collapseSegments(leftTokens, leftDiffFlags),
+    right: collapseSegments(rightTokens, rightDiffFlags),
+  }
 }
 
 function App() {
@@ -105,6 +215,11 @@ function App() {
   )
 
   const scenarioDatabase = useMemo(() => getScenarioDatabase(t), [t])
+  const maxSituationCount = useMemo(() => scenarioDatabase.length * 2, [scenarioDatabase])
+  const configuredSituationCount = useMemo(
+    () => clampSituationCount(readConfiguredSituationCount(), maxSituationCount),
+    [maxSituationCount],
+  )
 
   const principleById = useMemo(() => {
     const lookup = new Map<string, Principle>()
@@ -147,9 +262,15 @@ function App() {
     [principleById, principleRanking],
   )
 
+  const activeScenarios = useMemo(() => {
+    const requestedScenarioCount = Math.max(1, Math.floor(configuredSituationCount / 2))
+    const shuffledScenarios = shuffleWithRng(scenarioDatabase, createRng(`${seed}:scenario-selection`))
+    return shuffledScenarios.slice(0, requestedScenarioCount)
+  }, [configuredSituationCount, scenarioDatabase, seed])
+
   const judgmentSequence = useMemo(
-    () => buildJudgmentSequence({ seed, scenarios: scenarioDatabase }),
-    [scenarioDatabase, seed],
+    () => buildJudgmentSequence({ seed, scenarios: activeScenarios }),
+    [activeScenarios, seed],
   )
 
   const progressItems = useMemo(
@@ -179,7 +300,7 @@ function App() {
       const result = evaluateInteractiveSession({
         seed: activeSeed,
         principleRanking,
-        scenarios: scenarioDatabase,
+        scenarios: activeScenarios,
         answers: finalAnswers,
         resolvePrinciple: (principleId) => principleById.get(principleId) ?? principles[0],
       })
@@ -919,6 +1040,18 @@ function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: Scenario
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { scenario, verdictA, verdictB, isConsistent } = judgment
   const hasFailed = !isConsistent
+  const subjectDiff = useMemo(
+    () => buildDiffSegments(scenario.caseStudyA.subject, scenario.caseStudyB.subject),
+    [scenario.caseStudyA.subject, scenario.caseStudyB.subject],
+  )
+  const actDiff = useMemo(
+    () => buildDiffSegments(scenario.caseStudyA.act, scenario.caseStudyB.act),
+    [scenario.caseStudyA.act, scenario.caseStudyB.act],
+  )
+  const contextDiff = useMemo(
+    () => buildDiffSegments(scenario.caseStudyA.context, scenario.caseStudyB.context),
+    [scenario.caseStudyA.context, scenario.caseStudyB.context],
+  )
 
   return (
     <section className={`overflow-hidden rounded-lg border bg-[#111320] ${hasFailed ? 'border-red-500/50' : 'border-emerald-500/40'}`}>
@@ -942,9 +1075,30 @@ function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: Scenario
       </button>
       {expanded && (
         <div className="border-t border-[#21262d] bg-black/60 p-4 sm:p-5">
+            {hasFailed && (
+              <div className="mb-4 rounded border border-amber-400/40 bg-amber-400/10 px-3 py-2 font-mono text-xs text-amber-200">
+                {t('sessionResult.highlightedDifferences')}
+              </div>
+            )}
           <div className="grid gap-4 sm:grid-cols-2">
-            <VerdictCell label={t('step2.eventA')} caseStudy={scenario.caseStudyA} verdict={verdictA} />
-            <VerdictCell label={t('step2.eventB')} caseStudy={scenario.caseStudyB} verdict={verdictB} />
+              <VerdictCell
+                label={t('step2.eventA')}
+                caseStudy={scenario.caseStudyA}
+                verdict={verdictA}
+                highlightDifferences={hasFailed}
+                subjectSegments={subjectDiff.left}
+                actSegments={actDiff.left}
+                contextSegments={contextDiff.left}
+              />
+              <VerdictCell
+                label={t('step2.eventB')}
+                caseStudy={scenario.caseStudyB}
+                verdict={verdictB}
+                highlightDifferences={hasFailed}
+                subjectSegments={subjectDiff.right}
+                actSegments={actDiff.right}
+                contextSegments={contextDiff.right}
+              />
           </div>
           <div className={`mt-4 rounded border p-4 font-mono text-xs leading-6 sm:text-sm ${hasFailed ? 'border-red-500/50 text-red-300' : 'border-emerald-500/40 text-emerald-300'}`}>
             {hasFailed ? t('sessionResult.contradictionNote') : t('sessionResult.consistentNote')}
@@ -959,19 +1113,46 @@ function VerdictCell({
   label,
   caseStudy,
   verdict,
+  highlightDifferences,
+  subjectSegments,
+  actSegments,
+  contextSegments,
 }: {
   label: string
-  caseStudy: { subject: string; act: string }
+  caseStudy: { subject: string; act: string; context: string }
   verdict: JudgmentVerdict
+  highlightDifferences: boolean
+  subjectSegments: DiffSegment[]
+  actSegments: DiffSegment[]
+  contextSegments: DiffSegment[]
 }) {
   const { t } = useTranslation()
   const isOutrageous = verdict === 'OUTRAGEOUS'
+  const renderText = (segments: DiffSegment[], fallbackText: string, className: string) => {
+    if (!highlightDifferences) {
+      return <p className={className}>{fallbackText}</p>
+    }
+
+    return (
+      <p className={className}>
+        {segments.map((segment, index) => (
+          <span
+            key={`${segment.text}-${index}`}
+            className={segment.isDifferent ? 'rounded-sm bg-amber-400/20 px-0.5 text-amber-100' : undefined}
+          >
+            {segment.text}
+          </span>
+        ))}
+      </p>
+    )
+  }
 
   return (
     <div className="rounded border border-[#21262d] bg-[#0c0f1c] p-4 font-mono text-xs leading-6 text-slate-300 sm:text-sm">
       <p className="text-xs font-black text-slate-500">{label}</p>
-      <p className="mt-2 text-slate-200">{caseStudy.subject}</p>
-      <p className="mt-1 text-slate-400">{caseStudy.act.toLowerCase()}</p>
+      {renderText(subjectSegments, caseStudy.subject, 'mt-2 text-slate-200')}
+      {renderText(actSegments, caseStudy.act.toLowerCase(), 'mt-1 text-slate-400')}
+      {renderText(contextSegments, caseStudy.context.toLowerCase(), 'mt-1 text-slate-500')}
       <div className="mt-3 flex items-center gap-2">
         <span className="text-slate-500">{t('sessionResult.yourVerdict')}</span>
         <span className={`rounded border px-2 py-0.5 font-black ${isOutrageous ? 'border-red-400/70 text-red-400' : 'border-emerald-400/70 text-emerald-400'}`}>

@@ -86,6 +86,7 @@ const enUS = {
       doubleStandard: 'DOUBLE STANDARD',
       consistentBadge: 'CONSISTENT',
       yourVerdict: 'Your verdict:',
+      highlightedDifferences: 'Changed fragments between Event A and Event B are highlighted.',
       contradictionNote:
         'The only variable that changed between these two acts was the identity of the subject. Your verdict changed with it.',
       consistentNote: 'You judged both structurally identical acts the same way, regardless of who performed them.',

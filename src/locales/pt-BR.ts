@@ -86,6 +86,7 @@ const ptBR = {
       doubleStandard: 'DUPLO PADRÃO',
       consistentBadge: 'CONSISTENTE',
       yourVerdict: 'Seu veredicto:',
+      highlightedDifferences: 'Os trechos alterados entre o Evento A e o Evento B estão destacados.',
       contradictionNote:
         'A única variável que mudou entre esses dois atos foi a identidade do sujeito. Seu veredicto mudou junto.',
       consistentNote: 'Você julgou os dois atos estruturalmente idênticos da mesma forma, independentemente de quem os praticou.',
