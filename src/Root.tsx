@@ -3,12 +3,12 @@ import App from './App.tsx'
 import BootScreen from './components/BootScreen.tsx'
 
 export function Root() {
-  const [booted, setBooted] = useState(() => {
-    return new URLSearchParams(window.location.search).get('boot') !== 'true'
+  const [boot, setBoot] = useState(() => {
+    return new URLSearchParams(window.location.search).get('boot') === 'false'
   })
 
-  if (!booted) {
-    return <BootScreen onComplete={() => setBooted(true)} />
+  if (!boot) {
+    return <BootScreen onComplete={() => setBoot(true)} />
   }
 
   return <App />
