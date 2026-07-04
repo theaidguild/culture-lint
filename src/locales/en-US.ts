@@ -72,6 +72,11 @@ const enUS = {
       back: 'BACK',
       analyzing: 'ANALYZING YOUR VERDICTS...',
       analyzingHint: 'Cross-referencing mirrored acts for consistency',
+      complicationHeader: '[LINTER_COMPLEXITY_ESCALATION]',
+      complicationSub: 'Dynamic cognitive cost injected based on your previous verdict.',
+      antiGamingHeader: '[ANTI_GAMING_SHIELD_ACTIVE]',
+      antiGamingAcceptable: 'WARNING: Symmetrical choice pattern detected. You are choosing ACCEPTABLE consecutively. The linter has activated high-volatility pressure: subsequent acceptances assume infinite systemic resilience. Are you certain no boundaries exist?',
+      antiGamingOutrageous: 'WARNING: Symmetrical choice pattern detected. You are choosing OUTRAGEOUS consecutively. The linter has activated polarization locking: subsequent outrages assume absolute moral infallibility. Are you certain no reform or nuance is possible?',
     },
     sessionResult: {
       title: 'Step 4: Session Results',
@@ -231,6 +236,10 @@ const enUS = {
           context: 'The speaker uses polite, standard corporate language to echo the existing ideological framework of the room',
           justificationLogic: 'A beautiful, harmonious validation of shared human empathy and progressive alignment. This is what true inclusion feels like.',
         },
+        complications: {
+          ifAcceptable: 'As a consequence of your permissive stance, ultra-radical speakers demand equal time to promote conversion therapy and racial segregation. Refusing them now triggers a massive breach-of-contract lawsuit. How do you reconcile this?',
+          ifOutrageous: 'By enforcing absolute exclusion, you are forced to ban moderate thinkers who merely question corporate tax rates, labeling them "harmful." This triggers an internal employee mutiny over systemic ideological purging. How do you defend this?',
+        },
       },
       'cancelamento-do-bem': {
         title: 'The Empathy Exception Compiler',
@@ -245,6 +254,10 @@ const enUS = {
           act: 'Discovers an allied political influencer going through an identical public scandal or severe personal crisis',
           context: 'The user actively likes, retweets, and crafts public mockery attacking the journalists covering the scandal',
           justificationLogic: 'We must protect human dignity; cyberbullying is a disease, and we never know what kind of silent psychological battles people are fighting.',
+        },
+        complications: {
+          ifAcceptable: 'By permitting public mockery in crisis, the target suffers a severe mental breakdown leading to self-harm. Local authorities now trace the cyberbullying back to your network, citing your defense as a greenlight. Do you accept this responsibility?',
+          ifOutrageous: 'To strictly ban all mockery, you establish an automated sentiment filter. It immediately flags and locks the accounts of historical victims sharing dark humor to cope with their past trauma. Are you prepared to silence their coping mechanism?',
         },
       },
       'stf-due-process': {
@@ -261,6 +274,10 @@ const enUS = {
           context: 'Suspended without formal trial or broad defense opportunity under accelerated executive legal mandates',
           justificationLogic: 'An exceptional, highly necessary measure to protect structural democratic institutions from systemic sabotage ("Defesa da Democracia").',
         },
+        complications: {
+          ifAcceptable: 'With due process bypassed, subsequent judges use this executive speed-route to unilaterally freeze accounts of human rights defense groups under the label of "national coordination issues." Do you uphold this precedent?',
+          ifOutrageous: 'By demanding absolute procedural delays during a hyper-coordinated disinformation campaign, coordinate attackers manage to shut down the power grid of three major cities before the warrant is signed. Do you accept this catastrophic delay?',
+        },
       },
       'corrupcao-estimada': {
         title: 'The Budget Divergence Evaluator',
@@ -275,6 +292,10 @@ const enUS = {
           act: 'Negotiating massive public budget allocations for regional infrastructure in exchange for vital legislative votes',
           context: 'Standard legislative coalition building via targeted localized budgetary distribution programs',
           justificationLogic: 'Pragmatic governance, coalition presidentialism, and necessary political articulation to pass fundamental structural reforms.',
+        },
+        complications: {
+          ifAcceptable: 'With budget-buying legitimized, the winning coalition diverts 40% of the public school lunch budget to fund vanity overpasses in key districts to secure future votes. Do you endorse this trade-off for political stability?',
+          ifOutrageous: 'By refusing to negotiate budget amendments, the government is completely gridlocked. Major public hospitals run out of oxygen and emergency funding within three weeks due to blocked legislative approval. Do you justify this moral paralysis?',
         },
       },
       'liberdade-expressao-seletiva': {
@@ -291,6 +312,10 @@ const enUS = {
           context: 'The comment is made during a heavily publicized live stream, sparking massive societal backlash across networks',
           justificationLogic: 'A vital, transgressive display of artistic freedom and sharp social critique. Protecting this expression is a triumph for democracy.',
         },
+        complications: {
+          ifAcceptable: 'Sponsoring offensive provocative jokes normalized a wave of physical, real-world assaults against the targeted group outside the studio. Do you defend your permissive stance in front of the victims\' families?',
+          ifOutrageous: 'By enforcing immediate judicial deplatforming for offensive content, the ruling group outlaws all political satire, citing "social discomfort" as the statutory threshold for hate speech. Do you accept this total loss of critique?',
+        },
       },
       'seguranca-publica-seletiva': {
         title: 'The State Monopoly on Force Verifier',
@@ -305,6 +330,10 @@ const enUS = {
           act: 'Disrupts regional logistics, ignites tires on national highways, and forces critical public transit routes to a complete halt',
           context: 'The demonstration is non-violent but deliberately engineers total infrastructure friction for an extended period',
           justificationLogic: 'A historic, deeply justified democratic manifestation fighting for human rights. Any deployment of state police force is structural fascism.',
+        },
+        complications: {
+          ifAcceptable: 'As a consequence of blockading critical logistics, food and medical supplies are cut off, resulting in twelve preventable deaths in isolated rural hospitals. Do you still champion this method of expression?',
+          ifOutrageous: 'By unleashing immediate police shock forces, a stampede occurs, resulting in permanent disability for three non-violent youth protestors. Do you validate this brutal enforcement of mobility rules?',
         },
       },
       'vazamento-privacidade': {
@@ -321,6 +350,10 @@ const enUS = {
           context: 'The evidence was obtained strictly outside standard legal warrants and violates individual privacy laws',
           justificationLogic: 'An unacceptable, illegal attack on privacy and institutional stability; stolen data cannot be weaponized or normalized in a democracy.',
         },
+        complications: {
+          ifAcceptable: 'By legitimizing private data leaks, vigilante hacker cells leak the full medical records and psychological evaluations of your entire family to intimidate you. Do you uphold that "truth" justifies this exposure?',
+          ifOutrageous: 'By absolute protection of standard legal discovery, key evidence of a systemic chemical poisoning cover-up remains sealed for decades. Hundreds of children are exposed to neurotoxins. Do you justify protecting these privacy laws?',
+        },
       },
       'racismo-e-linguagem': {
         title: 'The Prejudice Universal Compiler',
@@ -335,6 +368,10 @@ const enUS = {
           act: 'The offensive statement is made publicly on social networks, generating instant viral condemnation',
           context: 'The text uses explicitly aggressive, structural vocabulary targeting historical vulnerabilities',
           justificationLogic: 'It is not racism because structural asymmetry means dominant groups cannot be victims; it is just standard social frustration or historic reaction.',
+        },
+        complications: {
+          ifAcceptable: 'By normalizing hostile racial generalizations based on structural exceptions, minority-led councils begin purging working-class members of other backgrounds from basic social programs. Do you condone this inverted exclusion?',
+          ifOutrageous: 'By demanding identical maximum punishment for all linguistic generalizations, standard sociological terms describing historical oppression are outlawed. Academic research on inequality is immediately suspended. Do you support this censorship?',
         },
       },
       'tolerancia-religiosa': {
@@ -351,6 +388,10 @@ const enUS = {
           context: 'The event triggers immediate, widespread anger from the targeted religious community',
           justificationLogic: 'Necessary artistic expression, valid institutional critique, and free speech breaking the chains of conservative religious hegemony.',
         },
+        complications: {
+          ifAcceptable: 'With sacred icons deconstructed as vital expression, radical performers perform highly obscene acts on sacred shrines during active worship hours, leading to a local community riot. Do you defend their venue choice?',
+          ifOutrageous: 'By declaring religious offense illegal to defend minority sacred traditions, the state outlaws all public scientific debates on evolutionary biology and religious contradictions, citing "blasphemy risks". Do you validate this safety lock?',
+        },
       },
       'identidade-sexual-paradox': {
         title: 'The Identity Representation Audit',
@@ -365,6 +406,10 @@ const enUS = {
           act: 'The influencer explicitly advocates for progressive social platforms and supports modern gender theory concepts',
           context: 'The individual is aggressively attacked, mocked, and invalidating comments are made about their sexual identity by online groups',
           justificationLogic: 'Deplorable homophobia and literal digital violence. An absolute violation of basic human rights that must be immediately censored and punished.',
+        },
+        complications: {
+          ifAcceptable: 'By authorizing target attacks if their political views diverge, online mobs dox and threaten the physical safety of an LGBTQ+ youth who simply expressed moderate economic views. Do you defend this "community defense"?',
+          ifOutrageous: 'By enforcing absolute protection from digital invalidation, the state mandates that reviewing any public action of an LGBTQ+ politician is classified as hate speech, creating an elite untouchable class of leaders. Do you endorse this immunity?',
         },
       },
     },

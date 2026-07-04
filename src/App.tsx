@@ -177,6 +177,42 @@ function App() {
     [step, t],
   )
 
+  const activeComplication = useMemo(() => {
+    const currentItem = judgmentSequence[currentIndex]
+    if (!currentItem) {
+      return undefined
+    }
+
+    const siblingCaseKey = currentItem.caseKey === 'A' ? 'B' : 'A'
+    const siblingId = `${currentItem.scenarioId}:${siblingCaseKey}`
+    const siblingVerdict = answers[siblingId]
+
+    if (siblingVerdict) {
+      const verdictCapitalized = siblingVerdict === 'ACCEPTABLE' ? 'Acceptable' : 'Outrageous'
+      return t(`scenarios.${currentItem.scenarioId}.complications.if${verdictCapitalized}`)
+    }
+    return undefined
+  }, [currentIndex, judgmentSequence, answers, t])
+
+  const activeAntiGamingWarning = useMemo(() => {
+    if (currentIndex < 3) {
+      return undefined
+    }
+
+    const lastThree = judgmentSequence.slice(currentIndex - 3, currentIndex).map((item) => answers[item.id])
+    const allAcceptable = lastThree.every((val) => val === 'ACCEPTABLE')
+    const allOutrageous = lastThree.every((val) => val === 'OUTRAGEOUS')
+
+    if (allAcceptable) {
+      return t('judge.antiGamingAcceptable')
+    }
+    if (allOutrageous) {
+      return t('judge.antiGamingOutrageous')
+    }
+
+    return undefined
+  }, [currentIndex, judgmentSequence, answers, t])
+
   const beginJudging = () => {
     setAnswers({})
     setCurrentIndex(0)
@@ -296,6 +332,8 @@ function App() {
               total={judgmentSequence.length}
               isAnalyzing={isAnalyzing}
               canGoBack={currentIndex > 0}
+              activeComplication={activeComplication}
+              activeAntiGamingWarning={activeAntiGamingWarning}
               onVerdict={handleVerdict}
               onBack={handleBack}
             />

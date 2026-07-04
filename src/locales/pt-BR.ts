@@ -72,6 +72,11 @@ const ptBR = {
       back: 'VOLTAR',
       analyzing: 'ANALISANDO SEUS VEREDICTOS...',
       analyzingHint: 'Cruzando atos espelhados em busca de consistência',
+      complicationHeader: '[ESCALADA_DE_COMPLEXIDADE_DO_LINTER]',
+      complicationSub: 'Complexidade injetada com base no seu veredicto anterior desta regra.',
+      antiGamingHeader: '[ESCUDO_ANTI_TRAPAÇA_ATIVO]',
+      antiGamingAcceptable: 'ALERTA: Padrão de respostas simétricas detectado. Você está escolhendo ACEITÁVEL consecutivamente. O linter ativou a barreira de complacência infinita: aceitar este ato assume resiliência sistêmica absoluta do tecido social. Tem certeza de que não existem limites?',
+      antiGamingOutrageous: 'ALERTA: Padrão de respostas simétricas detectado. Você está escolhendo REVOLTANTE consecutivamente. O linter ativou a barreira de indignação perpétua: rejeitar este ato assume infalibilidade moral absoluta e recusa a qualquer reabilitação. Tem certeza de que nenhuma nuance é possível?',
     },
     sessionResult: {
       title: 'Etapa 4: Resultados da sessão',
@@ -231,6 +236,10 @@ const ptBR = {
           context: 'O palestrante usa linguagem corporativa polida para ecoar o enquadramento ideológico dominante na sala',
           justificationLogic: 'Uma validação harmônica de empatia compartilhada e alinhamento progressista. Assim é a inclusão verdadeira.',
         },
+        complications: {
+          ifAcceptable: 'Como consequência de sua postura permissiva, palestrantes ultra-radicais exigem tempo igual para promover terapia de conversão e segregação racial. Recusá-los agora gera um processo judicial massivo. Como você concilia isso?',
+          ifOutrageous: 'Ao reforçar a exclusão absoluta, você é obrigado a banir pensadores moderados que apenas questionam as alíquotas de impostos corporativos, rotulando-os de "nocivos". Isso gera um motim interno de funcionários por expurgos ideológicos sistêmicos. Como você defende isso?',
+        },
       },
       'cancelamento-do-bem': {
         title: 'Compilador da exceção de empatia',
@@ -245,6 +254,10 @@ const ptBR = {
           act: 'Descobre um influenciador político aliado em escândalo público idêntico ou crise pessoal severa',
           context: 'O usuário curte, compartilha e publica ataques a jornalistas que cobrem o escândalo',
           justificationLogic: 'Precisamos proteger a dignidade humana; cyberbullying é uma doença, e batalhas psicológicas são invisíveis.',
+        },
+        complications: {
+          ifAcceptable: 'Ao permitir a zombaria pública na crise, o alvo sofre um colapso mental grave levando à automutilação. Autoridades locais rastreiam o cyberbullying de volta à sua rede, citando sua defesa como sinal verde. Você aceita essa responsabilidade?',
+          ifOutrageous: 'Para proibir estritamente toda zombaria, você estabelece um filtro automático de sentimentos. Ele imediatamente sinaliza e bloqueia as contas de vítimas históricas que compartilham humor ácido para lidar com seus traumas. Você está preparado para calar o mecanismo de cura delas?',
         },
       },
       'stf-due-process': {
@@ -261,6 +274,10 @@ const ptBR = {
           context: 'Suspenso sem julgamento formal ou ampla defesa, sob mandatos jurídicos executivos acelerados',
           justificationLogic: 'Medida excepcional e necessária para proteger instituições democráticas de sabotagem sistêmica.',
         },
+        complications: {
+          ifAcceptable: 'Com o devido processo ignorado, juízes subsequentes usam essa via expressa do executivo para congelar unilateralmente contas de grupos de defesa de direitos humanos sob o rótulo de "questões de segurança nacional". Você mantém esse precedente?',
+          ifOutrageous: 'Ao exigir atrasos processuais absolutos durante uma campanha coordenada de desinformação, golpistas conseguem desligar a rede elétrica de três grandes cidades antes que o mandado seja assinado. Você aceita esse atraso catastrófico?',
+        },
       },
       'corrupcao-estimada': {
         title: 'Avaliador de divergência orçamentária',
@@ -275,6 +292,10 @@ const ptBR = {
           act: 'Negocia grandes alocações orçamentárias para infraestrutura regional em troca de votos legislativos',
           context: 'Formação padrão de coalizão por distribuição localizada de orçamento',
           justificationLogic: 'Governança pragmática, presidencialismo de coalizão e articulação política para reformas estruturais.',
+        },
+        complications: {
+          ifAcceptable: 'Com a compra de orçamento legitimada, a coalizão vencedora desvia 40% de verbas de merenda de escolas públicas para construir viadutos superfaturados em distritos chave para garantir votos futuros. Você apoia essa troca pela fidelidade política?',
+          ifOutrageous: 'Ao recusar negociar emendas orçamentárias, o governo entra em paralisia total. Grandes hospitais públicos ficam sem oxigênio e sem verbas de emergência em três semanas devido ao bloqueio da aprovação legislativa. Você justifica essa paralisia moral?',
         },
       },
       'liberdade-expressao-seletiva': {
@@ -291,6 +312,10 @@ const ptBR = {
           context: 'Comentário feito em live muito divulgada, gerando forte backlash social em múltiplas redes',
           justificationLogic: 'Expressão artística transgressora e crítica social. Protegê-la é uma vitória democrática.',
         },
+        complications: {
+          ifAcceptable: 'Patrocinar piadas ofensivas e provocativas normalizou uma onda de agressões físicas reais contra o grupo atingido do lado de fora do estúdio. Você defende sua postura permissiva na frente das famílias das vítimas?',
+          ifOutrageous: 'Ao impor o banimento judicial imediato de conteúdo ofensivo, o grupo governante proíbe toda sátira política, citando "desconforto social" como o limite legal para discurso de ódio. Você aceita essa perda total de capacidade de crítica?',
+        },
       },
       'seguranca-publica-seletiva': {
         title: 'Verificador do monopólio estatal da força',
@@ -305,6 +330,10 @@ const ptBR = {
           act: 'Interrompe logística regional, incendeia pneus em rodovias e bloqueia rotas críticas de transporte',
           context: 'Manifestação não violenta que gera fricção total de infraestrutura por período prolongado',
           justificationLogic: 'Manifestação histórica e legítima por direitos humanos. Uso de força policial é fascismo estrutural.',
+        },
+        complications: {
+          ifAcceptable: 'Como consequência do bloqueio de logística crítica, suprimentos médicos e alimentares são interrompidos, resultando em doze mortes evitáveis em hospitais rurais isolados. Você ainda defende este método de expressão?',
+          ifOutrageous: 'Ao liberar forças de choque policial imediatas, ocorre um tumulto que resulta na invalidez permanente de três jovens manifestantes não violentos. Você valida essa aplicação brutal das regras de mobilidade?',
         },
       },
       'vazamento-privacidade': {
@@ -321,6 +350,10 @@ const ptBR = {
           context: 'A prova foi obtida totalmente fora dos mandados legais padrão e viola leis de privacidade individual',
           justificationLogic: 'Um ataque inaceitável e ilegal à privacidade e à estabilidade institucional; dados roubados não podem ser usados como arma nem normalizados numa democracia.',
         },
+        complications: {
+          ifAcceptable: 'Ao legitimar vazamentos de dados privados, células hackers vigilantes vazam os prontuários médicos e avaliações psicológicas de toda a sua família para intimidar você. Você sustenta que a "verdade" justifica essa exposição?',
+          ifOutrageous: 'Ao dar proteção absoluta aos segredos processuais padrão, provas cruciais de um encobrimento de envenenamento químico sistêmico permanecem sob sigilo por décadas. Centenas de crianças são expostas a neurotoxinas. Você justifica a proteção dessas leis de privacidade?',
+        },
       },
       'racismo-e-linguagem': {
         title: 'O compilador universal do preconceito',
@@ -335,6 +368,10 @@ const ptBR = {
           act: 'A declaração ofensiva é feita publicamente nas redes sociais, gerando condenação viral instantânea',
           context: 'O texto usa vocabulário explicitamente agressivo e estrutural, mirando vulnerabilidades históricas',
           justificationLogic: 'Não é racismo porque a assimetria estrutural significa que grupos dominantes não podem ser vítimas; é apenas frustração social comum ou reação histórica.',
+        },
+        complications: {
+          ifAcceptable: 'Ao normalizar generalizações raciais hostis com base em exceções estruturais, conselhos liderados por minorias começam a expurgar membros da classe trabalhadora de outras origens de programas sociais básicos. Você tolera essa exclusão invertida?',
+          ifOutrageous: 'Ao exigir punição máxima idêntica para todas as generalizações linguísticas, termos sociológicos padrão que descrevem opressão histórica são proibidos. A pesquisa acadêmica sobre desigualdade é suspensa imediatamente. Você apoia essa censura?',
         },
       },
       'tolerancia-religiosa': {
@@ -351,6 +388,10 @@ const ptBR = {
           context: 'O evento provoca raiva imediata e generalizada da comunidade religiosa atingida',
           justificationLogic: 'Expressão artística necessária, crítica institucional válida e liberdade de expressão quebrando as correntes da hegemonia religiosa conservadora.',
         },
+        complications: {
+          ifAcceptable: 'Com ícones sagrados desconstruídos como livre expressão, artistas radicais realizam atos obscenos em santuários sagrados durante cultos ativos, levando a uma revolta violenta na comunidade local. Você defende a escolha de local deles?',
+          ifOutrageous: 'Ao declarar ilegal a ofensa religiosa para defender tradições sagradas, o Estado proíbe debates científicos públicos sobre biologia evolutiva e contradições religiosas, invocando "riscos de blasfêmia". Você valida esse bloqueio de segurança?',
+        },
       },
       'identidade-sexual-paradox': {
         title: 'A auditoria de representação de identidade',
@@ -365,6 +406,10 @@ const ptBR = {
           act: 'O influenciador defende explicitamente pautas sociais progressistas e apoia conceitos modernos de teoria de gênero',
           context: 'A pessoa é atacada de forma agressiva, ridicularizada, e grupos online fazem comentários que invalidam sua identidade sexual',
           justificationLogic: 'Homofobia deplorável e violência digital literal. Uma violação absoluta de direitos humanos básicos que deve ser imediatamente censurada e punida.',
+        },
+        complications: {
+          ifAcceptable: 'Ao autorizar ataques direcionados se as visões políticas divergirem, turbas virtuais vazam dados e ameaçam a integridade de um jovem LGBTQ+ que expressou visões econômicas moderadas. Você defende essa "defesa da comunidade"?',
+          ifOutrageous: 'Ao impor proteção absoluta contra invalidação digital, o Estado exige que qualquer crítica a ações públicas de um político LGBTQ+ seja classificada como discurso de ódio, criando uma elite de líderes intocáveis. Você apoia essa imunidade?',
         },
       },
     },
