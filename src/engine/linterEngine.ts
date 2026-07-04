@@ -78,11 +78,25 @@ export const evaluateInteractiveSession = ({
 
   const contradictionCount = judgments.filter((judgment) => !judgment.isConsistent).length;
 
+  const verifiedAnswers: JudgmentVerdict[] = [];
+  for (const scenario of scenarios) {
+    const verdictA = answers[`${scenario.id}:A`];
+    const verdictB = answers[`${scenario.id}:B`];
+    if (verdictA) verifiedAnswers.push(verdictA);
+    if (verdictB) verifiedAnswers.push(verdictB);
+  }
+
+  const uniqueAnswers = new Set(verifiedAnswers);
+  const isFlatLineVote = verifiedAnswers.length > 0 && uniqueAnswers.size === 1;
+  const flatLineVerdict = isFlatLineVote ? Array.from(uniqueAnswers)[0] : undefined;
+
   return {
     seed,
     principleRanking,
     judgments,
     contradictionCount,
     consistentCount: judgments.length - contradictionCount,
+    isFlatLineVote,
+    flatLineVerdict,
   };
 };

@@ -311,7 +311,7 @@ function App() {
       <div className="relative flex min-h-dvh flex-col md:flex-row">
         <Sidebar onHomeClick={resetToInitialState} />
         <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-24 md:border-l md:border-t-0 md:pb-0">
-          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && session.contradictionCount > 0)} />
+          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && (session.contradictionCount > 0 || session.isFlatLineVote))} />
           {step === 1 && (
             <RankingStep principles={rankedPrinciples} onReorder={handleReorder} onNext={() => setStep(2)} />
           )}

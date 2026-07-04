@@ -82,6 +82,7 @@ const ptBR = {
       title: 'Etapa 4: Resultados da sessão',
       summaryContradiction: 'Você aplicou dois pesos e duas medidas em {{count}} de {{total}} cenários.',
       summaryConsistent: 'Todos os {{total}} cenários foram julgados de forma consistente. Nenhum duplo padrão detectado.',
+      summaryFlatLine: 'Votação linear detectada. Embora tecnicamente consistente, você julgou 100% dos eventos como "{{verdict}}" para evitar se comprometer. Erro de Variância Zero.',
       seedUsed: 'SEED: {{seed}}',
       rankingRecap: 'SUAS PRIORIDADES vs. RESULTADOS',
       contradictionFound: 'CONTRADIÇÃO ENCONTRADA',

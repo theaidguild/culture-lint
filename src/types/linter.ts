@@ -59,4 +59,6 @@ export type InteractiveSessionRun = {
   judgments: ScenarioJudgment[];
   consistentCount: number;
   contradictionCount: number;
+  isFlatLineVote?: boolean;
+  flatLineVerdict?: JudgmentVerdict;
 };

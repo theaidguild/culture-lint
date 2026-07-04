@@ -141,8 +141,20 @@ export function SessionResultStep({
     <div className="flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-12">
       <div>
         <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">{t('sessionResult.title')}</h1>
-        <p className="mt-3 font-mono text-sm">
-          {hasContradictions ? (
+        <div className={`mt-3 border-l-2 pl-3 py-1.5 font-mono text-sm ${
+          session.isFlatLineVote
+            ? 'border-amber-500 bg-amber-500/5'
+            : hasContradictions
+              ? 'border-red-500 bg-red-500/5'
+              : 'border-emerald-500 bg-emerald-500/5'
+        }`}>
+          {session.isFlatLineVote ? (
+            <span className="font-black text-amber-400 font-sans tracking-wide">
+              {t('sessionResult.summaryFlatLine', {
+                verdict: session.flatLineVerdict === 'ACCEPTABLE' ? t('judge.acceptable') : t('judge.outrageous')
+              })}
+            </span>
+          ) : hasContradictions ? (
             <span className="font-black text-red-400">
               {t('sessionResult.summaryContradiction', {
                 count: session.contradictionCount,
@@ -154,7 +166,7 @@ export function SessionResultStep({
               {t('sessionResult.summaryConsistent', { total: session.judgments.length })}
             </span>
           )}
-        </p>
+        </div>
         <p className="mt-2 font-mono text-xs text-slate-500">{t('sessionResult.seedUsed', { seed: session.seed })}</p>
       </div>
 

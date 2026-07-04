@@ -82,6 +82,7 @@ const enUS = {
       title: 'Step 4: Session Results',
       summaryContradiction: 'You applied a double standard in {{count}} of {{total}} scenarios.',
       summaryConsistent: 'All {{total}} scenarios were judged consistently. No double standard detected.',
+      summaryFlatLine: 'Flat-line vote detected. While technically consistent, you judged 100% of all events as "{{verdict}}" to avoid genuine commitment. Zero Variance Bias.',
       seedUsed: 'SEED: {{seed}}',
       rankingRecap: 'YOUR PRIORITIES vs. RESULTS',
       contradictionFound: 'CONTRADICTION FOUND',
