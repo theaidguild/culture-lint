@@ -10,8 +10,8 @@ type BootLine = {
   message: string
 }
 
-const HOLD_AFTER_LAST = 2000
-const FADE_DURATION = 320
+const HOLD_AFTER_LAST = 2500
+const FADE_DURATION = 550
 
 const TONE_STYLES: Record<LineTone, { channel: string; message: string; prompt: string }> = {
   info: { channel: 'text-slate-500', message: 'text-slate-300', prompt: 'text-cyan-400' },
@@ -102,8 +102,9 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       }
 
       const fadeTimeout = window.setTimeout(() => setIsFadingOut(true), HOLD_AFTER_LAST)
-      const doneTimeout = window.setTimeout(onComplete, HOLD_AFTER_LAST + FADE_DURATION)
-      timers.current.push(fadeTimeout, doneTimeout)
+      // Safety fallback to unmount the boot screen after FADE_DURATION + 400ms buffer if transitionend doesn't trigger
+      const safetyTimeout = window.setTimeout(onComplete, HOLD_AFTER_LAST + FADE_DURATION + 400)
+      timers.current.push(fadeTimeout, safetyTimeout)
     }
 
     void run()
@@ -139,8 +140,13 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       role="status"
       aria-live="polite"
       aria-label={t('boot.ariaLabel')}
-      className={`boot-screen fixed inset-0 z-50 overflow-hidden bg-black transition-opacity duration-[320ms] ease-out ${
-        isFadingOut ? 'opacity-0' : 'opacity-100'
+      onTransitionEnd={(e) => {
+        if (e.target === e.currentTarget && e.propertyName === 'opacity') {
+          onComplete()
+        }
+      }}
+      className={`boot-screen fixed inset-0 z-50 overflow-hidden bg-black will-change-opacity ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(0,240,255,0.14),transparent_48%),radial-gradient(circle_at_82%_90%,rgba(47,129,247,0.15),transparent_42%)]" />
@@ -148,7 +154,13 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.88))]" />
 
       <div className="relative flex h-full w-full items-center justify-center px-3 py-4 sm:px-6 sm:py-7 md:px-8 md:py-10">
-        <section className="boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px]">
+        <section className={`boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px] will-change-transform ${
+          isFadingOut
+            ? prefersReducedMotion
+              ? 'opacity-0'
+              : 'scale-[0.98] opacity-0 translate-y-2'
+            : 'scale-100 opacity-100 translate-y-0'
+        }`}>
           <header className="flex items-center justify-between border-b border-cyan-400/20 bg-cyan-400/5 px-3 py-2.5 font-mono text-[11px] tracking-wide text-cyan-300 sm:px-4 sm:text-xs">
             <span>culture-lint://boot</span>
             <span className="text-slate-400">runtime init</span>
@@ -181,11 +193,73 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
         </section>
       </div>
 
-      <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 px-3 text-center font-mono text-[10px] tracking-wide text-slate-600 sm:text-xs">
-        {t('appName')} v2026.3.2
+      <div className={`boot-author-panel absolute bottom-5 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm px-4 py-2.5 rounded-2xl border border-cyan-400/10 bg-black/45 backdrop-blur-[6px] text-center font-mono z-10 flex flex-col items-center gap-1.5 shadow-[0_0_24px_rgba(0,240,255,0.03)] hover:border-cyan-400/30 ${
+        isFadingOut
+          ? prefersReducedMotion
+            ? 'opacity-0'
+            : 'opacity-0 translate-y-3'
+          : 'opacity-100 translate-y-0'
+      }`}>
+        <div className="pointer-events-none text-slate-600 text-[10px] tracking-wide">
+          {t('appName')} <span className="text-slate-700">v2026.3.2</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-300">
+          <span className="pointer-events-none text-slate-400 font-medium">{t('boot.author')}</span>
+          <span className="font-bold text-white tracking-wide pointer-events-none">Guilherme Giani</span>
+          <span className="text-slate-600 pointer-events-none">•</span>
+          <a
+            href="https://www.linkedin.com/in/guilhermegiani/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-semibold transition-all pointer-events-auto hover:underline"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+            >
+              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+              <rect x="2" y="9" width="4" height="12" />
+              <circle cx="4" cy="4" r="2" />
+            </svg>
+            <span>LinkedIn</span>
+          </a>
+        </div>
       </div>
 
       <style>{`
+        .boot-screen {
+          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
+        .boot-screen .boot-terminal {
+          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1),
+                      transform 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
+        .boot-screen .boot-author-panel {
+          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1),
+                      transform 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .boot-screen {
+            transition: opacity 350ms linear !important;
+          }
+          .boot-screen .boot-terminal, 
+          .boot-screen .boot-author-panel {
+            transition: opacity 350ms linear !important;
+            transform: none !important;
+          }
+        }
+
         @keyframes bootCursor {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }

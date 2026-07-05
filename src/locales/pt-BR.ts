@@ -3,6 +3,7 @@ const ptBR = {
     appName: 'Comparador de Opiniões (Culture-Lint)',
     boot: {
       ariaLabel: 'Inicializando o Comparador de Opiniões',
+      author: 'Criado por',
       lines: {
         coldBoot: 'sequência de inicialização iniciada',
         reserveHeap: 'preparando memória ................ OK',

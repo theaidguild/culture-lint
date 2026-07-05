@@ -7,11 +7,12 @@ export function Root() {
     return new URLSearchParams(window.location.search).get('boot') === 'false'
   })
 
-  if (!boot) {
-    return <BootScreen onComplete={() => setBoot(true)} />
-  }
-
-  return <App />
+  return (
+    <>
+      <App />
+      {!boot && <BootScreen onComplete={() => setBoot(true)} />}
+    </>
+  )
 }
 
 export default Root

@@ -3,6 +3,7 @@ const enUS = {
     appName: 'Culture-Lint',
     boot: {
       ariaLabel: 'Initializing Culture-Lint engine',
+      author: 'Created by',
       lines: {
         coldBoot: 'cold boot sequence initiated',
         reserveHeap: 'reserving {{heap}} heap ................ OK',
