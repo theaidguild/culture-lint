@@ -58,6 +58,11 @@ const ptBR = {
       rivalEventLabel: 'EVENTO RIVAL (A):',
       allyEventLabel: 'EVENTO ALIADO (B):',
       compilingIndicator: 'compilando árvore de compilação...',
+      cancel: 'ABORTAR',
+      backendWebGPU: 'WebGPU · q4f16',
+      backendWASM: 'WASM · q4',
+      partialResult: 'Gerados {{got}} de {{want}}. Tentar novamente?',
+      warmup: 'Aquecendo kernels de inferência em segundo plano...',
     },
     rank: {
       progress: 'ETAPA 1 DE 4',

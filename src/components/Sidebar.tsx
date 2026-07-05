@@ -1,14 +1,26 @@
 import { FileCode2, Home, Settings, ShieldCheck, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { NavLink, useNavigate } from 'react-router-dom'
 
-interface SidebarProps {
-  currentView: 'linter' | 'ai-generator'
-  onViewChange: (view: 'linter' | 'ai-generator') => void
-  onHomeClick: () => void
-}
-
-export function Sidebar({ currentView, onViewChange, onHomeClick }: SidebarProps) {
+export function Sidebar() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  const handleHomeClick = () => {
+    navigate('/', { state: { reset: true } })
+  }
+
+  const mobileLink = (isActive: boolean) =>
+    `grid h-11 w-11 place-items-center rounded-md transition ${
+      isActive ? 'text-cyan-300 font-bold' : 'text-slate-500 hover:text-slate-300'
+    }`
+
+  const desktopLink = (isActive: boolean) =>
+    `grid h-11 w-11 place-items-center rounded-md transition ${
+      isActive
+        ? 'text-cyan-300 bg-cyan-400/5 border border-cyan-500/20'
+        : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/10'
+    }`
 
   return (
     <>
@@ -16,38 +28,18 @@ export function Sidebar({ currentView, onViewChange, onHomeClick }: SidebarProps
         <div className="mx-auto flex max-w-md items-center justify-between text-slate-400">
           <button
             type="button"
-            onClick={onHomeClick}
+            onClick={handleHomeClick}
             aria-label={t('sidebar.returnInitialState')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'linter'
-                ? 'text-cyan-300 bg-cyan-400/5'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
+            className="grid h-11 w-11 place-items-center rounded-md text-slate-500 hover:text-slate-300 transition"
           >
             <Home size={18} />
           </button>
-          <button
-            type="button"
-            onClick={() => onViewChange('linter')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'linter'
-                ? 'text-cyan-300 font-bold'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
+          <NavLink to="/" end className={({ isActive }) => mobileLink(isActive)}>
             <FileCode2 size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewChange('ai-generator')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'ai-generator'
-                ? 'text-cyan-300 font-bold'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
+          </NavLink>
+          <NavLink to="/ai" className={({ isActive }) => mobileLink(isActive)}>
             <Sparkles size={18} />
-          </button>
+          </NavLink>
           <span className="grid h-11 w-11 place-items-center rounded-md">
             <Settings size={18} />
           </span>
@@ -60,40 +52,29 @@ export function Sidebar({ currentView, onViewChange, onHomeClick }: SidebarProps
         <div className="flex flex-1 flex-col gap-5">
           <button
             type="button"
-            onClick={onHomeClick}
+            onClick={handleHomeClick}
             aria-label={t('sidebar.returnInitialState')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'linter' && currentView === 'linter'
-                ? 'text-cyan-300 bg-cyan-400/5'
-                : 'text-slate-500 hover:text-slate-200'
-            }`}
+            className="grid h-11 w-11 place-items-center rounded-md text-slate-500 hover:text-slate-200 transition"
           >
             <Home size={17} />
           </button>
-          <button
-            type="button"
-            onClick={() => onViewChange('linter')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'linter'
-                ? 'text-cyan-300 bg-cyan-400/5 border border-cyan-500/20'
-                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/10'
-            }`}
+          <NavLink
+            to="/"
+            end
             title="Culture Linter"
+            className={({ isActive }) => desktopLink(isActive)}
           >
             <FileCode2 size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewChange('ai-generator')}
-            className={`grid h-11 w-11 place-items-center rounded-md transition ${
-              currentView === 'ai-generator'
-                ? 'text-cyan-300 bg-cyan-400/5 border border-cyan-500/20 shadow-[0_0_12px_rgba(0,240,255,0.15)]'
-                : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/10'
-            }`}
+          </NavLink>
+          <NavLink
+            to="/ai"
             title="AI Controversy Generator"
+            className={({ isActive }) =>
+              `${desktopLink(isActive)} ${isActive ? 'shadow-[0_0_12px_rgba(0,240,255,0.15)]' : ''}`
+            }
           >
             <Sparkles size={17} />
-          </button>
+          </NavLink>
           <span className="grid h-11 w-11 place-items-center rounded-md">
             <Settings size={17} />
           </span>

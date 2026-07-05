@@ -58,6 +58,11 @@ const enUS = {
       rivalEventLabel: 'RIVAL EVENT (A):',
       allyEventLabel: 'ALLY EVENT (B):',
       compilingIndicator: 'compiling compilation-tree...',
+      cancel: 'ABORT',
+      backendWebGPU: 'WebGPU · q4f16',
+      backendWASM: 'WASM · q4',
+      partialResult: 'Generated {{got}} of {{want}}. Retry?',
+      warmup: 'Warming inference kernels in background...',
     },
     rank: {
       progress: 'STEP 1 OF 4',

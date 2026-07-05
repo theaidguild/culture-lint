@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { JudgingStep } from './components/JudgingStep'
-import { RankingStep } from './components/RankingStep'
-import { SessionResultStep } from './components/SessionResultStep'
-import { SessionSetupStep } from './components/SessionSetupStep'
-import { Sidebar } from './components/Sidebar'
-import { TopBar } from './components/TopBar'
-import { AIScenarioStep } from './components/AIScenarioStep'
-import { getScenarioDatabase } from './data/scenarios'
-import { buildJudgmentSequence, evaluateInteractiveSession } from './engine/linterEngine'
-import { createRng, generateSeed, normalizeSeed, shuffleWithRng } from './engine/random'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { JudgingStep } from '../components/JudgingStep'
+import { RankingStep } from '../components/RankingStep'
+import { SessionResultStep } from '../components/SessionResultStep'
+import { SessionSetupStep } from '../components/SessionSetupStep'
+import { TopBar } from '../components/TopBar'
+import { getScenarioDatabase } from '../data/scenarios'
+import { buildJudgmentSequence, evaluateInteractiveSession } from '../engine/linterEngine'
+import { createRng, generateSeed, normalizeSeed, shuffleWithRng } from '../engine/random'
 import {
   type InteractiveSessionRun,
   type JudgmentVerdict,
   type Principle,
   type ScenarioPreset,
-} from './types/linter'
+} from '../types/linter'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -68,19 +67,13 @@ const PRESET_MAPPINGS: Record<string, string[]> = {
 }
 
 const readSeedFromUrl = (): string | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
+  if (typeof window === 'undefined') return null
   const raw = new URLSearchParams(window.location.search).get(SEED_QUERY_PARAM)
   return raw ? normalizeSeed(raw) : null
 }
 
 const readPresetFromUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return 'todos'
-  }
-
+  if (typeof window === 'undefined') return 'todos'
   const raw = new URLSearchParams(window.location.search).get(PRESET_QUERY_PARAM)
   if (
     raw &&
@@ -96,19 +89,13 @@ const readPresetFromUrl = (): string => {
 }
 
 const readForcedScenariosFromUrl = (): string[] | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
+  if (typeof window === 'undefined') return null
   const raw = new URLSearchParams(window.location.search).get(SCENARIOS_QUERY_PARAM)
   return raw ? raw.split(',').map((id) => id.trim().toLowerCase()) : null
 }
 
 const writeParamsToUrl = (seed: string, preset: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
+  if (typeof window === 'undefined') return
   const url = new URL(window.location.href)
   url.searchParams.set(SEED_QUERY_PARAM, seed)
   if (preset === 'todos') {
@@ -120,15 +107,9 @@ const writeParamsToUrl = (seed: string, preset: string) => {
 }
 
 const parseSituationCount = (raw: string | null | undefined): number | null => {
-  if (!raw) {
-    return null
-  }
-
+  if (!raw) return null
   const parsed = Number.parseInt(raw, 10)
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return null
-  }
-
+  if (!Number.isFinite(parsed) || parsed < 1) return null
   return parsed
 }
 
@@ -142,21 +123,17 @@ const readConfiguredSituationCount = (): number => {
     const fromQuery = parseSituationCount(
       new URLSearchParams(window.location.search).get(SITUATION_COUNT_QUERY_PARAM)
     )
-    if (fromQuery !== null) {
-      return fromQuery
-    }
+    if (fromQuery !== null) return fromQuery
   }
-
   const fromEnv = parseSituationCount(import.meta.env['VITE_SITUATION_COUNT'])
-  if (fromEnv !== null) {
-    return fromEnv
-  }
-
+  if (fromEnv !== null) return fromEnv
   return DEFAULT_SITUATION_COUNT
 }
 
-function App() {
+export function LinterPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const principles = useMemo<Principle[]>(
     () => [
@@ -213,7 +190,6 @@ function App() {
   }, [principles])
 
   const [step, setStep] = useState<Step>(1)
-  const [currentView, setCurrentView] = useState<'linter' | 'ai-generator'>('linter')
   const [principleRanking, setPrincipleRanking] = useState<string[]>([...DEFAULT_PRINCIPLE_ORDER])
   const [seed, setSeed] = useState<string>(() => readSeedFromUrl() ?? generateSeed())
   const [preset, setPreset] = useState<string>(() => readPresetFromUrl())
@@ -239,6 +215,26 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [step, currentIndex])
 
+  // React to Home button clicks from the sidebar (fires location.state.reset).
+  useEffect(() => {
+    const state = location.state as { reset?: boolean } | null
+    if (state?.reset) {
+      if (analyzeTimeoutRef.current !== undefined) {
+        window.clearTimeout(analyzeTimeoutRef.current)
+        analyzeTimeoutRef.current = undefined
+      }
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setStep(1)
+      setPrincipleRanking([...DEFAULT_PRINCIPLE_ORDER])
+      setAnswers({})
+      setCurrentIndex(0)
+      setIsAnalyzing(false)
+      setSession(null)
+      /* eslint-enable react-hooks/set-state-in-effect */
+      navigate('/', { replace: true, state: null })
+    }
+  }, [location.state, navigate])
+
   const rankedPrinciples = useMemo(
     () =>
       principleRanking
@@ -248,22 +244,16 @@ function App() {
   )
 
   const activeScenarios = useMemo(() => {
-    // 1. URL explicit scenarios have highest priority
     const forcedIds = readForcedScenariosFromUrl()
     if (forcedIds && forcedIds.length > 0) {
       const filtered: ScenarioPreset[] = []
       for (const id of forcedIds) {
         const found = scenarioDatabase.find((s) => s.id === id)
-        if (found) {
-          filtered.push(found)
-        }
+        if (found) filtered.push(found)
       }
-      if (filtered.length > 0) {
-        return filtered
-      }
+      if (filtered.length > 0) return filtered
     }
 
-    // 2. Preset selection
     if (
       preset === 'pais' ||
       preset === 'jovens' ||
@@ -273,13 +263,10 @@ function App() {
       const mappedIds = PRESET_MAPPINGS[preset]
       if (mappedIds) {
         const filtered = scenarioDatabase.filter((s) => mappedIds.includes(s.id))
-        if (filtered.length > 0) {
-          return filtered
-        }
+        if (filtered.length > 0) return filtered
       }
     }
 
-    // 3. Default (All scenarios) randomized
     const requestedScenarioCount = Math.max(1, Math.floor(configuredSituationCount / 2))
     const shuffledScenarios = shuffleWithRng(
       scenarioDatabase,
@@ -293,33 +280,22 @@ function App() {
     [activeScenarios, seed]
   )
 
-  const progressItems = useMemo(() => {
-    if (currentView === 'ai-generator') {
-      return [
-        { label: t('aiScreen.countryLabel'), active: true, complete: false },
-        { label: t('aiScreen.navLabel'), active: false, complete: false },
-        { label: t('progress.judgment'), active: false, complete: false },
-        { label: t('progress.sessionResults'), active: false, complete: false },
-      ]
-    }
-    return [
+  const progressItems = useMemo(
+    () => [
       { label: t('progress.rankPrinciples'), active: step === 1, complete: step > 1 },
       { label: t('progress.sessionSeed'), active: step === 2, complete: step > 2 },
       { label: t('progress.judgment'), active: step === 3, complete: step > 3 },
       { label: t('progress.sessionResults'), active: step === 4, complete: false },
-    ]
-  }, [currentView, step, t])
+    ],
+    [step, t]
+  )
 
   const activeComplication = useMemo(() => {
     const currentItem = judgmentSequence[currentIndex]
-    if (!currentItem) {
-      return undefined
-    }
-
+    if (!currentItem) return undefined
     const siblingCaseKey = currentItem.caseKey === 'A' ? 'B' : 'A'
     const siblingId = `${currentItem.scenarioId}:${siblingCaseKey}`
     const siblingVerdict = answers[siblingId]
-
     if (siblingVerdict) {
       const verdictCapitalized = siblingVerdict === 'ACCEPTABLE' ? 'Acceptable' : 'Outrageous'
       return t(`scenarios.${currentItem.scenarioId}.complications.if${verdictCapitalized}`)
@@ -328,23 +304,14 @@ function App() {
   }, [currentIndex, judgmentSequence, answers, t])
 
   const activeAntiGamingWarning = useMemo(() => {
-    if (currentIndex < 3) {
-      return undefined
-    }
-
+    if (currentIndex < 3) return undefined
     const lastThree = judgmentSequence
       .slice(currentIndex - 3, currentIndex)
       .map((item) => answers[item.id])
     const allAcceptable = lastThree.every((val) => val === 'ACCEPTABLE')
     const allOutrageous = lastThree.every((val) => val === 'OUTRAGEOUS')
-
-    if (allAcceptable) {
-      return t('judge.antiGamingAcceptable')
-    }
-    if (allOutrageous) {
-      return t('judge.antiGamingOutrageous')
-    }
-
+    if (allAcceptable) return t('judge.antiGamingAcceptable')
+    if (allOutrageous) return t('judge.antiGamingOutrageous')
     return undefined
   }, [currentIndex, judgmentSequence, answers, t])
 
@@ -360,7 +327,6 @@ function App() {
     if (analyzeTimeoutRef.current !== undefined) {
       window.clearTimeout(analyzeTimeoutRef.current)
     }
-
     analyzeTimeoutRef.current = window.setTimeout(() => {
       const result = evaluateInteractiveSession({
         seed: activeSeed,
@@ -369,7 +335,6 @@ function App() {
         answers: finalAnswers,
         resolvePrinciple: (principleId) => principleById.get(principleId) ?? principles[0],
       })
-
       setSession(result)
       setIsAnalyzing(false)
       setStep(4)
@@ -379,18 +344,13 @@ function App() {
 
   const handleVerdict = (verdict: JudgmentVerdict) => {
     const currentItem = judgmentSequence[currentIndex]
-    if (!currentItem) {
-      return
-    }
-
+    if (!currentItem) return
     const nextAnswers = { ...answers, [currentItem.id]: verdict }
     setAnswers(nextAnswers)
-
     if (currentIndex >= judgmentSequence.length - 1) {
       analyzeAndFinish(nextAnswers, seed)
       return
     }
-
     setCurrentIndex((index) => index + 1)
   }
 
@@ -426,93 +386,60 @@ function App() {
     setStep(3)
   }
 
-  const resetToInitialState = () => {
-    if (analyzeTimeoutRef.current !== undefined) {
-      window.clearTimeout(analyzeTimeoutRef.current)
-      analyzeTimeoutRef.current = undefined
-    }
-
-    setCurrentView('linter')
-    setStep(1)
-    setPrincipleRanking([...DEFAULT_PRINCIPLE_ORDER])
-    setAnswers({})
-    setCurrentIndex(0)
-    setIsAnalyzing(false)
-    setSession(null)
-  }
-
   return (
-    <main className="safe-screen min-h-dvh overflow-x-clip bg-[#0a0c10] text-slate-100 selection:bg-cyan-400/30">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,240,255,0.08),transparent_34%),linear-gradient(90deg,rgba(88,166,255,0.04)_1px,transparent_1px),linear-gradient(rgba(88,166,255,0.04)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px] opacity-70 sm:opacity-100" />
-      <div className="relative flex min-h-dvh flex-col md:flex-row">
-        <Sidebar
-          currentView={currentView}
-          onViewChange={setCurrentView}
-          onHomeClick={resetToInitialState}
+    <>
+      <TopBar
+        progressItems={progressItems}
+        step={step}
+        hasFailures={Boolean(session && (session.contradictionCount > 0 || session.isFlatLineVote))}
+      />
+      {step === 1 && (
+        <RankingStep
+          principles={rankedPrinciples}
+          onReorder={handleReorder}
+          onNext={() => setStep(2)}
         />
-        <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-24 md:border-l md:border-t-0 md:pb-0">
-          <TopBar
-            progressItems={progressItems}
-            step={step}
-            hasFailures={Boolean(
-              session && (session.contradictionCount > 0 || session.isFlatLineVote)
-            )}
-          />
-          {currentView === 'ai-generator' ? (
-            <AIScenarioStep principles={principles} />
-          ) : (
-            <>
-              {step === 1 && (
-                <RankingStep
-                  principles={rankedPrinciples}
-                  onReorder={handleReorder}
-                  onNext={() => setStep(2)}
-                />
-              )}
-              {step === 2 && (
-                <SessionSetupStep
-                  seed={seed}
-                  itemCount={judgmentSequence.length}
-                  onSeedChange={handleSeedChange}
-                  onNewSeed={handleNewSeed}
-                  onBack={() => setStep(1)}
-                  onStart={beginJudging}
-                  currentPreset={preset}
-                  onPresetChange={(presetId) => {
-                    setPreset(presetId)
-                    setAnswers({})
-                    setCurrentIndex(0)
-                    setSession(null)
-                  }}
-                />
-              )}
-              {step === 3 && (
-                <JudgingStep
-                  item={judgmentSequence[currentIndex]}
-                  index={currentIndex}
-                  total={judgmentSequence.length}
-                  isAnalyzing={isAnalyzing}
-                  canGoBack={currentIndex > 0}
-                  activeComplication={activeComplication}
-                  activeAntiGamingWarning={activeAntiGamingWarning}
-                  onVerdict={handleVerdict}
-                  onBack={handleBack}
-                />
-              )}
-              {step === 4 && session && (
-                <SessionResultStep
-                  session={session}
-                  principles={principles}
-                  onRerunSameSeed={beginJudging}
-                  onNewSeedRun={restartWithNewSeed}
-                />
-              )}
-            </>
-          )}
-        </section>
-      </div>
-    </main>
+      )}
+      {step === 2 && (
+        <SessionSetupStep
+          seed={seed}
+          itemCount={judgmentSequence.length}
+          onSeedChange={handleSeedChange}
+          onNewSeed={handleNewSeed}
+          onBack={() => setStep(1)}
+          onStart={beginJudging}
+          currentPreset={preset}
+          onPresetChange={(presetId) => {
+            setPreset(presetId)
+            setAnswers({})
+            setCurrentIndex(0)
+            setSession(null)
+          }}
+        />
+      )}
+      {step === 3 && (
+        <JudgingStep
+          item={judgmentSequence[currentIndex]}
+          index={currentIndex}
+          total={judgmentSequence.length}
+          isAnalyzing={isAnalyzing}
+          canGoBack={currentIndex > 0}
+          activeComplication={activeComplication}
+          activeAntiGamingWarning={activeAntiGamingWarning}
+          onVerdict={handleVerdict}
+          onBack={handleBack}
+        />
+      )}
+      {step === 4 && session && (
+        <SessionResultStep
+          session={session}
+          principles={principles}
+          onRerunSameSeed={beginJudging}
+          onNewSeedRun={restartWithNewSeed}
+        />
+      )}
+    </>
   )
 }
 
-export default App
+export default LinterPage

@@ -1,24 +1,35 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import {
-  Sparkles,
-  Globe,
-  Settings2,
-  Layers,
-  Flame,
   CheckCircle2,
-  Terminal,
+  Flame,
+  Globe,
+  Layers,
   Play,
   RotateCcw,
+  Settings2,
+  Sparkles,
+  Terminal,
+  X,
   Zap,
 } from 'lucide-react'
-import { generateAIScenarios, SUPPORTED_COUNTRIES } from '../services/aiScenarioGenerator'
 import {
-  type ScenarioPreset,
+  detectBackend,
+  ensurePipeline,
+  generateAIScenarios,
+  MODEL_PRESETS,
+  SUPPORTED_COUNTRIES,
+  type Backend,
+  type GenerationProgress,
+  type ModelPresetId,
+} from '../services/aiScenarioGenerator'
+import {
+  type InteractiveSessionRun,
   type JudgmentItem,
   type JudgmentVerdict,
-  type InteractiveSessionRun,
   type Principle,
+  type ScenarioPreset,
 } from '../types/linter'
 import { buildJudgmentSequence, evaluateInteractiveSession } from '../engine/linterEngine'
 import { JudgingStep } from './JudgingStep'
@@ -30,116 +41,163 @@ interface AIScenarioStepProps {
 
 type AIScreenState = 'setup' | 'generating' | 'generated' | 'judging' | 'results'
 
+const DEFAULT_COUNTRY = 'BR'
+const DEFAULT_COUNT = 6
+const ALLOWED_COUNTS = [4, 6, 8] as const
+
+const parsePrinciplesParam = (raw: string | null): string[] =>
+  raw
+    ? raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
+
+const parseCountParam = (raw: string | null): number => {
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return (ALLOWED_COUNTS as readonly number[]).includes(parsed) ? parsed : DEFAULT_COUNT
+}
+
 export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
   const isPt = i18n.language === 'pt-BR'
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // 1. Setup Form States
-  const [selectedCountry, setSelectedCountry] = useState('BR')
-  const [selectedPrincipleIds, setSelectedPrincipleIds] = useState<string[]>(['equality'])
-  const [caseCount, setCaseCount] = useState(6)
+  // Setup form state, hydrated from URL params (and pushed back on change).
+  const [selectedCountry, setSelectedCountry] = useState(
+    () => searchParams.get('country') || DEFAULT_COUNTRY
+  )
+  const [selectedPrincipleIds, setSelectedPrincipleIds] = useState<string[]>(() => {
+    const fromUrl = parsePrinciplesParam(searchParams.get('principles'))
+    return fromUrl.length > 0 ? fromUrl : ['equality']
+  })
+  const [caseCount, setCaseCount] = useState<number>(() =>
+    parseCountParam(searchParams.get('count'))
+  )
+  const [modelId, setModelId] = useState<ModelPresetId>(
+    () => (searchParams.get('model') as ModelPresetId) || 'smollm2'
+  )
 
-  // State Machine
   const [screenState, setScreenState] = useState<AIScreenState>('setup')
   const [scenarios, setScenarios] = useState<ScenarioPreset[]>([])
   const [generationLogs, setGenerationLogs] = useState<string[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [progress, setProgress] = useState<GenerationProgress>({
+    phase: 'idle',
+    percent: 0,
+    label: '',
+  })
+  const [streamedText, setStreamedText] = useState('')
+  const [backend, setBackend] = useState<Backend | null>(null)
 
-  // 2. Playback States
   const [judgmentSequence, setJudgmentSequence] = useState<JudgmentItem[]>([])
   const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [sessionResult, setSessionResult] = useState<InteractiveSessionRun | null>(null)
 
-  const activeLogTimer = useRef<number | undefined>(undefined)
+  const abortRef = useRef<AbortController | null>(null)
   const analysisTimeoutRef = useRef<number | undefined>(undefined)
+  const hasWarmedUp = useRef(false)
+
   const scenarioCount = Math.max(1, caseCount / 2)
 
   const selectedPrinciples = useMemo(() => {
     if (principles.length === 0) return []
-
     const validSelections = selectedPrincipleIds.filter((id) =>
       principles.some((principle) => principle.id === id)
     )
-
     if (validSelections.length > 0) return validSelections
     return [principles[0].id]
   }, [selectedPrincipleIds, principles])
 
+  // Detect backend once on mount so the UI can display a chip immediately.
+  useEffect(() => {
+    let cancelled = false
+    detectBackend(modelId).then((b) => {
+      if (!cancelled) setBackend(b.device)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [modelId])
+
+  // Round-trip form state to the URL so the setup is deep-linkable.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    next.set('country', selectedCountry)
+    next.set('principles', selectedPrinciples.join(','))
+    next.set('count', String(caseCount))
+    if (modelId !== 'smollm2') {
+      next.set('model', modelId)
+    } else {
+      next.delete('model')
+    }
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, selectedPrinciples, caseCount, modelId])
+
   useEffect(() => {
     return () => {
-      if (activeLogTimer.current) window.clearTimeout(activeLogTimer.current)
       if (analysisTimeoutRef.current) window.clearTimeout(analysisTimeoutRef.current)
+      abortRef.current?.abort()
     }
   }, [])
 
-  // Start Generation Process
+  // Warm-up the pipeline on first meaningful form interaction (not on mount)
+  // so that pressing Generate feels instantaneous when weights are ready.
+  const scheduleWarmup = useCallback(() => {
+    if (hasWarmedUp.current) return
+    hasWarmedUp.current = true
+    void (async () => {
+      const b = await detectBackend(modelId)
+      void ensurePipeline({
+        model: MODEL_PRESETS[modelId],
+        device: b.device,
+        dtype: b.dtype,
+      }).catch(() => {
+        // Silent — warmup is best-effort.
+        hasWarmedUp.current = false
+      })
+    })()
+  }, [modelId])
+
   const handleGenerate = async () => {
     setScreenState('generating')
     setErrorMessage(null)
     setScenarios([])
-    setGenerationLogs([])
-
-    const selectedPrincipleNames = principles
-      .filter((principle) => selectedPrinciples.includes(principle.id))
-      .map((principle) => principle.label)
-
-    // Simulated high-tech cyber-compiler logs
-    const logPhrases = [
+    setStreamedText('')
+    setGenerationLogs([
       t('aiScreen.generatingLog1'),
-      `[HTTP/443] discourse.com/stream/v1/${selectedCountry.toLowerCase()} . OK`,
       t('aiScreen.generatingLog2'),
-      '// Extracting in-group / out-group conflict matrices...',
-      `// Active Principle constraints loaded: ${(selectedPrincipleNames.join(' + ') || selectedPrinciples.join(' + ')).toUpperCase()}`,
       t('aiScreen.generatingLog3'),
-      '// Symmetrical semantic trees generated.',
       t('aiScreen.generatingLog4'),
-      '// Injecting volatility and cognitive friction parameters...',
-      '// Compiler selected execution path: ON-DEVICE-WASM',
-    ]
+    ])
 
-    let currentLogIndex = 0
-    const printNextLog = () => {
-      if (currentLogIndex < logPhrases.length) {
-        setGenerationLogs((prev) => [...prev, logPhrases[currentLogIndex]])
-        currentLogIndex++
-        activeLogTimer.current = window.setTimeout(printNextLog, 300 + Math.random() * 150)
-      } else {
-        // Trigger the actual generation
-        void triggerAPIGeneration()
-      }
-    }
+    const controller = new AbortController()
+    abortRef.current = controller
 
-    printNextLog()
-  }
-
-  // Real fetch and assignment
-  const triggerAPIGeneration = async () => {
     try {
       const generated = await generateAIScenarios({
         countryCode: selectedCountry,
         language: i18n.language as 'en-US' | 'pt-BR',
         principleIds: selectedPrinciples,
         count: scenarioCount,
-        onProgress: (_pct, label) => {
-          setGenerationLogs((prev) => {
-            const nextLogs = [...prev]
-            const lastLog = nextLogs[nextLogs.length - 1]
-            // If the last log starts with '[TRANSFORMERS PROGRESS]', update it
-            if (
-              lastLog &&
-              typeof lastLog === 'string' &&
-              lastLog.startsWith('[TRANSFORMERS PROGRESS]')
-            ) {
-              nextLogs[nextLogs.length - 1] = `[TRANSFORMERS PROGRESS] -> ${label}`
-            } else {
-              nextLogs.push(`[TRANSFORMERS PROGRESS] -> ${label}`)
-            }
-            return nextLogs
-          })
+        model: modelId,
+        signal: controller.signal,
+        onProgress: (p) => {
+          setProgress(p)
+          setGenerationLogs((prev) => [
+            ...prev,
+            `[${p.phase.toUpperCase()} ${p.percent}%] ${p.label}`,
+          ])
+        },
+        onToken: (chunk) => {
+          setStreamedText((prev) => prev + chunk)
         },
       })
+
+      if (controller.signal.aborted) return
 
       if (generated.length === 0) {
         throw new Error('No scenarios could be generated.')
@@ -148,16 +206,24 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       setScenarios(generated)
       setScreenState('generated')
     } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        setScreenState('setup')
+        return
+      }
       console.error(err)
       const errMsg = err instanceof Error ? err.message : String(err)
       setErrorMessage(errMsg || t('aiScreen.generationFailed'))
       setScreenState('setup')
+    } finally {
+      abortRef.current = null
     }
   }
 
-  // Enter Play Mode
+  const handleCancel = () => {
+    abortRef.current?.abort()
+  }
+
   const handleStartJudging = () => {
-    // Shuffled sequence based on scenarios and a random seed
     const activeSeed = Math.random().toString(36).substring(7).toUpperCase()
     const seq = buildJudgmentSequence({ seed: activeSeed, scenarios })
     setJudgmentSequence(seq)
@@ -167,28 +233,21 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     setScreenState('judging')
   }
 
-  // Handle a user verdict
   const handleVerdict = (verdict: JudgmentVerdict) => {
     const currentItem = judgmentSequence[currentIndex]
     if (!currentItem) return
-
     const nextAnswers = { ...answers, [currentItem.id]: verdict }
     setAnswers(nextAnswers)
 
     if (currentIndex >= judgmentSequence.length - 1) {
-      // Analyze findings
       setIsAnalyzing(true)
       analysisTimeoutRef.current = window.setTimeout(() => {
-        const resolvedPrinciple = (id: string) => {
-          return principles.find((p) => p.id === id) || principles[0]
-        }
-
-        // We rank the selected principle first for visual focus
+        const resolvedPrinciple = (id: string) =>
+          principles.find((p) => p.id === id) || principles[0]
         const rankingOrder = [
           ...selectedPrinciples,
           ...principles.map((p) => p.id).filter((id) => !selectedPrinciples.includes(id)),
         ]
-
         const result = evaluateInteractiveSession({
           seed: 'AI_DYNAMIC_GAUNTLET',
           principleRanking: rankingOrder,
@@ -196,14 +255,12 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
           answers: nextAnswers,
           resolvePrinciple: resolvedPrinciple,
         })
-
         setSessionResult(result)
         setIsAnalyzing(false)
         setScreenState('results')
       }, 1500)
       return
     }
-
     setCurrentIndex((prev) => prev + 1)
   }
 
@@ -211,61 +268,55 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     setCurrentIndex((prev) => Math.max(0, prev - 1))
   }
 
-  // Complications injected dynamically based on mirroring
   const activeComplication = useMemo(() => {
     const currentItem = judgmentSequence[currentIndex]
     if (!currentItem) return undefined
-
     const siblingCaseKey = currentItem.caseKey === 'A' ? 'B' : 'A'
     const siblingId = `${currentItem.scenarioId}:${siblingCaseKey}`
     const siblingVerdict = answers[siblingId]
-
     if (siblingVerdict) {
       const verdictCapitalized = siblingVerdict === 'ACCEPTABLE' ? 'Acceptable' : 'Outrageous'
-      // Try to read custom complications, or fallback to a standard dynamic escalation
       const customComp = (currentItem as { complications?: Record<string, string> })
         .complications?.[`if${verdictCapitalized}`]
       if (customComp) return customComp
-
-      return languageNeutralComplication(verdictCapitalized, i18n.language)
+      return isPt
+        ? `Você julgou o ato simétrico anterior como ${
+            verdictCapitalized === 'Acceptable' ? 'ACEITÁVEL' : 'ULTRAJANTE'
+          }. Como consequência, a IA injetou volatilidade: permissões subsequentes enfraquecem regras universais.`
+        : `You judged the previous symmetric act as ${verdictCapitalized.toUpperCase()}. The compiler injected volatility: subsequent tolerances weaken universal resilience.`
     }
     return undefined
-  }, [currentIndex, judgmentSequence, answers, i18n.language])
-
-  // Simple clean fallback complications since LLM could omit complication messages
-  function languageNeutralComplication(choice: string, lang: string) {
-    const isPt = lang === 'pt-BR'
-    return isPt
-      ? `Você julgou o ato simétrico anterior como ${choice === 'Acceptable' ? 'ACEITÁVEL' : 'ULTRAJANTE'}. Como consequência de sua consistência prévia, a IA injetou volatilidade: subsequentes permissões enfraquecem regras sistêmicas universais.`
-      : `You judged the previous symmetric act as ${choice.toUpperCase()}. In response, the compiler injected volatility: subsequent tolerances weaken universal systemic resilience.`
-  }
+  }, [currentIndex, judgmentSequence, answers, isPt])
 
   const activeAntiGamingWarning = useMemo(() => {
     if (currentIndex < 3) return undefined
-
     const lastThree = judgmentSequence
       .slice(currentIndex - 3, currentIndex)
       .map((item) => answers[item.id])
     const allAcceptable = lastThree.every((val) => val === 'ACCEPTABLE')
     const allOutrageous = lastThree.every((val) => val === 'OUTRAGEOUS')
-
     if (allAcceptable) return t('judge.antiGamingAcceptable')
     if (allOutrageous) return t('judge.antiGamingOutrageous')
-
     return undefined
   }, [currentIndex, judgmentSequence, answers, t])
+
+  const backendChip = backend ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-cyan-500/5 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
+      <Zap size={11} />
+      {backend === 'webgpu' ? t('aiScreen.backendWebGPU') : t('aiScreen.backendWASM')}
+    </span>
+  ) : null
 
   return (
     <div className="flex-1 bg-[#0a0c10] text-slate-100 flex flex-col justify-start">
       {/* State A: Setup */}
       {screenState === 'setup' && (
         <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 sm:px-6 md:py-12">
-          {/* Header */}
           <div className="flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
               <Sparkles size={20} />
             </span>
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-black md:text-3xl text-white tracking-tight">
                 {t('aiScreen.title')}
               </h1>
@@ -273,6 +324,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 {t('aiScreen.subtitle')}
               </p>
             </div>
+            {backendChip}
           </div>
 
           <p className="mt-5 text-sm text-slate-400 leading-relaxed max-w-3xl">
@@ -285,9 +337,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
             </div>
           )}
 
-          {/* Form */}
           <div className="mt-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)] gap-6 xl:gap-8 items-start">
-            {/* Left Column: Core Setup */}
             <div className="bg-[#111320] border border-[#21262d] p-5 sm:p-6 rounded-lg space-y-6 shadow-xl">
               <div>
                 <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 flex items-center gap-1.5 uppercase tracking-wider">
@@ -296,7 +346,10 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 </label>
                 <select
                   value={selectedCountry}
-                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedCountry(e.target.value)
+                    scheduleWarmup()
+                  }}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
                   {SUPPORTED_COUNTRIES.map((c) => (
@@ -321,12 +374,12 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                       key={p.id}
                       type="button"
                       onClick={() => {
+                        scheduleWarmup()
                         const nextSelectedIds = selectedPrinciples.includes(p.id)
                           ? selectedPrinciples.length === 1
                             ? selectedPrinciples
                             : selectedPrinciples.filter((id) => id !== p.id)
                           : [...selectedPrinciples, p.id]
-
                         setSelectedPrincipleIds(nextSelectedIds)
                       }}
                       className={`flex items-center justify-between p-3.5 rounded-lg border text-left cursor-pointer transition ${
@@ -353,7 +406,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   {t('aiScreen.countLabel')}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[4, 6, 8].map((cases) => (
+                  {ALLOWED_COUNTS.map((cases) => (
                     <button
                       key={cases}
                       type="button"
@@ -376,9 +429,22 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                  {isPt ? 'Modelo' : 'Model'}
+                </label>
+                <select
+                  value={modelId}
+                  onChange={(e) => setModelId(e.target.value as ModelPresetId)}
+                  className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                >
+                  <option value="smollm2">SmolLM2-360M-Instruct (fast)</option>
+                  <option value="qwen25">Qwen2.5-0.5B-Instruct (quality)</option>
+                </select>
+              </div>
             </div>
 
-            {/* Right Column: Execution info */}
             <div className="flex flex-col gap-6 xl:sticky xl:top-6">
               <div className="bg-[#111320] border border-[#21262d] p-5 sm:p-6 rounded-lg space-y-4 shadow-xl">
                 <div className="flex items-center justify-between gap-4">
@@ -445,29 +511,55 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       {/* State B: Generating */}
       {screenState === 'generating' && (
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#03060c] border border-cyan-400/20 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,240,255,0.08)] flex flex-col h-[400px]">
+          <div className="w-full max-w-2xl bg-[#03060c] border border-cyan-400/20 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,240,255,0.08)] flex flex-col h-[460px]">
             <header className="border-b border-[#21262d] bg-cyan-400/5 px-4 py-3 flex items-center justify-between font-mono text-xs text-cyan-300 select-none">
               <span className="flex items-center gap-1.5 animate-pulse font-bold">
                 <Terminal size={14} />
                 {t('aiScreen.generatingTitle')}
               </span>
-              <span className="text-slate-500">v2026.3.2 // active</span>
+              <div className="flex items-center gap-2">
+                {backendChip}
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="inline-flex items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-red-300 hover:bg-red-500/20 transition cursor-pointer"
+                >
+                  <X size={11} />
+                  {t('aiScreen.cancel')}
+                </button>
+              </div>
             </header>
+            <div className="border-b border-[#21262d] bg-[#010409] px-4 py-2">
+              <div className="h-1 w-full overflow-hidden rounded bg-slate-800">
+                <div
+                  className="h-full bg-cyan-400 transition-all"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-500">
+                <span className="uppercase tracking-wider">{progress.phase}</span>
+                <span>{progress.percent}%</span>
+              </div>
+            </div>
             <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-xs leading-relaxed space-y-1 bg-[#010409]">
               {generationLogs.map((log, idx) => (
                 <div key={idx} className="flex gap-2">
                   <span className="text-cyan-500/60 font-bold select-none">[v]</span>
-                  <span
-                    className={
-                      log && typeof log === 'string' && log.startsWith('//')
-                        ? 'text-slate-500'
-                        : 'text-slate-300'
-                    }
-                  >
+                  <span className={log.startsWith('//') ? 'text-slate-500' : 'text-slate-300'}>
                     {log}
                   </span>
                 </div>
               ))}
+              {streamedText && (
+                <div className="mt-2 border-t border-slate-800 pt-2">
+                  <div className="text-cyan-500/60 font-bold text-[10px] uppercase tracking-wider">
+                    live token stream
+                  </div>
+                  <pre className="mt-1 whitespace-pre-wrap break-words text-[11px] text-emerald-300/80">
+                    {streamedText}
+                  </pre>
+                </div>
+              )}
               <div className="flex items-center gap-1.5 text-cyan-400 mt-2 animate-pulse font-bold select-none">
                 <span className="inline-block h-3 w-1.5 bg-cyan-400 animate-[bootCursor_900ms_step-end_infinite]" />
                 <span>{t('aiScreen.compilingIndicator')}</span>
@@ -485,7 +577,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
                 <CheckCircle2 size={20} />
               </span>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl font-black md:text-3xl text-white tracking-tight">
                   {t('aiScreen.resultsTitle')}
                 </h1>
@@ -494,11 +586,18 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   / {selectedPrinciples.join(' + ').toUpperCase()}
                 </p>
               </div>
+              {backendChip}
             </div>
 
             <p className="mt-4 text-sm text-slate-400 leading-relaxed">
               {t('aiScreen.resultsDesc')}
             </p>
+
+            {scenarios.length < scenarioCount && (
+              <div className="mt-4 border border-amber-500/30 bg-amber-500/5 px-4 py-3 rounded text-xs font-mono text-amber-300">
+                {t('aiScreen.partialResult', { got: scenarios.length, want: scenarioCount })}
+              </div>
+            )}
 
             <div className="mt-8 space-y-4">
               {scenarios.map((s) => (
@@ -562,7 +661,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
         </div>
       )}
 
-      {/* State D: Play gauntlet (JudgingStep) */}
+      {/* State D: Play gauntlet */}
       {screenState === 'judging' && (
         <JudgingStep
           item={judgmentSequence[currentIndex]}
@@ -577,7 +676,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
         />
       )}
 
-      {/* State E: Results (SessionResultStep) */}
+      {/* State E: Results */}
       {screenState === 'results' && sessionResult && (
         <SessionResultStep
           session={sessionResult}
