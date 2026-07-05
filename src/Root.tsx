@@ -13,6 +13,24 @@ import {
 
 const AIPage = lazy(() => import('./pages/AIPage.tsx'))
 
+function shouldAutoWarmup(): boolean {
+  if (typeof window === 'undefined') return false
+
+  const params = new URLSearchParams(window.location.search)
+  const warmupOverride = params.get('aiWarmup')
+  if (warmupOverride === 'false') return false
+  if (warmupOverride === 'true') return true
+
+  const ua = navigator.userAgent
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(ua)
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
+  const cores = navigator.hardwareConcurrency ?? 4
+
+  // iOS browsers and low-resource devices are prone to tab eviction during
+  // background model warmup. Keep startup lightweight and warm only on demand.
+  return !isAppleMobile && mem > 4 && cores > 4
+}
+
 export function Root() {
   const [boot, setBoot] = useState(() => {
     return new URLSearchParams(window.location.search).get('boot') === 'false'
@@ -20,6 +38,7 @@ export function Root() {
 
   useEffect(() => {
     if (boot) return
+    if (!shouldAutoWarmup()) return
 
     const queryModel = new URLSearchParams(window.location.search).get('model')
     const modelId: ModelPresetId =

@@ -20,6 +20,9 @@ export type Backend = 'webgpu' | 'wasm'
 export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating' | 'done'
 export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
 
+const MOBILE_SAFE_MODEL_ID: ModelPresetId = 'smollm135'
+const MOBILE_SAFE_MAX_SCENARIOS = 2
+
 export interface GenerationProgress {
   phase: GenerationPhase
   percent: number
@@ -27,6 +30,40 @@ export interface GenerationProgress {
   uiStage?: GenerationUiStage
   itemsCompleted?: number
   itemsTotal?: number
+}
+
+type DeviceProfile = {
+  isMobile: boolean
+  isAppleMobile: boolean
+  mem: number
+  cores: number
+}
+
+function getDeviceProfile(): DeviceProfile {
+  const userAgent = navigator.userAgent
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent)
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(userAgent)
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
+  const cores = navigator.hardwareConcurrency ?? 4
+  return { isMobile, isAppleMobile, mem, cores }
+}
+
+export function isMobileSafeAIMode(): boolean {
+  const profile = getDeviceProfile()
+  return profile.isMobile || profile.mem <= 4 || profile.cores <= 4
+}
+
+export function resolveSafeModelId(requested?: ModelPresetId): ModelPresetId {
+  if (isMobileSafeAIMode()) return MOBILE_SAFE_MODEL_ID
+  return requested ?? 'smollm2'
+}
+
+export function resolveSafeScenarioCount(requestedCount: number): number {
+  const bounded = Math.max(1, Math.floor(requestedCount))
+  if (isMobileSafeAIMode()) {
+    return Math.min(MOBILE_SAFE_MAX_SCENARIOS, bounded)
+  }
+  return bounded
 }
 
 const FAST_MODE = true
@@ -78,6 +115,12 @@ export interface AIScenarioGeneratorConfig {
 export async function detectBackend(
   modelId?: ModelPresetId
 ): Promise<{ device: Backend; dtype: string }> {
+  const profile = getDeviceProfile()
+  if (profile.isAppleMobile || isMobileSafeAIMode()) {
+    debugLog('detectBackend -> forced wasm (mobile-safe mode)', { modelId, dtype: 'q4' })
+    return { device: 'wasm', dtype: 'q4' }
+  }
+
   const gpu = (navigator as Navigator & { gpu?: { requestAdapter: () => Promise<unknown> } }).gpu
   if (gpu) {
     try {
@@ -98,10 +141,7 @@ export async function detectBackend(
 }
 
 export function suggestDefaultModelId(): ModelPresetId {
-  const userAgent = navigator.userAgent
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent)
-  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
-  const cores = navigator.hardwareConcurrency ?? 4
+  const { isMobile, mem, cores } = getDeviceProfile()
 
   if (isMobile || mem <= 4 || cores <= 4) return 'smollm135'
   if (mem <= 8 || cores <= 8) return 'smollm2'
@@ -930,12 +970,15 @@ export async function generateAIScenarios(
 ): Promise<ScenarioPreset[]> {
   const { countryCode, language, principleIds, count, signal, onProgress, onToken } = config
   const activePrincipleIds = principleIds.length > 0 ? principleIds : ['equality']
-  const selectedModelId = config.model ?? 'smollm2'
+  const selectedModelId = resolveSafeModelId(config.model)
+  const generationCount = resolveSafeScenarioCount(count)
   debugLog('generateAIScenarios start', {
     modelId: selectedModelId,
     countryCode,
     language,
-    count,
+    count: generationCount,
+    requestedCount: count,
+    mobileSafeMode: isMobileSafeAIMode(),
     principleIds: activePrincipleIds,
   })
 
@@ -952,13 +995,13 @@ export async function generateAIScenarios(
     onProgress?.({
       phase: 'generating',
       percent: runtime.progressStart,
-      label: runtime.label ?? `Synthesizing ${count} scenarios one at a time...`,
+      label: runtime.label ?? `Synthesizing ${generationCount} scenarios one at a time...`,
       uiStage: 'drafting',
       itemsCompleted: 0,
-      itemsTotal: count,
+      itemsTotal: generationCount,
     })
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < generationCount; i++) {
       if (signal?.aborted) throw new Error('aborted')
       const principleId = activePrincipleIds[i % activePrincipleIds.length]
       let result: RawScenario | null = null
@@ -994,14 +1037,14 @@ export async function generateAIScenarios(
         onProgress?.({
           phase: 'generating',
           percent: toRangePercent(
-            Math.round((i / count) * 100),
+            Math.round((i / generationCount) * 100),
             runtime.progressStart,
             runtime.progressEnd
           ),
-          label: `Retrying scenario ${i + 1}/${count} at lower temperature...`,
+          label: `Retrying scenario ${i + 1}/${generationCount} at lower temperature...`,
           uiStage: 'refining',
           itemsCompleted: i,
-          itemsTotal: count,
+          itemsTotal: generationCount,
         })
       }
       if (runtimeDegraded) {
@@ -1011,14 +1054,14 @@ export async function generateAIScenarios(
       onProgress?.({
         phase: 'generating',
         percent: toRangePercent(
-          Math.round(((i + 1) / count) * 100),
+          Math.round(((i + 1) / generationCount) * 100),
           runtime.progressStart,
           runtime.progressEnd
         ),
-        label: `Generated ${raw.length}/${count} scenarios.`,
-        uiStage: i + 1 >= count ? 'finalizing' : 'drafting',
+        label: `Generated ${raw.length}/${generationCount} scenarios.`,
+        uiStage: i + 1 >= generationCount ? 'finalizing' : 'drafting',
         itemsCompleted: i + 1,
-        itemsTotal: count,
+        itemsTotal: generationCount,
       })
     }
 
@@ -1049,12 +1092,13 @@ export async function generateAIScenarios(
     runtimeDegraded,
   })
 
-  if (FAST_MODE && !runtimeDegraded && raw.length > 0 && raw.length < count) {
-    const missing = count - raw.length
+  if (FAST_MODE && !runtimeDegraded && raw.length > 0 && raw.length < generationCount) {
+    const missing = generationCount - raw.length
     debugLog('fast refill start', {
       runtime: `${healthyRuntime.device}:${healthyRuntime.dtype}`,
       generated: raw.length,
-      requested: count,
+      requested: generationCount,
+      requestedOriginal: count,
       missing,
     })
 
@@ -1064,11 +1108,15 @@ export async function generateAIScenarios(
       label: `Refining missing scenarios (${missing})...`,
       uiStage: 'refining',
       itemsCompleted: raw.length,
-      itemsTotal: count,
+      itemsTotal: generationCount,
     })
 
     const refillPrinciples = activePrincipleIds.length > 0 ? activePrincipleIds : ['equality']
-    for (let attempt = 0; attempt < FAST_MODE_REFILL_MAX_ATTEMPTS && raw.length < count; attempt++) {
+    for (
+      let attempt = 0;
+      attempt < FAST_MODE_REFILL_MAX_ATTEMPTS && raw.length < generationCount;
+      attempt++
+    ) {
       if (signal?.aborted) throw new Error('aborted')
       const principleId = refillPrinciples[(raw.length + attempt) % refillPrinciples.length]
       let refillResult: RawScenario | null
@@ -1097,19 +1145,19 @@ export async function generateAIScenarios(
         onProgress?.({
           phase: 'generating',
           percent: toRangePercent(
-            Math.round((raw.length / count) * 100),
+            Math.round((raw.length / generationCount) * 100),
             88,
             96
           ),
-          label: `Recovered ${raw.length}/${count} scenarios.`,
-          uiStage: raw.length >= count ? 'finalizing' : 'refining',
+          label: `Recovered ${raw.length}/${generationCount} scenarios.`,
+          uiStage: raw.length >= generationCount ? 'finalizing' : 'refining',
           itemsCompleted: raw.length,
-          itemsTotal: count,
+          itemsTotal: generationCount,
         })
       }
     }
 
-    debugLog('fast refill complete', { generated: raw.length, requested: count })
+    debugLog('fast refill complete', { generated: raw.length, requested: generationCount })
   }
 
   const shouldFallback =
@@ -1123,7 +1171,7 @@ export async function generateAIScenarios(
       label: 'Retrying with safer runtime...',
       uiStage: 'refining',
       itemsCompleted: 0,
-      itemsTotal: count,
+      itemsTotal: generationCount,
     })
 
     const fallbackRuntime = await ensureHealthyRuntime({
@@ -1155,15 +1203,15 @@ export async function generateAIScenarios(
   onProgress?.({
     phase: 'done',
     percent: 100,
-    label: `Generated ${raw.length}/${count}`,
+    label: `Generated ${raw.length}/${generationCount}`,
     uiStage: 'done',
     itemsCompleted: raw.length,
-    itemsTotal: count,
+    itemsTotal: generationCount,
   })
 
   const isPt = language === 'pt-BR'
   const now = Date.now()
-  const scenarios: ScenarioPreset[] = raw.slice(0, count).map((r, i) => {
+  const scenarios: ScenarioPreset[] = raw.slice(0, generationCount).map((r, i) => {
     const principleId = activePrincipleIds[i % activePrincipleIds.length]
     return {
       id: `ai-local-${now}-${i}`,
@@ -1198,6 +1246,10 @@ export async function generateAIScenarios(
       },
     }
   })
-  debugLog('generateAIScenarios finish', { returned: scenarios.length, requested: count })
+  debugLog('generateAIScenarios finish', {
+    returned: scenarios.length,
+    requested: generationCount,
+    requestedOriginal: count,
+  })
   return scenarios
 }

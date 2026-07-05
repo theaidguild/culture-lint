@@ -14,7 +14,10 @@ import {
   Zap,
 } from 'lucide-react'
 import {
+  isMobileSafeAIMode,
   MODEL_PRESETS,
+  resolveSafeModelId,
+  resolveSafeScenarioCount,
   SUPPORTED_COUNTRIES,
   type GenerationProgress,
   type GenerationUiStage,
@@ -81,6 +84,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
   const isPt = i18n.language === 'pt-BR'
   const [searchParams, setSearchParams] = useSearchParams()
+  const mobileSafeMode = useMemo(() => isMobileSafeAIMode(), [])
   const defaultModelId = useMemo(() => suggestDefaultModelId(), [])
 
   // Setup form state, hydrated from URL params (and pushed back on change).
@@ -92,14 +96,14 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     return fromUrl.length > 0 ? fromUrl : ['equality']
   })
   const [caseCount, setCaseCount] = useState<number>(() =>
-    parseCountParam(searchParams.get('count'))
+    resolveSafeScenarioCount(parseCountParam(searchParams.get('count')) / 2) * 2
   )
   const [modelId, setModelId] = useState<ModelPresetId>(() => {
     const fromUrl = searchParams.get('model')
     if (fromUrl && fromUrl in MODEL_PRESETS) {
-      return fromUrl as ModelPresetId
+      return resolveSafeModelId(fromUrl as ModelPresetId)
     }
-    return defaultModelId
+    return resolveSafeModelId(defaultModelId)
   })
 
   const [screenState, setScreenState] = useState<AIScreenState>('setup')
@@ -127,7 +131,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const activeGenerateRequestIdRef = useRef<string | null>(null)
   const activeWarmupRequestIdRef = useRef<string | null>(null)
 
-  const scenarioCount = Math.max(1, caseCount / 2)
+  const scenarioCount = resolveSafeScenarioCount(caseCount / 2)
 
   const selectedPrinciples = useMemo(() => {
     if (principles.length === 0) return []
@@ -167,6 +171,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   // so generation can reuse a known-good pipeline when the user starts.
   const scheduleWarmup = useCallback(
     (targetModelId: ModelPresetId = modelId) => {
+      if (mobileSafeMode) return
       if (warmedModelsRef.current.has(targetModelId)) return
       warmedModelsRef.current.add(targetModelId)
       const requestId = `warmup-${targetModelId}-${i18n.language}`
@@ -211,7 +216,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
           }
         })
     },
-    [i18n.language, isPt, modelId]
+    [i18n.language, isPt, mobileSafeMode, modelId]
   )
 
   useEffect(() => {
@@ -237,11 +242,11 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     })
 
     const { requestId, promise } = requestAIGenerate({
-      modelId,
+      modelId: resolveSafeModelId(modelId),
       countryCode: selectedCountry,
       language: i18n.language as 'en-US' | 'pt-BR',
       principleIds: selectedPrinciples,
-      count: scenarioCount,
+      count: resolveSafeScenarioCount(scenarioCount),
       onProgress: (nextProgress) => setProgress(nextProgress),
     })
     activeGenerateRequestIdRef.current = requestId
@@ -543,15 +548,20 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {ALLOWED_COUNTS.map((cases) => (
+                    (() => {
+                      const safeCases = resolveSafeScenarioCount(cases / 2) * 2
+                      const isDisabledForSafeMode = mobileSafeMode && safeCases !== cases
+                      return (
                     <button
                       key={cases}
                       type="button"
-                      onClick={() => setCaseCount(cases)}
+                      onClick={() => setCaseCount(safeCases)}
+                      disabled={isDisabledForSafeMode}
                       className={`min-h-24 rounded-lg border p-3 text-left font-mono transition ${
                         caseCount === cases
                           ? 'border-cyan-400 bg-cyan-950/30 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.12)]'
                           : 'border-[#21262d] bg-[#0c0f1c] text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                      }`}
+                      } ${isDisabledForSafeMode ? 'cursor-not-allowed opacity-45 hover:border-[#21262d] hover:text-slate-500' : ''}`}
                     >
                       <span className="block text-2xl font-black leading-none">{cases}</span>
                       <span className="mt-2 block text-[10px] uppercase tracking-[0.18em]">
@@ -562,6 +572,8 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                         {isPt ? 'julgamentos' : 'judgments'}
                       </span>
                     </button>
+                      )
+                    })()
                   ))}
                 </div>
               </div>
@@ -574,15 +586,24 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   value={modelId}
                   onChange={(e) => {
                     const nextModelId = e.target.value as ModelPresetId
-                    setModelId(nextModelId)
-                    scheduleWarmup(nextModelId)
+                    const safeModelId = resolveSafeModelId(nextModelId)
+                    setModelId(safeModelId)
+                    scheduleWarmup(safeModelId)
                   }}
+                  disabled={mobileSafeMode}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
                   <option value="smollm135">SmolLM2-135M-Instruct (mobile-safe)</option>
                   <option value="smollm2">SmolLM2-360M-Instruct (balanced)</option>
                   <option value="qwen25">Qwen2.5-0.5B-Instruct (quality)</option>
                 </select>
+                {mobileSafeMode && (
+                  <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono text-emerald-300">
+                    {isPt
+                      ? 'Modo seguro mobile ativo: modelo leve, runtime estavel e no maximo 4 casos por rodada.'
+                      : 'Mobile safe mode active: lightweight model, stable runtime, and up to 4 cases per run.'}
+                  </div>
+                )}
                 {isWarmupInProgress && warmupModelId === modelId && (
                   <div className="mt-2 space-y-2">
                     <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
