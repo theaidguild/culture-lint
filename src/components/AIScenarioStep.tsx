@@ -24,7 +24,14 @@ import {
   type ModelPresetId,
   suggestDefaultModelId,
 } from '../services/aiScenarioGenerator'
-import { cancelAIRequest, requestAIGenerate, requestAIWarmup } from '../services/aiWorkerClient'
+import {
+  cancelAIRequest,
+  readAIStatusSnapshot,
+  requestAIGenerate,
+  requestAIWarmup,
+  subscribeAIStatus,
+  type AIStatusSnapshot,
+} from '../services/aiWorkerClient'
 import {
   type InteractiveSessionRun,
   type JudgmentItem,
@@ -125,11 +132,18 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [sessionResult, setSessionResult] = useState<InteractiveSessionRun | null>(null)
+  const [aiStatus, setAIStatus] = useState<AIStatusSnapshot | null>(() => readAIStatusSnapshot())
 
   const analysisTimeoutRef = useRef<number | undefined>(undefined)
   const warmedModelsRef = useRef<Set<ModelPresetId>>(new Set())
   const activeGenerateRequestIdRef = useRef<string | null>(null)
   const activeWarmupRequestIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return subscribeAIStatus(() => {
+      setAIStatus(readAIStatusSnapshot())
+    })
+  }, [])
 
   const scenarioCount = resolveSafeScenarioCount(caseCount / 2)
 
@@ -286,6 +300,42 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     } finally {
       setIsCancelling(false)
       activeGenerateRequestIdRef.current = null
+    }
+  }
+
+  const handleCopyDiagnostics = async () => {
+    const report = {
+      url: window.location.href,
+      aiStatus,
+      device: {
+        userAgent: navigator.userAgent,
+        deviceMemory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
+        hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+        mobileSafeMode,
+      },
+      screenState,
+      selectedCountry,
+      selectedPrinciples,
+      caseCount,
+      modelId,
+      query: {
+        boot: new URLSearchParams(window.location.search).get('boot'),
+        aiWarmup: new URLSearchParams(window.location.search).get('aiWarmup'),
+        debug: new URLSearchParams(window.location.search).get('debug'),
+      },
+    }
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(report, null, 2))
+      setFeedbackMessage({
+        tone: 'info',
+        text: isPt ? 'Diagnóstico copiado para a área de transferência.' : 'Diagnostics copied to clipboard.',
+      })
+    } catch {
+      setFeedbackMessage({
+        tone: 'error',
+        text: isPt ? 'Não foi possível copiar o diagnóstico.' : 'Could not copy diagnostics.',
+      })
     }
   }
 
@@ -668,6 +718,72 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 <div className="flex gap-3 text-amber-400/90 text-xs font-mono bg-slate-900 border border-[#21262d] p-3 rounded-lg">
                   <Flame size={16} className="shrink-0 animate-pulse" />
                   <p className="leading-relaxed text-[11px]">{t('aiScreen.unreleasedWarning')}</p>
+                </div>
+
+                <div className="rounded-lg border border-cyan-400/20 bg-cyan-950/10 p-4 shadow-[0_0_24px_rgba(0,240,255,0.06)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/80">
+                        AI loading monitor
+                      </p>
+                      <h3 className="mt-1 text-sm font-black text-white tracking-tight">
+                        {aiStatus?.kind === 'warmup'
+                          ? isPt
+                            ? 'Modelo em carregamento'
+                            : 'Model loading'
+                          : aiStatus?.kind === 'generate'
+                            ? isPt
+                              ? 'Geração em andamento'
+                              : 'Generation in progress'
+                            : isPt
+                              ? 'Pronto para iniciar'
+                              : 'Ready to start'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyDiagnostics}
+                      className="shrink-0 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200 transition hover:border-cyan-300 hover:bg-cyan-400/20"
+                    >
+                      {isPt ? 'Copiar' : 'Copy'}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300 sm:grid-cols-4">
+                    <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">Model</div>
+                      <div className="mt-1 truncate text-cyan-200">{aiStatus?.modelId ?? modelId}</div>
+                    </div>
+                    <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">Status</div>
+                      <div className="mt-1 truncate text-cyan-200">{aiStatus?.phase ?? 'idle'}</div>
+                    </div>
+                    <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">Progress</div>
+                      <div className="mt-1 truncate text-cyan-200">{aiStatus?.percent ?? 0}%</div>
+                    </div>
+                    <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">Safe mode</div>
+                      <div className="mt-1 truncate text-cyan-200">{mobileSafeMode ? 'on' : 'off'}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded border border-cyan-400/15 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
+                    {aiStatus?.label ||
+                      (mobileSafeMode
+                        ? isPt
+                          ? 'Modo seguro ativo: o app não faz aquecimento automático em mobile.'
+                          : 'Safe mode active: the app skips automatic warmup on mobile.'
+                        : isPt
+                          ? 'Sem atividade no momento.'
+                          : 'No active AI work right now.')}
+                  </div>
+
+                  {aiStatus?.message && (
+                    <div className="mt-2 rounded border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+                      {aiStatus.message}
+                    </div>
+                  )}
                 </div>
               </div>
 
