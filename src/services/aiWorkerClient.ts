@@ -19,6 +19,7 @@ const AI_STATUS_EVENT = 'culture-lint-ai-status'
 
 type PendingRequest = {
   type: 'warmup' | 'generate'
+  modelId: ModelPresetId
   resolve: (value?: unknown) => void
   reject: (reason?: unknown) => void
   onProgress?: (progress: GenerationProgress) => void
@@ -119,6 +120,7 @@ function getWorker() {
         setAIStatus({
           kind: 'warmup',
           requestId: message.requestId,
+          modelId: pending.modelId,
           phase: message.progress.phase,
           percent: message.progress.percent,
           label: message.progress.label,
@@ -127,6 +129,7 @@ function getWorker() {
         setAIStatus({
           kind: 'generate',
           requestId: message.requestId,
+          modelId: pending.modelId,
           phase: message.progress.phase,
           percent: message.progress.percent,
           label: message.progress.label,
@@ -216,6 +219,7 @@ export function requestAIWarmup(params: {
       },
       {
         type: 'warmup',
+        modelId: params.modelId,
         onProgress: (progress) => {
           setAIStatus({
             kind: 'warmup',
@@ -280,6 +284,7 @@ export function requestAIGenerate(params: GenerateParams): {
       },
       {
         type: 'generate',
+        modelId: params.modelId,
         resolve: (value) => {
           setAIStatus({ kind: 'idle', requestId, modelId: params.modelId })
           resolve((value ?? []) as ScenarioPreset[])

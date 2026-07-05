@@ -72,6 +72,11 @@ const GENERATION_MAX_NEW_TOKENS = FAST_MODE ? 224 : 384
 const GENERATION_TEMPERATURES = FAST_MODE ? [0.7] : [0.7, 0.6, 0.5]
 const ENABLE_FALLBACK_ON_EMPTY = !FAST_MODE
 const FAST_MODE_REFILL_MAX_ATTEMPTS = 2
+const MOBILE_HEALTHCHECK_MAX_NEW_TOKENS = 8
+const MOBILE_GENERATION_MAX_NEW_TOKENS = 96
+const MOBILE_GENERATION_TEMPERATURES = [0.65]
+const MOBILE_FAST_REFILL_MAX_ATTEMPTS = 1
+const MOBILE_STREAM_BUFFER_LIMIT = 1024
 
 interface RuntimeSelection {
   device: Backend
@@ -637,9 +642,12 @@ async function runHealthCheck(config: {
   language: 'en-US' | 'pt-BR'
   signal?: AbortSignal
 }): Promise<boolean> {
+  const mobileSafeMode = isMobileSafeAIMode()
   const prompt = buildHealthMessages(config.language)
   const output = await config.handle(prompt, {
-    max_new_tokens: HEALTHCHECK_MAX_NEW_TOKENS,
+    max_new_tokens: mobileSafeMode
+      ? MOBILE_HEALTHCHECK_MAX_NEW_TOKENS
+      : HEALTHCHECK_MAX_NEW_TOKENS,
     do_sample: false,
     top_p: 1,
     repetition_penalty: 1,
@@ -869,6 +877,7 @@ async function runGeneration(config: {
   signal?: AbortSignal
   onToken?: (chunk: string) => void
 }): Promise<RawScenario | null> {
+  const mobileSafeMode = isMobileSafeAIMode()
   const { TextStreamer } = await import('@huggingface/transformers')
 
   const messages = buildMessages({
@@ -887,6 +896,9 @@ async function runGeneration(config: {
       skip_special_tokens: true,
       callback_function: (text: string) => {
         streamed += text
+        if (mobileSafeMode && streamed.length > MOBILE_STREAM_BUFFER_LIMIT) {
+          streamed = streamed.slice(-MOBILE_STREAM_BUFFER_LIMIT)
+        }
         if (config.signal?.aborted) return
         config.onToken?.(text)
       },
@@ -894,7 +906,7 @@ async function runGeneration(config: {
   )
 
   const output = await config.handle(messages, {
-    max_new_tokens: GENERATION_MAX_NEW_TOKENS,
+    max_new_tokens: mobileSafeMode ? MOBILE_GENERATION_MAX_NEW_TOKENS : GENERATION_MAX_NEW_TOKENS,
     do_sample: true,
     temperature: config.temperature,
     top_p: 0.9,
@@ -970,15 +982,22 @@ export async function generateAIScenarios(
 ): Promise<ScenarioPreset[]> {
   const { countryCode, language, principleIds, count, signal, onProgress, onToken } = config
   const activePrincipleIds = principleIds.length > 0 ? principleIds : ['equality']
+  const mobileSafeMode = isMobileSafeAIMode()
   const selectedModelId = resolveSafeModelId(config.model)
   const generationCount = resolveSafeScenarioCount(count)
+  const generationTemperatures = mobileSafeMode
+    ? MOBILE_GENERATION_TEMPERATURES
+    : GENERATION_TEMPERATURES
+  const refillAttempts = mobileSafeMode
+    ? MOBILE_FAST_REFILL_MAX_ATTEMPTS
+    : FAST_MODE_REFILL_MAX_ATTEMPTS
   debugLog('generateAIScenarios start', {
     modelId: selectedModelId,
     countryCode,
     language,
     count: generationCount,
     requestedCount: count,
-    mobileSafeMode: isMobileSafeAIMode(),
+    mobileSafeMode,
     principleIds: activePrincipleIds,
   })
 
@@ -989,7 +1008,7 @@ export async function generateAIScenarios(
     label?: string
   }) => {
     const raw: RawScenario[] = []
-    const temperatures = GENERATION_TEMPERATURES
+    const temperatures = generationTemperatures
     let runtimeDegraded = false
 
     onProgress?.({
@@ -1112,11 +1131,7 @@ export async function generateAIScenarios(
     })
 
     const refillPrinciples = activePrincipleIds.length > 0 ? activePrincipleIds : ['equality']
-    for (
-      let attempt = 0;
-      attempt < FAST_MODE_REFILL_MAX_ATTEMPTS && raw.length < generationCount;
-      attempt++
-    ) {
+    for (let attempt = 0; attempt < refillAttempts && raw.length < generationCount; attempt++) {
       if (signal?.aborted) throw new Error('aborted')
       const principleId = refillPrinciples[(raw.length + attempt) % refillPrinciples.length]
       let refillResult: RawScenario | null
@@ -1128,7 +1143,7 @@ export async function generateAIScenarios(
           principleId,
           index: raw.length,
           avoidTitles: raw.map((r) => r.title),
-          temperature: GENERATION_TEMPERATURES[0],
+          temperature: generationTemperatures[0],
           signal,
           onToken,
         })
