@@ -47,7 +47,10 @@ const enUS = {
       generatingLog2: 'Extracting historical regional biases...',
       generatingLog3: 'Synthesizing symmetrical, mirrored case studies...',
       generatingLog4: 'Assembling cross-partisan judgment gauntlet...',
-      generationFailed: 'AI compilation failed. Check your API key or network connection.',
+      generationFailed:
+        'We could not finish creating this scenario set just now. Adjust the selection and try again.',
+      generationCanceled:
+        'Scenario creation was stopped. You can adjust your selection and try again when ready.',
       tryAgain: 'RETRY GENERATION',
       resultsTitle: 'Generated Gauntlet Ready',
       resultsDesc:
@@ -59,10 +62,40 @@ const enUS = {
       allyEventLabel: 'ALLY EVENT (B):',
       compilingIndicator: 'compiling compilation-tree...',
       cancel: 'ABORT',
+      canceling: 'CANCELING',
       backendWebGPU: 'WebGPU · q4f16',
       backendWASM: 'WASM · q4',
       partialResult: 'Generated {{got}} of {{want}}. Retry?',
       warmup: 'Warming inference kernels in background...',
+      progressEyebrow: 'Scenario creation in progress',
+      progressCurrentLabel: 'Current update',
+      progressRoadmapLabel: 'Creation roadmap',
+      progressHint: 'Preparing a balanced set of scenarios for your session.',
+      progressFirstRunHint:
+        'The first run can take a little longer. After that, the experience is usually much faster.',
+      progressTitlePreparing: 'Setting up the right context for your scenarios',
+      progressBodyPreparing:
+        'We are aligning the creation environment so the situations fit the selected country and principles.',
+      progressTitleDrafting: 'Writing the mirrored cases for this round',
+      progressBodyDrafting:
+        'The AI is building paired situations so the final test compares equivalent acts with clean structure.',
+      progressTitleRefining: 'Polishing one scenario before moving on',
+      progressBodyRefining:
+        'We are tightening one case so the final set stays readable, consistent, and useful for judgment.',
+      progressTitleFinalizing: 'Reviewing the set before unlocking the round',
+      progressBodyFinalizing:
+        'We are gathering the final details now so the full sequence is ready to start.',
+      progressTitleCanceling: 'Stopping creation safely',
+      progressBodyCanceling:
+        'We are closing the current run and returning you to setup without leaving the session in an unclear state.',
+      progressCountDrafting: 'Scenario {{current}} of {{total}} in progress',
+      progressCountRefining: 'Refining scenario {{current}} of {{total}}',
+      progressStepPreparing: 'Prepare context',
+      progressStepDrafting: 'Write scenarios',
+      progressStepFinalizing: 'Review round',
+      progressStageComplete: 'Complete',
+      progressStageActive: 'In progress',
+      progressStagePending: 'Up next',
     },
     rank: {
       progress: 'STEP 1 OF 4',

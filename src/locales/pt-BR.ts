@@ -47,7 +47,10 @@ const ptBR = {
       generatingLog2: 'Extraindo vieses regionais históricos...',
       generatingLog3: 'Sintetizando estudos de caso simétricos e espelhados...',
       generatingLog4: 'Montando o corredor de julgamentos moras...',
-      generationFailed: 'Falha na compilação da IA. Verifique sua chave de API ou conexão.',
+      generationFailed:
+        'Não foi possível concluir a criação dos cenários desta vez. Ajuste a seleção e tente novamente.',
+      generationCanceled:
+        'A criação dos cenários foi interrompida. Você pode ajustar a seleção e tentar novamente.',
       tryAgain: 'TENTAR NOVAMENTE',
       resultsTitle: 'Corredor de Testes Gerado',
       resultsDesc:
@@ -59,10 +62,40 @@ const ptBR = {
       allyEventLabel: 'EVENTO ALIADO (B):',
       compilingIndicator: 'compilando árvore de compilação...',
       cancel: 'ABORTAR',
+      canceling: 'CANCELANDO',
       backendWebGPU: 'WebGPU · q4f16',
       backendWASM: 'WASM · q4',
       partialResult: 'Gerados {{got}} de {{want}}. Tentar novamente?',
       warmup: 'Aquecendo kernels de inferência em segundo plano...',
+      progressEyebrow: 'Criação em andamento',
+      progressCurrentLabel: 'Atualização',
+      progressRoadmapLabel: 'Caminho da criação',
+      progressHint: 'Preparando uma sequência equilibrada para o seu teste.',
+      progressFirstRunHint:
+        'Na primeira vez, esse processo pode levar um pouco mais. Depois disso, a experiência tende a ficar mais rápida.',
+      progressTitlePreparing: 'Organizando o contexto certo para os cenários',
+      progressBodyPreparing:
+        'Estamos ajustando o ambiente de criação para produzir situações coerentes com o país e os princípios escolhidos.',
+      progressTitleDrafting: 'Escrevendo os casos espelhados da sua rodada',
+      progressBodyDrafting:
+        'A IA está montando situações paralelas para que o teste compare critérios equivalentes com clareza.',
+      progressTitleRefining: 'Lapidando um dos cenários antes de seguir',
+      progressBodyRefining:
+        'Estamos ajustando um caso para manter o resultado legível, consistente e útil para o julgamento final.',
+      progressTitleFinalizing: 'Revisando o conjunto antes de liberar a rodada',
+      progressBodyFinalizing:
+        'Agora juntamos os últimos detalhes para entregar uma sequência pronta para começar o teste.',
+      progressTitleCanceling: 'Interrompendo a criação com segurança',
+      progressBodyCanceling:
+        'Estamos encerrando a montagem atual para devolver você à configuração sem perder o controle da sessão.',
+      progressCountDrafting: 'Cenário {{current}} de {{total}} em preparação',
+      progressCountRefining: 'Ajustando o cenário {{current}} de {{total}}',
+      progressStepPreparing: 'Preparar contexto',
+      progressStepDrafting: 'Escrever cenários',
+      progressStepFinalizing: 'Revisar rodada',
+      progressStageComplete: 'Concluído',
+      progressStageActive: 'Em andamento',
+      progressStagePending: 'A seguir',
     },
     rank: {
       progress: 'ETAPA 1 DE 4',

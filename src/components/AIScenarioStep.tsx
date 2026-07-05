@@ -10,20 +10,16 @@ import {
   RotateCcw,
   Settings2,
   Sparkles,
-  Terminal,
   X,
   Zap,
 } from 'lucide-react'
 import {
-  detectBackend,
-  ensurePipeline,
-  generateAIScenarios,
-  MODEL_PRESETS,
   SUPPORTED_COUNTRIES,
-  type Backend,
   type GenerationProgress,
+  type GenerationUiStage,
   type ModelPresetId,
 } from '../services/aiScenarioGenerator'
+import type { AIWorkerResponse } from '../services/aiGeneratorWorkerProtocol'
 import {
   type InteractiveSessionRun,
   type JudgmentItem,
@@ -40,10 +36,28 @@ interface AIScenarioStepProps {
 }
 
 type AIScreenState = 'setup' | 'generating' | 'generated' | 'judging' | 'results'
+type FeedbackMessage = { tone: 'info' | 'error'; text: string }
+type PendingWorkerRequest = {
+  kind: 'warmup' | 'generate'
+  resolve: (value?: unknown) => void
+  reject: (reason?: unknown) => void
+}
 
 const DEFAULT_COUNTRY = 'BR'
 const DEFAULT_COUNT = 6
 const ALLOWED_COUNTS = [4, 6, 8] as const
+const GENERATION_STAGE_ORDER = ['preparing', 'drafting', 'finalizing'] as const
+const AI_DEBUG_PREFIX = '[ai-debug][ui]'
+
+function debugLog(message: string, meta?: Record<string, unknown>) {
+  if (meta) {
+    // eslint-disable-next-line no-console
+    console.debug(`${AI_DEBUG_PREFIX} ${message}`, meta)
+    return
+  }
+  // eslint-disable-next-line no-console
+  console.debug(`${AI_DEBUG_PREFIX} ${message}`)
+}
 
 const parsePrinciplesParam = (raw: string | null): string[] =>
   raw
@@ -56,6 +70,14 @@ const parsePrinciplesParam = (raw: string | null): string[] =>
 const parseCountParam = (raw: string | null): number => {
   const parsed = raw ? Number.parseInt(raw, 10) : NaN
   return (ALLOWED_COUNTS as readonly number[]).includes(parsed) ? parsed : DEFAULT_COUNT
+}
+
+const normalizeGenerationStage = (
+  stage?: GenerationUiStage
+): (typeof GENERATION_STAGE_ORDER)[number] => {
+  if (stage === 'drafting' || stage === 'refining') return 'drafting'
+  if (stage === 'finalizing' || stage === 'done') return 'finalizing'
+  return 'preparing'
 }
 
 export function AIScenarioStep({ principles }: AIScenarioStepProps) {
@@ -80,15 +102,16 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
   const [screenState, setScreenState] = useState<AIScreenState>('setup')
   const [scenarios, setScenarios] = useState<ScenarioPreset[]>([])
-  const [generationLogs, setGenerationLogs] = useState<string[]>([])
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [feedbackMessage, setFeedbackMessage] = useState<FeedbackMessage | null>(null)
   const [progress, setProgress] = useState<GenerationProgress>({
     phase: 'idle',
     percent: 0,
     label: '',
+    uiStage: 'preparing',
   })
-  const [streamedText, setStreamedText] = useState('')
-  const [backend, setBackend] = useState<Backend | null>(null)
+  const [isWarmupInProgress, setIsWarmupInProgress] = useState(false)
+  const [warmupModelId, setWarmupModelId] = useState<ModelPresetId | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   const [judgmentSequence, setJudgmentSequence] = useState<JudgmentItem[]>([])
   const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
@@ -96,9 +119,13 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [sessionResult, setSessionResult] = useState<InteractiveSessionRun | null>(null)
 
-  const abortRef = useRef<AbortController | null>(null)
   const analysisTimeoutRef = useRef<number | undefined>(undefined)
-  const hasWarmedUp = useRef(false)
+  const warmedModelsRef = useRef<Set<ModelPresetId>>(new Set())
+  const workerRef = useRef<Worker | null>(null)
+  const pendingRequestsRef = useRef<Map<string, PendingWorkerRequest>>(new Map())
+  const requestCounterRef = useRef(0)
+  const activeGenerateRequestIdRef = useRef<string | null>(null)
+  const activeWarmupRequestIdRef = useRef<string | null>(null)
 
   const scenarioCount = Math.max(1, caseCount / 2)
 
@@ -110,17 +137,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     if (validSelections.length > 0) return validSelections
     return [principles[0].id]
   }, [selectedPrincipleIds, principles])
-
-  // Detect backend once on mount so the UI can display a chip immediately.
-  useEffect(() => {
-    let cancelled = false
-    detectBackend(modelId).then((b) => {
-      if (!cancelled) setBackend(b.device)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [modelId])
 
   // Round-trip form state to the URL so the setup is deep-linkable.
   useEffect(() => {
@@ -140,64 +156,186 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   useEffect(() => {
     return () => {
       if (analysisTimeoutRef.current) window.clearTimeout(analysisTimeoutRef.current)
-      abortRef.current?.abort()
+      workerRef.current?.terminate()
+      workerRef.current = null
+      pendingRequestsRef.current.clear()
     }
   }, [])
 
-  // Warm-up the pipeline on first meaningful form interaction (not on mount)
-  // so that pressing Generate feels instantaneous when weights are ready.
-  const scheduleWarmup = useCallback(() => {
-    if (hasWarmedUp.current) return
-    hasWarmedUp.current = true
-    void (async () => {
-      const b = await detectBackend(modelId)
-      void ensurePipeline({
-        model: MODEL_PRESETS[modelId],
-        device: b.device,
-        dtype: b.dtype,
-      }).catch(() => {
-        // Silent — warmup is best-effort.
-        hasWarmedUp.current = false
+  const nextRequestId = useCallback(() => {
+    requestCounterRef.current += 1
+    const requestId = `ai-worker-${requestCounterRef.current}`
+    debugLog('next request id', { requestId })
+    return requestId
+  }, [])
+
+  const rejectPendingRequest = useCallback((requestId: string, message: string) => {
+    const pending = pendingRequestsRef.current.get(requestId)
+    if (!pending) return
+    pendingRequestsRef.current.delete(requestId)
+    pending.reject(new Error(message))
+  }, [])
+
+  const ensureWorker = useCallback(() => {
+    if (workerRef.current) {
+      return workerRef.current
+    }
+
+    const worker = new Worker(new URL('../workers/aiGenerator.worker.ts', import.meta.url), {
+      type: 'module',
+    })
+    debugLog('worker created')
+
+    worker.onmessage = (event: MessageEvent<AIWorkerResponse>) => {
+      const message = event.data
+      debugLog('worker message', {
+        type: message.type,
+        requestId: message.requestId,
       })
-    })()
-  }, [modelId])
+
+      if (message.type === 'progress') {
+        if (message.requestId === activeGenerateRequestIdRef.current) {
+          setProgress(message.progress)
+        }
+        return
+      }
+
+      const pending = pendingRequestsRef.current.get(message.requestId)
+      if (!pending) return
+
+      pendingRequestsRef.current.delete(message.requestId)
+
+      if (message.type === 'warmup-complete') {
+        pending.resolve()
+        return
+      }
+
+      if (message.type === 'generate-complete') {
+        activeGenerateRequestIdRef.current = null
+        pending.resolve(message.scenarios)
+        return
+      }
+
+      if (message.type === 'canceled') {
+        if (message.requestId === activeGenerateRequestIdRef.current) {
+          activeGenerateRequestIdRef.current = null
+        }
+        pending.reject(new Error('aborted'))
+        return
+      }
+
+      if (message.requestId === activeGenerateRequestIdRef.current) {
+        activeGenerateRequestIdRef.current = null
+      }
+      pending.reject(new Error(message.message))
+    }
+
+    worker.onerror = () => {
+      debugLog('worker runtime error')
+      const pendingEntries = [...pendingRequestsRef.current.values()]
+      pendingRequestsRef.current.clear()
+      activeGenerateRequestIdRef.current = null
+      worker.terminate()
+      workerRef.current = null
+      for (const pending of pendingEntries) {
+        pending.reject(new Error('worker-error'))
+      }
+    }
+
+    workerRef.current = worker
+    return worker
+  }, [])
+
+  // Warm up and validate the currently selected model runtime in the background
+  // so generation can reuse a known-good pipeline when the user starts.
+  const scheduleWarmup = useCallback((targetModelId: ModelPresetId = modelId) => {
+    if (warmedModelsRef.current.has(targetModelId)) return
+    warmedModelsRef.current.add(targetModelId)
+    const requestId = nextRequestId()
+    activeWarmupRequestIdRef.current = requestId
+    setWarmupModelId(targetModelId)
+    setIsWarmupInProgress(true)
+    debugLog('schedule warmup', {
+      requestId,
+      modelId: targetModelId,
+      language: i18n.language,
+    })
+
+    pendingRequestsRef.current.set(requestId, {
+      kind: 'warmup',
+      resolve: () => {
+        if (activeWarmupRequestIdRef.current === requestId) {
+          activeWarmupRequestIdRef.current = null
+          setIsWarmupInProgress(false)
+        }
+      },
+      reject: () => {
+        warmedModelsRef.current.delete(targetModelId)
+        if (activeWarmupRequestIdRef.current === requestId) {
+          activeWarmupRequestIdRef.current = null
+          setIsWarmupInProgress(false)
+        }
+      },
+    })
+
+    ensureWorker().postMessage({
+      type: 'warmup',
+      requestId,
+      modelId: targetModelId,
+      language: i18n.language as 'en-US' | 'pt-BR',
+    })
+  }, [ensureWorker, i18n.language, modelId, nextRequestId])
+
+  useEffect(() => {
+    const warmupId = window.setTimeout(() => {
+      scheduleWarmup(modelId)
+    }, 250)
+
+    return () => window.clearTimeout(warmupId)
+  }, [modelId, scheduleWarmup])
 
   const handleGenerate = async () => {
     setScreenState('generating')
-    setErrorMessage(null)
+    setFeedbackMessage(null)
     setScenarios([])
-    setStreamedText('')
-    setGenerationLogs([
-      t('aiScreen.generatingLog1'),
-      t('aiScreen.generatingLog2'),
-      t('aiScreen.generatingLog3'),
-      t('aiScreen.generatingLog4'),
-    ])
+    setIsCancelling(false)
+    setProgress({
+      phase: 'idle',
+      percent: 0,
+      label: '',
+      uiStage: 'preparing',
+      itemsCompleted: 0,
+      itemsTotal: scenarioCount,
+    })
 
-    const controller = new AbortController()
-    abortRef.current = controller
+    const requestId = nextRequestId()
+    activeGenerateRequestIdRef.current = requestId
+    debugLog('generate requested', {
+      requestId,
+      modelId,
+      countryCode: selectedCountry,
+      count: scenarioCount,
+      principleIds: selectedPrinciples,
+    })
 
     try {
-      const generated = await generateAIScenarios({
-        countryCode: selectedCountry,
-        language: i18n.language as 'en-US' | 'pt-BR',
-        principleIds: selectedPrinciples,
-        count: scenarioCount,
-        model: modelId,
-        signal: controller.signal,
-        onProgress: (p) => {
-          setProgress(p)
-          setGenerationLogs((prev) => [
-            ...prev,
-            `[${p.phase.toUpperCase()} ${p.percent}%] ${p.label}`,
-          ])
-        },
-        onToken: (chunk) => {
-          setStreamedText((prev) => prev + chunk)
-        },
-      })
+      const generated = await new Promise<ScenarioPreset[]>((resolve, reject) => {
+        pendingRequestsRef.current.set(requestId, {
+          kind: 'generate',
+          resolve: (value) => resolve((value ?? []) as ScenarioPreset[]),
+          reject,
+        })
 
-      if (controller.signal.aborted) return
+        ensureWorker().postMessage({
+          type: 'generate',
+          requestId,
+          modelId,
+          countryCode: selectedCountry,
+          language: i18n.language as 'en-US' | 'pt-BR',
+          principleIds: selectedPrinciples,
+          count: scenarioCount,
+        })
+      })
 
       if (generated.length === 0) {
         throw new Error('No scenarios could be generated.')
@@ -205,22 +343,40 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
       setScenarios(generated)
       setScreenState('generated')
+      debugLog('generate resolved', { requestId, scenarios: generated.length })
     } catch (err: unknown) {
-      if (controller.signal.aborted) {
+      if (err instanceof Error && err.message === 'aborted') {
+        debugLog('generate aborted', { requestId })
+        setIsCancelling(false)
+        setFeedbackMessage({ tone: 'info', text: t('aiScreen.generationCanceled') })
         setScreenState('setup')
         return
       }
+      debugLog('generate failed', {
+        requestId,
+        message: err instanceof Error ? err.message : String(err),
+      })
       console.error(err)
-      const errMsg = err instanceof Error ? err.message : String(err)
-      setErrorMessage(errMsg || t('aiScreen.generationFailed'))
+      setFeedbackMessage({ tone: 'error', text: t('aiScreen.generationFailed') })
       setScreenState('setup')
     } finally {
-      abortRef.current = null
+      setIsCancelling(false)
+      activeGenerateRequestIdRef.current = null
     }
   }
 
   const handleCancel = () => {
-    abortRef.current?.abort()
+    setIsCancelling(true)
+    const requestId = activeGenerateRequestIdRef.current
+    if (!requestId) return
+
+    debugLog('cancel requested', { requestId })
+
+    workerRef.current?.postMessage({ type: 'cancel', requestId })
+    workerRef.current?.terminate()
+    workerRef.current = null
+    rejectPendingRequest(requestId, 'aborted')
+    activeGenerateRequestIdRef.current = null
   }
 
   const handleStartJudging = () => {
@@ -300,12 +456,73 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     return undefined
   }, [currentIndex, judgmentSequence, answers, t])
 
-  const backendChip = backend ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-cyan-500/5 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
-      <Zap size={11} />
-      {backend === 'webgpu' ? t('aiScreen.backendWebGPU') : t('aiScreen.backendWASM')}
-    </span>
-  ) : null
+  const normalizedGenerationStage = normalizeGenerationStage(progress.uiStage)
+
+  const generationStageCards = useMemo(() => {
+    const activeIndex = GENERATION_STAGE_ORDER.indexOf(normalizedGenerationStage)
+    return GENERATION_STAGE_ORDER.map((stage, index) => ({
+      stage,
+      label: t(`aiScreen.progressStep${stage.charAt(0).toUpperCase()}${stage.slice(1)}`),
+      status: index < activeIndex ? 'complete' : index === activeIndex ? 'active' : 'pending',
+    }))
+  }, [normalizedGenerationStage, t])
+
+  const generationCopy = useMemo(() => {
+    const inFlightScenario = Math.min(
+      scenarioCount,
+      Math.max(1, (progress.itemsCompleted ?? 0) + (progress.uiStage === 'drafting' ? 1 : 0))
+    )
+
+    if (isCancelling) {
+      return {
+        title: t('aiScreen.progressTitleCanceling'),
+        description: t('aiScreen.progressBodyCanceling'),
+        detail: t('aiScreen.progressHint'),
+      }
+    }
+
+    switch (progress.uiStage) {
+      case 'drafting':
+        return {
+          title: t('aiScreen.progressTitleDrafting'),
+          description: t('aiScreen.progressBodyDrafting'),
+          detail: t('aiScreen.progressCountDrafting', {
+            current: inFlightScenario,
+            total: progress.itemsTotal ?? scenarioCount,
+          }),
+        }
+      case 'refining':
+        return {
+          title: t('aiScreen.progressTitleRefining'),
+          description: t('aiScreen.progressBodyRefining'),
+          detail: t('aiScreen.progressCountRefining', {
+            current: Math.min(scenarioCount, (progress.itemsCompleted ?? 0) + 1),
+            total: progress.itemsTotal ?? scenarioCount,
+          }),
+        }
+      case 'finalizing':
+      case 'done':
+        return {
+          title: t('aiScreen.progressTitleFinalizing'),
+          description: t('aiScreen.progressBodyFinalizing'),
+          detail: t('aiScreen.progressHint'),
+        }
+      case 'preparing':
+      default:
+        return {
+          title: t('aiScreen.progressTitlePreparing'),
+          description: t('aiScreen.progressBodyPreparing'),
+          detail: t('aiScreen.progressHint'),
+        }
+    }
+  }, [
+    isCancelling,
+    progress.itemsCompleted,
+    progress.itemsTotal,
+    progress.uiStage,
+    scenarioCount,
+    t,
+  ])
 
   return (
     <div className="flex-1 bg-[#0a0c10] text-slate-100 flex flex-col justify-start">
@@ -324,16 +541,21 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 {t('aiScreen.subtitle')}
               </p>
             </div>
-            {backendChip}
           </div>
 
           <p className="mt-5 text-sm text-slate-400 leading-relaxed max-w-3xl">
             {t('aiScreen.description')}
           </p>
 
-          {errorMessage && (
-            <div className="mt-6 border border-red-500/30 bg-red-500/5 px-4 py-3 rounded text-xs font-mono text-red-400">
-              {errorMessage}
+          {feedbackMessage && (
+            <div
+              className={`mt-6 rounded border px-4 py-3 text-xs font-mono ${
+                feedbackMessage.tone === 'error'
+                  ? 'border-red-500/30 bg-red-500/5 text-red-400'
+                  : 'border-cyan-400/30 bg-cyan-500/5 text-cyan-300'
+              }`}
+            >
+              {feedbackMessage.text}
             </div>
           )}
 
@@ -348,7 +570,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   value={selectedCountry}
                   onChange={(e) => {
                     setSelectedCountry(e.target.value)
-                    scheduleWarmup()
                   }}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
@@ -374,7 +595,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                       key={p.id}
                       type="button"
                       onClick={() => {
-                        scheduleWarmup()
                         const nextSelectedIds = selectedPrinciples.includes(p.id)
                           ? selectedPrinciples.length === 1
                             ? selectedPrinciples
@@ -436,12 +656,22 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 </label>
                 <select
                   value={modelId}
-                  onChange={(e) => setModelId(e.target.value as ModelPresetId)}
+                  onChange={(e) => {
+                    const nextModelId = e.target.value as ModelPresetId
+                    setModelId(nextModelId)
+                    scheduleWarmup(nextModelId)
+                  }}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
                   <option value="smollm2">SmolLM2-360M-Instruct (fast)</option>
                   <option value="qwen25">Qwen2.5-0.5B-Instruct (quality)</option>
                 </select>
+                {isWarmupInProgress && warmupModelId === modelId && (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                    <span className="inline-block h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
+                    {isPt ? 'Aquecendo modelo' : 'Warming model'}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -498,10 +728,15 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
               <button
                 type="button"
                 onClick={handleGenerate}
-                className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-cyan-400 text-[#071018] font-mono text-xs font-black py-4 select-none cursor-pointer transition duration-300 transform hover:-translate-y-0.5 shadow-[0_0_30px_rgba(34,211,238,0.25)] hover:bg-cyan-300 animate-pulse"
+                disabled={isWarmupInProgress && warmupModelId === modelId}
+                className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-cyan-400 text-[#071018] font-mono text-xs font-black py-4 select-none transition duration-300 transform hover:-translate-y-0.5 shadow-[0_0_30px_rgba(34,211,238,0.25)] hover:bg-cyan-300 animate-pulse disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
               >
                 <Sparkles size={16} />
-                {t('aiScreen.generateBtn')}
+                {isWarmupInProgress && warmupModelId === modelId
+                  ? isPt
+                    ? 'AQUECENDO MODELO...'
+                    : 'WARMING MODEL...'
+                  : t('aiScreen.generateBtn')}
               </button>
             </div>
           </div>
@@ -510,62 +745,117 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
       {/* State B: Generating */}
       {screenState === 'generating' && (
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#03060c] border border-cyan-400/20 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,240,255,0.08)] flex flex-col h-[460px]">
-            <header className="border-b border-[#21262d] bg-cyan-400/5 px-4 py-3 flex items-center justify-between font-mono text-xs text-cyan-300 select-none">
-              <span className="flex items-center gap-1.5 animate-pulse font-bold">
-                <Terminal size={14} />
-                {t('aiScreen.generatingTitle')}
-              </span>
-              <div className="flex items-center gap-2">
-                {backendChip}
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+          <section
+            role="status"
+            aria-live="polite"
+            className="relative w-full max-w-4xl overflow-hidden rounded-[28px] border border-[#21262d] bg-[#0b0d17] shadow-[0_0_60px_rgba(15,23,42,0.35)]"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_15%,rgba(0,240,255,0.12),transparent_38%),radial-gradient(circle_at_82%_22%,rgba(148,163,184,0.09),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_65%)]" />
+            <div className="relative px-5 py-6 sm:px-8 sm:py-8 md:px-10 md:py-10">
+              <div className="flex flex-col gap-5 border-b border-white/8 pb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.28em] text-cyan-300/75">
+                    {t('aiScreen.progressEyebrow')}
+                  </p>
+                  <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-[2rem]">
+                    {generationCopy.title}
+                  </h2>
+                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-[15px]">
+                    {generationCopy.description}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="inline-flex items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-red-300 hover:bg-red-500/20 transition cursor-pointer"
+                  disabled={isCancelling}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#30363d] bg-white/5 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-slate-200 transition hover:border-slate-500 hover:bg-white/8 disabled:cursor-default disabled:border-slate-700 disabled:text-slate-500"
                 >
-                  <X size={11} />
-                  {t('aiScreen.cancel')}
+                  <X size={12} />
+                  {isCancelling ? t('aiScreen.canceling') : t('aiScreen.cancel')}
                 </button>
               </div>
-            </header>
-            <div className="border-b border-[#21262d] bg-[#010409] px-4 py-2">
-              <div className="h-1 w-full overflow-hidden rounded bg-slate-800">
-                <div
-                  className="h-full bg-cyan-400 transition-all"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-              <div className="mt-1 flex justify-between font-mono text-[10px] text-slate-500">
-                <span className="uppercase tracking-wider">{progress.phase}</span>
-                <span>{progress.percent}%</span>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-xs leading-relaxed space-y-1 bg-[#010409]">
-              {generationLogs.map((log, idx) => (
-                <div key={idx} className="flex gap-2">
-                  <span className="text-cyan-500/60 font-bold select-none">[v]</span>
-                  <span className={log.startsWith('//') ? 'text-slate-500' : 'text-slate-300'}>
-                    {log}
-                  </span>
-                </div>
-              ))}
-              {streamedText && (
-                <div className="mt-2 border-t border-slate-800 pt-2">
-                  <div className="text-cyan-500/60 font-bold text-[10px] uppercase tracking-wider">
-                    live token stream
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.8fr)]">
+                <div className="rounded-[24px] border border-white/8 bg-black/20 p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">
+                        {t('aiScreen.progressCurrentLabel')}
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-200">
+                        {generationCopy.detail}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-3xl font-black tracking-tight text-white">
+                        {progress.percent}%
+                      </span>
+                    </div>
                   </div>
-                  <pre className="mt-1 whitespace-pre-wrap break-words text-[11px] text-emerald-300/80">
-                    {streamedText}
-                  </pre>
+
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/8">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-cyan-400 to-emerald-300 transition-all duration-500"
+                      style={{ width: `${Math.max(6, progress.percent)}%` }}
+                    />
+                  </div>
+
+                  <p className="mt-4 text-xs leading-relaxed text-slate-500 sm:text-[13px]">
+                    {t('aiScreen.progressFirstRunHint')}
+                  </p>
                 </div>
-              )}
-              <div className="flex items-center gap-1.5 text-cyan-400 mt-2 animate-pulse font-bold select-none">
-                <span className="inline-block h-3 w-1.5 bg-cyan-400 animate-[bootCursor_900ms_step-end_infinite]" />
-                <span>{t('aiScreen.compilingIndicator')}</span>
+
+                <div className="rounded-[24px] border border-white/8 bg-white/5 p-5 sm:p-6">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-slate-500">
+                    {t('aiScreen.progressRoadmapLabel')}
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {generationStageCards.map((item) => (
+                      <div
+                        key={item.stage}
+                        className={`rounded-2xl border px-4 py-3 transition ${
+                          item.status === 'complete'
+                            ? 'border-emerald-400/25 bg-emerald-400/8'
+                            : item.status === 'active'
+                              ? 'border-cyan-400/30 bg-cyan-400/8 shadow-[0_0_24px_rgba(0,240,255,0.08)]'
+                              : 'border-white/8 bg-black/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-mono font-bold ${
+                              item.status === 'complete'
+                                ? 'border-emerald-400/35 bg-emerald-400/15 text-emerald-300'
+                                : item.status === 'active'
+                                  ? 'border-cyan-400/35 bg-cyan-400/15 text-cyan-300'
+                                  : 'border-white/10 bg-white/5 text-slate-500'
+                            }`}
+                          >
+                            {item.status === 'complete'
+                              ? 'OK'
+                              : item.status === 'active'
+                                ? '...'
+                                : '•'}
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-white">{item.label}</p>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {item.status === 'complete'
+                                ? t('aiScreen.progressStageComplete')
+                                : item.status === 'active'
+                                  ? t('aiScreen.progressStageActive')
+                                  : t('aiScreen.progressStagePending')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
 
@@ -586,7 +876,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   / {selectedPrinciples.join(' + ').toUpperCase()}
                 </p>
               </div>
-              {backendChip}
             </div>
 
             <p className="mt-4 text-sm text-slate-400 leading-relaxed">

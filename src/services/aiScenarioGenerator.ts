@@ -17,11 +17,37 @@ export type ModelPresetId = keyof typeof MODEL_PRESETS
 
 export type Backend = 'webgpu' | 'wasm'
 export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating' | 'done'
+export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
 
 export interface GenerationProgress {
   phase: GenerationPhase
   percent: number
   label: string
+  uiStage?: GenerationUiStage
+  itemsCompleted?: number
+  itemsTotal?: number
+}
+
+interface RuntimeSelection {
+  device: Backend
+  dtype: string
+  handle: PipelineHandle
+}
+
+const AI_DEBUG_PREFIX = '[ai-debug][generator]'
+function debugLog(message: string, meta?: Record<string, unknown>) {
+  if (meta) {
+    // eslint-disable-next-line no-console
+    console.debug(`${AI_DEBUG_PREFIX} ${message}`, meta)
+    return
+  }
+  // eslint-disable-next-line no-console
+  console.debug(`${AI_DEBUG_PREFIX} ${message}`)
+}
+
+function toRangePercent(percent: number, start: number, end: number): number {
+  const bounded = Math.max(0, Math.min(100, percent))
+  return Math.round(start + (bounded / 100) * (end - start))
 }
 
 export interface AIScenarioGeneratorConfig {
@@ -51,12 +77,14 @@ export async function detectBackend(
       if (adapter) {
         // Qwen2.5-0.5B in q4f16 is known to degenerate on many GPUs; use q4.
         const dtype = modelId === 'qwen25' ? 'q4' : 'q4f16'
+        debugLog('detectBackend -> webgpu selected', { modelId, dtype })
         return { device: 'webgpu', dtype }
       }
     } catch {
       // fall through
     }
   }
+  debugLog('detectBackend -> wasm selected', { modelId, dtype: 'q4' })
   return { device: 'wasm', dtype: 'q4' }
 }
 
@@ -69,6 +97,7 @@ type PipelineHandle = ((
   tokenizer: unknown
 }
 const pipelineCache = new Map<string, Promise<PipelineHandle>>()
+const runtimeHealthCache = new Map<string, Promise<RuntimeSelection>>()
 
 /**
  * Load (or return cached) text-generation pipeline. Streams download +
@@ -83,18 +112,30 @@ export async function ensurePipeline(config: {
   const key = `${config.model}|${config.device}|${config.dtype}`
   const existing = pipelineCache.get(key)
   if (existing) {
-    config.onProgress?.({ phase: 'compiling', percent: 100, label: 'Pipeline cache HIT' })
+    debugLog('ensurePipeline cache hit', { key })
+    config.onProgress?.({
+      phase: 'compiling',
+      percent: 36,
+      label: 'Pipeline cache HIT',
+      uiStage: 'preparing',
+    })
     return existing
   }
 
   const load = (async () => {
+    debugLog('ensurePipeline load start', {
+      model: config.model,
+      device: config.device,
+      dtype: config.dtype,
+    })
     const { pipeline, env } = await import('@huggingface/transformers')
     env.allowLocalModels = false
 
     config.onProgress?.({
       phase: 'downloading',
-      percent: 1,
+      percent: 4,
       label: `Loading ${config.model} on ${config.device.toUpperCase()} (${config.dtype})...`,
+      uiStage: 'preparing',
     })
 
     // Track download progress across files as a single aggregated percentage.
@@ -138,14 +179,16 @@ export async function ensurePipeline(config: {
           const pct = totalSize > 0 ? Math.min(95, Math.round((totalLoaded / totalSize) * 95)) : 5
           config.onProgress?.({
             phase: 'downloading',
-            percent: pct,
+            percent: toRangePercent(pct, 6, 30),
             label: `Downloading weights [${info.file.slice(-28)}] ${pct}%`,
+            uiStage: 'preparing',
           })
         } else if (info.status === 'ready' || info.status === 'done') {
           config.onProgress?.({
             phase: 'compiling',
-            percent: 97,
+            percent: 34,
             label: 'Compiling ONNX graph / warming kernels...',
+            uiStage: 'preparing',
           })
         }
       },
@@ -153,9 +196,11 @@ export async function ensurePipeline(config: {
 
     config.onProgress?.({
       phase: 'compiling',
-      percent: 99,
+      percent: 38,
       label: 'Pipeline ready.',
+      uiStage: 'preparing',
     })
+    debugLog('ensurePipeline ready', { key })
     return handle
   })()
 
@@ -164,6 +209,7 @@ export async function ensurePipeline(config: {
     return await load
   } catch (err) {
     pipelineCache.delete(key)
+    debugLog('ensurePipeline failed', { key, message: err instanceof Error ? err.message : String(err) })
     throw err
   }
 }
@@ -176,6 +222,21 @@ interface RawScenario {
   context: string
 }
 
+class DegenerateGenerationError extends Error {
+  constructor() {
+    super('degenerate-generation')
+  }
+}
+
+class RuntimeHealthCheckError extends Error {
+  selection: RuntimeSelection
+
+  constructor(selection: RuntimeSelection) {
+    super(`runtime-healthcheck-failed:${selection.device}:${selection.dtype}`)
+    this.selection = selection
+  }
+}
+
 const isNonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 3
 
 function stripFences(text: string): string {
@@ -183,16 +244,35 @@ function stripFences(text: string): string {
   return text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '')
 }
 
+function repairMalformedJson(text: string): string {
+  let repaired = text
+  // Common corruption: missing closing quote before the next key.
+  // Example: ...education for all,"rival":...  -> ...education for all","rival":...
+  repaired = repaired.replace(
+    /([A-Za-z0-9\)\.\!\?])\s*,\s*"(title|act|rival|ally|context)"\s*:/g,
+    '$1","$2":'
+  )
+  // Handle unescaped quotes that appear before a known key transition.
+  repaired = repaired.replace(
+    /"\s*,\s*"(title|act|rival|ally|context)"\s*:/g,
+    '","$1":'
+  )
+  return repaired
+}
+
 function tryParse(slice: string): unknown[] | null {
   const attempts = [
     slice,
     // Strip trailing commas before `]` or `}`.
     slice.replace(/,\s*(\]|\})/g, '$1'),
+    repairMalformedJson(slice),
+    repairMalformedJson(slice).replace(/,\s*(\]|\})/g, '$1'),
   ]
   for (const attempt of attempts) {
     try {
       const parsed = JSON.parse(attempt)
       if (Array.isArray(parsed)) return parsed
+      if (parsed && typeof parsed === 'object') return [parsed]
     } catch {
       // try next
     }
@@ -200,8 +280,35 @@ function tryParse(slice: string): unknown[] | null {
   return null
 }
 
+function parseDirectJson(text: string): unknown[] | null {
+  const attempts = [text, repairMalformedJson(text)]
+  for (const candidate of attempts) {
+  try {
+    const parsed = JSON.parse(candidate)
+    if (Array.isArray(parsed)) return parsed
+    if (parsed && typeof parsed === 'object') return [parsed]
+    if (typeof parsed === 'string') {
+      const inner = parsed.trim()
+      if (!inner) return null
+      try {
+        const parsedInner = JSON.parse(repairMalformedJson(inner))
+        if (Array.isArray(parsedInner)) return parsedInner
+        if (parsedInner && typeof parsedInner === 'object') return [parsedInner]
+      } catch {
+        // fall through
+      }
+    }
+  } catch {
+    // fall through
+  }
+  }
+  return null
+}
+
 function extractJsonArray(rawText: string): unknown[] | null {
   const text = stripFences(rawText)
+  const direct = parseDirectJson(text)
+  if (direct) return direct
   // Find the first `[` and its matching closing `]`, tolerating trailing model chatter.
   const start = text.indexOf('[')
   if (start < 0) return extractObjects(text)
@@ -305,6 +412,223 @@ function validateScenarios(items: unknown[]): RawScenario[] {
   return valid
 }
 
+function isDegenerateOutput(text: string): boolean {
+  const normalized = text.replace(/\s+/g, '')
+  if (normalized.length < 32) return false
+
+  const uniqueChars = new Set(normalized)
+  if (uniqueChars.size <= 2) return true
+
+  const firstChar = normalized[0]
+  let repeatedPrefix = 0
+  for (const char of normalized) {
+    if (char !== firstChar) break
+    repeatedPrefix += 1
+  }
+
+  return repeatedPrefix / normalized.length >= 0.8
+}
+
+function getRuntimeCandidates(preferred: { device: Backend; dtype: string }) {
+  const candidates = [{ device: preferred.device, dtype: preferred.dtype }]
+  if (preferred.device !== 'wasm') {
+    candidates.push({ device: 'wasm' as const, dtype: 'q4' })
+  }
+  return candidates
+}
+
+function getRuntimeCacheKey(model: string, device: Backend, dtype: string) {
+  return `${model}|${device}|${dtype}`
+}
+
+function buildHealthMessages(language: 'en-US' | 'pt-BR') {
+  const isPt = language === 'pt-BR'
+  return isPt
+    ? 'Responda apenas com {"ok":"sim"}. Sem markdown, sem comentários.'
+    : 'Reply only with {"ok":"yes"}. No markdown. No comments.'
+}
+
+async function runHealthCheck(config: {
+  handle: PipelineHandle
+  language: 'en-US' | 'pt-BR'
+  signal?: AbortSignal
+}): Promise<boolean> {
+  const prompt = buildHealthMessages(config.language)
+  const output = await config.handle(prompt, {
+    max_new_tokens: 24,
+    do_sample: false,
+    top_p: 1,
+    repetition_penalty: 1,
+    return_full_text: false,
+  })
+
+  if (config.signal?.aborted) {
+    throw new Error('aborted')
+  }
+
+  const generated = output[0]?.generated_text
+  let text = ''
+  if (typeof generated === 'string') {
+    text = generated
+  } else if (Array.isArray(generated)) {
+    const last = generated[generated.length - 1] as { content?: string } | undefined
+    text = last?.content ?? ''
+  }
+
+  if (!text || isDegenerateOutput(text)) {
+    debugLog('runHealthCheck failed: empty or degenerate output')
+    return false
+  }
+
+  const normalized = stripFences(text).trim()
+  try {
+    const parsed = JSON.parse(normalized) as { ok?: string }
+    const okValue = parsed.ok?.toLowerCase()
+    const ok = okValue === 'yes' || okValue === 'sim'
+    debugLog('runHealthCheck parsed JSON', { ok, okValue })
+    return ok
+  } catch {
+    // Some runtimes return plain text instead of strict JSON during tiny probes.
+    // Treat non-degenerate non-empty output as a soft pass to avoid false negatives.
+    const softPass = normalized.length >= 6 && !isDegenerateOutput(normalized)
+    debugLog('runHealthCheck non-JSON soft pass', {
+      softPass,
+      preview: normalized.slice(0, 80),
+    })
+    return softPass
+  }
+}
+
+async function ensureHealthyRuntime(config: {
+  modelId: ModelPresetId
+  language: 'en-US' | 'pt-BR'
+  signal?: AbortSignal
+  onProgress?: (progress: GenerationProgress) => void
+  forceFallback?: boolean
+}): Promise<RuntimeSelection> {
+  const model = MODEL_PRESETS[config.modelId]
+  const preferred = config.forceFallback
+    ? { device: 'wasm' as const, dtype: 'q4' }
+    : await detectBackend(config.modelId)
+  const candidates = config.forceFallback
+    ? [preferred]
+    : getRuntimeCandidates(preferred)
+  debugLog('ensureHealthyRuntime candidates', {
+    modelId: config.modelId,
+    candidates: candidates.map((c) => `${c.device}:${c.dtype}`),
+    forceFallback: Boolean(config.forceFallback),
+  })
+
+  let lastError: unknown = null
+  let bestEffortSelection: RuntimeSelection | null = null
+  for (const candidate of candidates) {
+    if (config.signal?.aborted) throw new Error('aborted')
+
+    const cacheKey = getRuntimeCacheKey(model, candidate.device, candidate.dtype)
+    const existing = runtimeHealthCache.get(cacheKey)
+    if (existing) {
+      try {
+        debugLog('ensureHealthyRuntime cache hit', { cacheKey })
+        return await existing
+      } catch {
+        runtimeHealthCache.delete(cacheKey)
+        debugLog('ensureHealthyRuntime cache invalidated', { cacheKey })
+      }
+    }
+
+    const selectionPromise = (async () => {
+      const handle = await ensurePipeline({
+        model,
+        device: candidate.device,
+        dtype: candidate.dtype,
+        onProgress: config.onProgress,
+      })
+
+      config.onProgress?.({
+        phase: 'compiling',
+        percent: candidate.device === 'wasm' ? 42 : 40,
+        label: 'Validating runtime...',
+        uiStage: 'preparing',
+      })
+
+      const healthy = await runHealthCheck({
+        handle,
+        language: config.language,
+        signal: config.signal,
+      })
+
+      const selection: RuntimeSelection = {
+        device: candidate.device,
+        dtype: candidate.dtype,
+        handle,
+      }
+
+      if (!healthy) {
+        debugLog('ensureHealthyRuntime healthcheck failed', {
+          cacheKey,
+          device: candidate.device,
+          dtype: candidate.dtype,
+        })
+        throw new RuntimeHealthCheckError(selection)
+      }
+
+      debugLog('ensureHealthyRuntime selected', {
+        cacheKey,
+        device: candidate.device,
+        dtype: candidate.dtype,
+      })
+
+      return selection
+    })()
+
+    runtimeHealthCache.set(cacheKey, selectionPromise)
+
+    try {
+      return await selectionPromise
+    } catch (error) {
+      runtimeHealthCache.delete(cacheKey)
+      debugLog('ensureHealthyRuntime candidate rejected', {
+        cacheKey,
+        message: error instanceof Error ? error.message : String(error),
+      })
+      if (error instanceof RuntimeHealthCheckError) {
+        if (!bestEffortSelection) {
+          bestEffortSelection = error.selection
+        }
+      }
+      lastError = error
+    }
+  }
+
+  if (bestEffortSelection) {
+    debugLog('ensureHealthyRuntime using best-effort selection', {
+      device: bestEffortSelection.device,
+      dtype: bestEffortSelection.dtype,
+    })
+    config.onProgress?.({
+      phase: 'compiling',
+      percent: 44,
+      label: 'Runtime validation inconclusive. Continuing with safe defaults...',
+      uiStage: 'preparing',
+    })
+    return bestEffortSelection
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('No healthy runtime available')
+}
+
+export async function warmupHealthyGenerator(config: {
+  modelId: ModelPresetId
+  language: 'en-US' | 'pt-BR'
+  signal?: AbortSignal
+}): Promise<void> {
+  await ensureHealthyRuntime({
+    modelId: config.modelId,
+    language: config.language,
+    signal: config.signal,
+  })
+}
+
 function buildMessages(config: {
   countryCode: string
   language: 'en-US' | 'pt-BR'
@@ -333,8 +657,7 @@ function buildMessages(config: {
     act: 'Use the official presidential aircraft for a personal weekend trip',
     rival: 'An unpopular former conservative president',
     ally: 'A sitting progressive president aligned with the ruling coalition',
-    context:
-      'National media uncovers the trip and publishes photos; taxpayers foot the bill.',
+    context: 'National media uncovers the trip and publishes photos; taxpayers foot the bill.',
   }
 
   const exampleJson = JSON.stringify(isPt ? examplePt : exampleEn)
@@ -407,12 +730,25 @@ async function runGeneration(config: {
   }
 
   const candidates = [text, streamed].filter((s) => s && s.trim().length > 0)
+  let sawDegenerateOutput = false
   for (const candidate of candidates) {
+    if (isDegenerateOutput(candidate)) {
+      sawDegenerateOutput = true
+      // eslint-disable-next-line no-console
+      console.warn('[aiScenarioGenerator] degenerate model output detected.', {
+        preview: candidate.slice(0, 120),
+      })
+      continue
+    }
     const items = extractJsonArray(candidate)
     if (items) {
       const validated = validateScenarios(items)
       if (validated.length > 0) return validated[0]
     }
+  }
+
+  if (sawDegenerateOutput) {
+    throw new DegenerateGenerationError()
   }
 
   // eslint-disable-next-line no-console
@@ -434,71 +770,158 @@ export async function generateAIScenarios(
 ): Promise<ScenarioPreset[]> {
   const { countryCode, language, principleIds, count, signal, onProgress, onToken } = config
   const activePrincipleIds = principleIds.length > 0 ? principleIds : ['equality']
-  const modelId = MODEL_PRESETS[config.model ?? 'smollm2']
+  const selectedModelId = config.model ?? 'smollm2'
+  debugLog('generateAIScenarios start', {
+    modelId: selectedModelId,
+    countryCode,
+    language,
+    count,
+    principleIds: activePrincipleIds,
+  })
+
+  const attemptGeneration = async (runtime: {
+    handle: PipelineHandle
+    progressStart: number
+    progressEnd: number
+  }) => {
+    const raw: RawScenario[] = []
+    const temperatures = [0.7, 0.6, 0.5]
+    let runtimeDegraded = false
+
+    onProgress?.({
+      phase: 'generating',
+      percent: runtime.progressStart,
+      label: `Synthesizing ${count} scenarios one at a time...`,
+      uiStage: 'drafting',
+      itemsCompleted: 0,
+      itemsTotal: count,
+    })
+
+    for (let i = 0; i < count; i++) {
+      if (signal?.aborted) throw new Error('aborted')
+      const principleId = activePrincipleIds[i % activePrincipleIds.length]
+      let result: RawScenario | null = null
+      for (const temperature of temperatures) {
+        if (signal?.aborted) throw new Error('aborted')
+        try {
+          result = await runGeneration({
+            handle: runtime.handle,
+            countryCode,
+            language,
+            principleId,
+            index: i,
+            avoidTitles: raw.map((r) => r.title),
+            temperature,
+            signal,
+            onToken,
+          })
+        } catch (error) {
+          if (error instanceof DegenerateGenerationError) {
+            runtimeDegraded = true
+            debugLog('attemptGeneration runtime degraded', {
+              scenarioIndex: i,
+              principleId,
+            })
+            break
+          }
+          throw error
+        }
+        if (result) break
+        onProgress?.({
+          phase: 'generating',
+          percent: toRangePercent(Math.round((i / count) * 100), runtime.progressStart, runtime.progressEnd),
+          label: `Retrying scenario ${i + 1}/${count} at lower temperature...`,
+          uiStage: 'refining',
+          itemsCompleted: i,
+          itemsTotal: count,
+        })
+      }
+      if (runtimeDegraded) {
+        break
+      }
+      if (result) raw.push(result)
+      onProgress?.({
+        phase: 'generating',
+        percent: toRangePercent(
+          Math.round(((i + 1) / count) * 100),
+          runtime.progressStart,
+          runtime.progressEnd
+        ),
+        label: `Generated ${raw.length}/${count} scenarios.`,
+        uiStage: i + 1 >= count ? 'finalizing' : 'drafting',
+        itemsCompleted: i + 1,
+        itemsTotal: count,
+      })
+    }
+
+    return { raw, runtimeDegraded }
+  }
 
   if (signal?.aborted) throw new Error('aborted')
 
-  const backend = await detectBackend(config.model ?? 'smollm2')
-  onProgress?.({
-    phase: 'downloading',
-    percent: 0,
-    label: `Backend selected: ${backend.device.toUpperCase()} (${backend.dtype})`,
-  })
-
-  const handle = await ensurePipeline({
-    model: modelId,
-    device: backend.device,
-    dtype: backend.dtype,
+  const healthyRuntime = await ensureHealthyRuntime({
+    modelId: selectedModelId,
+    language,
+    signal,
     onProgress,
   })
 
   if (signal?.aborted) throw new Error('aborted')
 
-  onProgress?.({
-    phase: 'generating',
-    percent: 0,
-    label: `Synthesizing ${count} scenarios one at a time...`,
+  let { raw, runtimeDegraded } = await attemptGeneration({
+    handle: healthyRuntime.handle,
+    progressStart: 42,
+    progressEnd: 86,
+  })
+  debugLog('attemptGeneration complete', {
+    runtime: `${healthyRuntime.device}:${healthyRuntime.dtype}`,
+    generated: raw.length,
+    runtimeDegraded,
   })
 
-  const raw: RawScenario[] = []
-  const temperatures = [0.8, 0.65, 0.5]
-  for (let i = 0; i < count; i++) {
-    if (signal?.aborted) throw new Error('aborted')
-    const principleId = activePrincipleIds[i % activePrincipleIds.length]
-    let result: RawScenario | null = null
-    for (const temperature of temperatures) {
-      if (signal?.aborted) throw new Error('aborted')
-      result = await runGeneration({
-        handle,
-        countryCode,
-        language,
-        principleId,
-        index: i,
-        avoidTitles: raw.map((r) => r.title),
-        temperature,
-        signal,
-        onToken,
-      })
-      if (result) break
-      onProgress?.({
-        phase: 'generating',
-        percent: Math.round((i / count) * 100),
-        label: `Retrying scenario ${i + 1}/${count} at lower temperature...`,
-      })
-    }
-    if (result) raw.push(result)
+  if ((runtimeDegraded || raw.length === 0) && healthyRuntime.device !== 'wasm') {
     onProgress?.({
-      phase: 'generating',
-      percent: Math.round(((i + 1) / count) * 100),
-      label: `Generated ${raw.length}/${count} scenarios.`,
+      phase: 'compiling',
+      percent: 46,
+      label: 'Retrying with safer runtime...',
+      uiStage: 'refining',
+      itemsCompleted: 0,
+      itemsTotal: count,
     })
+
+    const fallbackRuntime = await ensureHealthyRuntime({
+      modelId: selectedModelId,
+      language,
+      signal,
+      forceFallback: true,
+      onProgress,
+    })
+    debugLog('fallback runtime selected', {
+      runtime: `${fallbackRuntime.device}:${fallbackRuntime.dtype}`,
+    })
+
+    if (signal?.aborted) throw new Error('aborted')
+
+    ;({ raw } = await attemptGeneration({
+      handle: fallbackRuntime.handle,
+      progressStart: 52,
+      progressEnd: 92,
+    }))
+    debugLog('fallback attempt complete', { generated: raw.length })
   }
 
-  onProgress?.({ phase: 'done', percent: 100, label: `Generated ${raw.length}/${count}` })
+  onProgress?.({
+    phase: 'done',
+    percent: 100,
+    label: `Generated ${raw.length}/${count}`,
+    uiStage: 'done',
+    itemsCompleted: raw.length,
+    itemsTotal: count,
+  })
 
   const isPt = language === 'pt-BR'
   const now = Date.now()
-  return raw.slice(0, count).map((r, i) => {
+  const scenarios: ScenarioPreset[] = raw.slice(0, count).map((r, i) => {
     const principleId = activePrincipleIds[i % activePrincipleIds.length]
     return {
       id: `ai-local-${now}-${i}`,
@@ -533,4 +956,6 @@ export async function generateAIScenarios(
       },
     }
   })
+  debugLog('generateAIScenarios finish', { returned: scenarios.length, requested: count })
+  return scenarios
 }
