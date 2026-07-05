@@ -1,6 +1,7 @@
 import type { AIWorkerRequest, AIWorkerResponse } from './aiGeneratorWorkerProtocol'
 import type { ModelPresetId, GenerationProgress } from './aiScenarioGenerator'
 import type { ScenarioPreset } from '../types/linter'
+import i18n from '../i18n'
 
 export type AIStatusKind = 'idle' | 'warmup' | 'generate' | 'error'
 
@@ -43,6 +44,11 @@ function debugLog(message: string, meta?: Record<string, unknown>) {
   }
   // eslint-disable-next-line no-console
   console.debug(`${AI_DEBUG_PREFIX} ${message}`)
+}
+
+function localizeStatusLabel(language: 'en-US' | 'pt-BR', kind: 'warmup' | 'generate'): string {
+  const key = kind === 'warmup' ? 'aiStatus.startWarmup' : 'aiStatus.startGenerate'
+  return i18n.t(key, { lng: language })
 }
 
 function setAIStatus(snapshot: AIStatusSnapshot) {
@@ -206,7 +212,7 @@ export function requestAIWarmup(params: {
     modelId: params.modelId,
     phase: 'downloading',
     percent: 0,
-    label: 'Starting warmup...',
+    label: localizeStatusLabel(params.language, 'warmup'),
   })
 
   const promise = new Promise<void>((resolve, reject) => {
@@ -268,7 +274,7 @@ export function requestAIGenerate(params: GenerateParams): {
     modelId: params.modelId,
     phase: 'generating',
     percent: 0,
-    label: 'Starting generation...',
+    label: localizeStatusLabel(params.language, 'generate'),
   })
 
   const promise = new Promise<ScenarioPreset[]>((resolve, reject) => {

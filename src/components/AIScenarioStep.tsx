@@ -329,12 +329,12 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       await navigator.clipboard.writeText(JSON.stringify(report, null, 2))
       setFeedbackMessage({
         tone: 'info',
-        text: isPt ? 'Diagnóstico copiado para a área de transferência.' : 'Diagnostics copied to clipboard.',
+        text: t('aiStatus.diagnosticsCopied'),
       })
     } catch {
       setFeedbackMessage({
         tone: 'error',
-        text: isPt ? 'Não foi possível copiar o diagnóstico.' : 'Could not copy diagnostics.',
+        text: t('aiStatus.diagnosticsCopyFailed'),
       })
     }
   }
@@ -724,20 +724,14 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-300/80">
-                        AI loading monitor
+                        {t('aiStatus.loadingMonitorTitle')}
                       </p>
                       <h3 className="mt-1 text-sm font-black text-white tracking-tight">
                         {aiStatus?.kind === 'warmup'
-                          ? isPt
-                            ? 'Modelo em carregamento'
-                            : 'Model loading'
+                            ? t('aiStatus.modelLoading')
                           : aiStatus?.kind === 'generate'
-                            ? isPt
-                              ? 'Geração em andamento'
-                              : 'Generation in progress'
-                            : isPt
-                              ? 'Pronto para iniciar'
-                              : 'Ready to start'}
+                              ? t('aiStatus.generationInProgress')
+                              : t('aiStatus.readyToStart')}
                       </h3>
                     </div>
                     <button
@@ -745,38 +739,44 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                       onClick={handleCopyDiagnostics}
                       className="shrink-0 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200 transition hover:border-cyan-300 hover:bg-cyan-400/20"
                     >
-                      {isPt ? 'Copiar' : 'Copy'}
+                      {t('aiStatus.copy')}
                     </button>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300 sm:grid-cols-4">
                     <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
-                      <div className="text-slate-500 uppercase tracking-[0.16em]">Model</div>
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">
+                        {t('aiStatus.modelLabel')}
+                      </div>
                       <div className="mt-1 truncate text-cyan-200">{aiStatus?.modelId ?? modelId}</div>
                     </div>
                     <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
-                      <div className="text-slate-500 uppercase tracking-[0.16em]">Status</div>
-                      <div className="mt-1 truncate text-cyan-200">{aiStatus?.phase ?? 'idle'}</div>
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">{t('aiStatus.statusLabel')}</div>
+                      <div className="mt-1 truncate text-cyan-200">
+                        {aiStatus?.phase ?? t('aiStatus.idle')}
+                      </div>
                     </div>
                     <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
-                      <div className="text-slate-500 uppercase tracking-[0.16em]">Progress</div>
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">
+                        {t('aiStatus.progressLabel')}
+                      </div>
                       <div className="mt-1 truncate text-cyan-200">{aiStatus?.percent ?? 0}%</div>
                     </div>
                     <div className="rounded border border-[#21262d] bg-[#0c0f1c] px-2 py-2">
-                      <div className="text-slate-500 uppercase tracking-[0.16em]">Safe mode</div>
-                      <div className="mt-1 truncate text-cyan-200">{mobileSafeMode ? 'on' : 'off'}</div>
+                      <div className="text-slate-500 uppercase tracking-[0.16em]">
+                        {t('aiStatus.safeModeLabel')}
+                      </div>
+                      <div className="mt-1 truncate text-cyan-200">
+                        {mobileSafeMode ? t('aiStatus.safeModeOn') : t('aiStatus.safeModeOff')}
+                      </div>
                     </div>
                   </div>
 
                   <div className="mt-3 rounded border border-cyan-400/15 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
                     {aiStatus?.label ||
                       (mobileSafeMode
-                        ? isPt
-                          ? 'Modo seguro ativo: o app não faz aquecimento automático em mobile.'
-                          : 'Safe mode active: the app skips automatic warmup on mobile.'
-                        : isPt
-                          ? 'Sem atividade no momento.'
-                          : 'No active AI work right now.')}
+                        ? t('aiStatus.safeModeActiveHint')
+                        : t('aiStatus.noActivity'))}
                   </div>
 
                   {aiStatus?.message && (

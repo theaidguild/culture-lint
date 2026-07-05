@@ -1,4 +1,5 @@
 import { type ScenarioPreset } from '../types/linter'
+import i18n from '../i18n'
 
 export const SUPPORTED_COUNTRIES = [
   { code: 'BR', name: 'Brazil / Brasil' },
@@ -98,6 +99,10 @@ function debugLog(message: string, meta?: Record<string, unknown>) {
 function toRangePercent(percent: number, start: number, end: number): number {
   const bounded = Math.max(0, Math.min(100, percent))
   return Math.round(start + (bounded / 100) * (end - start))
+}
+
+function tStatus(language: 'en-US' | 'pt-BR', key: string, options?: Record<string, unknown>): string {
+  return i18n.t(key, { lng: language, ...options })
 }
 
 export interface AIScenarioGeneratorConfig {
@@ -737,7 +742,7 @@ async function ensureHealthyRuntime(config: {
       config.onProgress?.({
         phase: 'compiling',
         percent: candidate.device === 'wasm' ? 42 : 40,
-        label: 'Validating runtime...',
+        label: tStatus(config.language, 'aiStatus.validatingRuntime'),
         uiStage: 'preparing',
       })
 
@@ -798,7 +803,7 @@ async function ensureHealthyRuntime(config: {
     config.onProgress?.({
       phase: 'compiling',
       percent: 44,
-      label: 'Runtime validation inconclusive. Continuing with safe defaults...',
+      label: tStatus(config.language, 'aiStatus.runtimeValidationInconclusive'),
       uiStage: 'preparing',
     })
     return bestEffortSelection
@@ -1014,7 +1019,9 @@ export async function generateAIScenarios(
     onProgress?.({
       phase: 'generating',
       percent: runtime.progressStart,
-      label: runtime.label ?? `Synthesizing ${generationCount} scenarios one at a time...`,
+      label:
+        runtime.label ??
+        tStatus(language, 'aiStatus.synthesizingScenarios', { count: generationCount }),
       uiStage: 'drafting',
       itemsCompleted: 0,
       itemsTotal: generationCount,
@@ -1060,7 +1067,10 @@ export async function generateAIScenarios(
             runtime.progressStart,
             runtime.progressEnd
           ),
-          label: `Retrying scenario ${i + 1}/${generationCount} at lower temperature...`,
+          label: tStatus(language, 'aiStatus.retryingScenario', {
+            current: i + 1,
+            total: generationCount,
+          }),
           uiStage: 'refining',
           itemsCompleted: i,
           itemsTotal: generationCount,
@@ -1077,7 +1087,10 @@ export async function generateAIScenarios(
           runtime.progressStart,
           runtime.progressEnd
         ),
-        label: `Generated ${raw.length}/${generationCount} scenarios.`,
+        label: tStatus(language, 'aiStatus.generatedScenarios', {
+          got: raw.length,
+          total: generationCount,
+        }),
         uiStage: i + 1 >= generationCount ? 'finalizing' : 'drafting',
         itemsCompleted: i + 1,
         itemsTotal: generationCount,
@@ -1124,7 +1137,7 @@ export async function generateAIScenarios(
     onProgress?.({
       phase: 'generating',
       percent: 88,
-      label: `Refining missing scenarios (${missing})...`,
+      label: tStatus(language, 'aiStatus.refiningMissing', { missing }),
       uiStage: 'refining',
       itemsCompleted: raw.length,
       itemsTotal: generationCount,
@@ -1164,7 +1177,10 @@ export async function generateAIScenarios(
             88,
             96
           ),
-          label: `Recovered ${raw.length}/${generationCount} scenarios.`,
+          label: tStatus(language, 'aiStatus.recoveredScenarios', {
+            got: raw.length,
+            total: generationCount,
+          }),
           uiStage: raw.length >= generationCount ? 'finalizing' : 'refining',
           itemsCompleted: raw.length,
           itemsTotal: generationCount,
@@ -1183,7 +1199,7 @@ export async function generateAIScenarios(
     onProgress?.({
       phase: 'compiling',
       percent: 46,
-      label: 'Retrying with safer runtime...',
+      label: tStatus(language, 'aiStatus.retryingSaferRuntime'),
       uiStage: 'refining',
       itemsCompleted: 0,
       itemsTotal: generationCount,
@@ -1218,7 +1234,10 @@ export async function generateAIScenarios(
   onProgress?.({
     phase: 'done',
     percent: 100,
-    label: `Generated ${raw.length}/${generationCount}`,
+    label: tStatus(language, 'aiStatus.generatedSummary', {
+      got: raw.length,
+      total: generationCount,
+    }),
     uiStage: 'done',
     itemsCompleted: raw.length,
     itemsTotal: generationCount,

@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import BootScreen from './components/BootScreen.tsx'
 import { Layout } from './components/Layout.tsx'
 import { LinterPage } from './pages/LinterPage.tsx'
-import i18n from './i18n'
 import {
   readAIStatusSnapshot,
   requestAIWarmup,
@@ -39,6 +39,7 @@ function shouldAutoWarmup(): boolean {
 }
 
 export function Root() {
+  const { t, i18n } = useTranslation()
   const [boot, setBoot] = useState(() => {
     return new URLSearchParams(window.location.search).get('boot') === 'false'
   })
@@ -99,7 +100,7 @@ export function Root() {
     }).catch(() => {
       // Boot prewarm is best-effort only.
     })
-  }, [boot])
+  }, [boot, i18n.language])
 
   return (
     <>
@@ -120,13 +121,13 @@ export function Root() {
       {isDebugVisible && (
         <div className="fixed left-3 right-3 top-3 z-[60] max-h-[40vh] overflow-auto rounded-lg border border-amber-400/30 bg-black/85 p-3 font-mono text-[11px] text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.18)] backdrop-blur-sm">
           <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-amber-300">
-            Debug trace
+            {t('debug.traceTitle')}
           </div>
           <div className="space-y-1">
             {debugTrace.length > 0 ? (
               debugTrace.map((line, index) => <div key={`${line}-${index}`}>{line}</div>)
             ) : (
-              <div>No trace yet.</div>
+              <div>{t('debug.noTrace')}</div>
             )}
           </div>
         </div>
@@ -136,10 +137,10 @@ export function Root() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">
-                AI loading monitor
+                {t('aiStatus.loadingMonitorTitle')}
               </div>
               <div className="mt-1 truncate text-slate-200">
-                {aiStatus.modelId ?? 'unknown model'} · {aiStatus.phase ?? 'starting'}
+                {aiStatus.modelId ?? t('aiStatus.unknownModel')} · {aiStatus.phase ?? t('aiStatus.starting')}
               </div>
             </div>
             <div className="shrink-0 text-cyan-300">{aiStatus.percent ?? 0}%</div>
