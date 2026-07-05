@@ -209,7 +209,10 @@ export async function ensurePipeline(config: {
     return await load
   } catch (err) {
     pipelineCache.delete(key)
-    debugLog('ensurePipeline failed', { key, message: err instanceof Error ? err.message : String(err) })
+    debugLog('ensurePipeline failed', {
+      key,
+      message: err instanceof Error ? err.message : String(err),
+    })
     throw err
   }
 }
@@ -253,10 +256,7 @@ function repairMalformedJson(text: string): string {
     '$1","$2":'
   )
   // Handle unescaped quotes that appear before a known key transition.
-  repaired = repaired.replace(
-    /"\s*,\s*"(title|act|rival|ally|context)"\s*:/g,
-    '","$1":'
-  )
+  repaired = repaired.replace(/"\s*,\s*"(title|act|rival|ally|context)"\s*:/g, '","$1":')
   return repaired
 }
 
@@ -283,24 +283,24 @@ function tryParse(slice: string): unknown[] | null {
 function parseDirectJson(text: string): unknown[] | null {
   const attempts = [text, repairMalformedJson(text)]
   for (const candidate of attempts) {
-  try {
-    const parsed = JSON.parse(candidate)
-    if (Array.isArray(parsed)) return parsed
-    if (parsed && typeof parsed === 'object') return [parsed]
-    if (typeof parsed === 'string') {
-      const inner = parsed.trim()
-      if (!inner) return null
-      try {
-        const parsedInner = JSON.parse(repairMalformedJson(inner))
-        if (Array.isArray(parsedInner)) return parsedInner
-        if (parsedInner && typeof parsedInner === 'object') return [parsedInner]
-      } catch {
-        // fall through
+    try {
+      const parsed = JSON.parse(candidate)
+      if (Array.isArray(parsed)) return parsed
+      if (parsed && typeof parsed === 'object') return [parsed]
+      if (typeof parsed === 'string') {
+        const inner = parsed.trim()
+        if (!inner) return null
+        try {
+          const parsedInner = JSON.parse(repairMalformedJson(inner))
+          if (Array.isArray(parsedInner)) return parsedInner
+          if (parsedInner && typeof parsedInner === 'object') return [parsedInner]
+        } catch {
+          // fall through
+        }
       }
+    } catch {
+      // fall through
     }
-  } catch {
-    // fall through
-  }
   }
   return null
 }
@@ -510,9 +510,7 @@ async function ensureHealthyRuntime(config: {
   const preferred = config.forceFallback
     ? { device: 'wasm' as const, dtype: 'q4' }
     : await detectBackend(config.modelId)
-  const candidates = config.forceFallback
-    ? [preferred]
-    : getRuntimeCandidates(preferred)
+  const candidates = config.forceFallback ? [preferred] : getRuntimeCandidates(preferred)
   debugLog('ensureHealthyRuntime candidates', {
     modelId: config.modelId,
     candidates: candidates.map((c) => `${c.device}:${c.dtype}`),
@@ -829,7 +827,11 @@ export async function generateAIScenarios(
         if (result) break
         onProgress?.({
           phase: 'generating',
-          percent: toRangePercent(Math.round((i / count) * 100), runtime.progressStart, runtime.progressEnd),
+          percent: toRangePercent(
+            Math.round((i / count) * 100),
+            runtime.progressStart,
+            runtime.progressEnd
+          ),
           label: `Retrying scenario ${i + 1}/${count} at lower temperature...`,
           uiStage: 'refining',
           itemsCompleted: i,

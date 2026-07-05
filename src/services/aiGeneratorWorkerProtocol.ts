@@ -1,7 +1,4 @@
-import type {
-  GenerationProgress,
-  ModelPresetId,
-} from './aiScenarioGenerator'
+import type { GenerationProgress, ModelPresetId } from './aiScenarioGenerator'
 import type { ScenarioPreset } from '../types/linter'
 
 export type WarmupWorkerRequest = {
@@ -26,10 +23,7 @@ export type CancelWorkerRequest = {
   requestId?: string
 }
 
-export type AIWorkerRequest =
-  | WarmupWorkerRequest
-  | GenerateWorkerRequest
-  | CancelWorkerRequest
+export type AIWorkerRequest = WarmupWorkerRequest | GenerateWorkerRequest | CancelWorkerRequest
 
 export type ProgressWorkerResponse = {
   type: 'progress'

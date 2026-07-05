@@ -1,13 +1,7 @@
 /// <reference lib="webworker" />
 
-import {
-  generateAIScenarios,
-  warmupHealthyGenerator,
-} from '../services/aiScenarioGenerator'
-import type {
-  AIWorkerRequest,
-  AIWorkerResponse,
-} from '../services/aiGeneratorWorkerProtocol'
+import { generateAIScenarios, warmupHealthyGenerator } from '../services/aiScenarioGenerator'
+import type { AIWorkerRequest, AIWorkerResponse } from '../services/aiGeneratorWorkerProtocol'
 
 let activeController: AbortController | null = null
 let activeRequestId: string | null = null

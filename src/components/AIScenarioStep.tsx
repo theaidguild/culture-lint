@@ -19,7 +19,7 @@ import {
   type GenerationUiStage,
   type ModelPresetId,
 } from '../services/aiScenarioGenerator'
-import type { AIWorkerResponse } from '../services/aiGeneratorWorkerProtocol'
+import { cancelAIRequest, requestAIGenerate, requestAIWarmup } from '../services/aiWorkerClient'
 import {
   type InteractiveSessionRun,
   type JudgmentItem,
@@ -37,11 +37,6 @@ interface AIScenarioStepProps {
 
 type AIScreenState = 'setup' | 'generating' | 'generated' | 'judging' | 'results'
 type FeedbackMessage = { tone: 'info' | 'error'; text: string }
-type PendingWorkerRequest = {
-  kind: 'warmup' | 'generate'
-  resolve: (value?: unknown) => void
-  reject: (reason?: unknown) => void
-}
 
 const DEFAULT_COUNTRY = 'BR'
 const DEFAULT_COUNT = 6
@@ -121,9 +116,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
   const analysisTimeoutRef = useRef<number | undefined>(undefined)
   const warmedModelsRef = useRef<Set<ModelPresetId>>(new Set())
-  const workerRef = useRef<Worker | null>(null)
-  const pendingRequestsRef = useRef<Map<string, PendingWorkerRequest>>(new Map())
-  const requestCounterRef = useRef(0)
   const activeGenerateRequestIdRef = useRef<string | null>(null)
   const activeWarmupRequestIdRef = useRef<string | null>(null)
 
@@ -156,135 +148,45 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   useEffect(() => {
     return () => {
       if (analysisTimeoutRef.current) window.clearTimeout(analysisTimeoutRef.current)
-      workerRef.current?.terminate()
-      workerRef.current = null
-      pendingRequestsRef.current.clear()
-    }
-  }, [])
-
-  const nextRequestId = useCallback(() => {
-    requestCounterRef.current += 1
-    const requestId = `ai-worker-${requestCounterRef.current}`
-    debugLog('next request id', { requestId })
-    return requestId
-  }, [])
-
-  const rejectPendingRequest = useCallback((requestId: string, message: string) => {
-    const pending = pendingRequestsRef.current.get(requestId)
-    if (!pending) return
-    pendingRequestsRef.current.delete(requestId)
-    pending.reject(new Error(message))
-  }, [])
-
-  const ensureWorker = useCallback(() => {
-    if (workerRef.current) {
-      return workerRef.current
-    }
-
-    const worker = new Worker(new URL('../workers/aiGenerator.worker.ts', import.meta.url), {
-      type: 'module',
-    })
-    debugLog('worker created')
-
-    worker.onmessage = (event: MessageEvent<AIWorkerResponse>) => {
-      const message = event.data
-      debugLog('worker message', {
-        type: message.type,
-        requestId: message.requestId,
-      })
-
-      if (message.type === 'progress') {
-        if (message.requestId === activeGenerateRequestIdRef.current) {
-          setProgress(message.progress)
-        }
-        return
-      }
-
-      const pending = pendingRequestsRef.current.get(message.requestId)
-      if (!pending) return
-
-      pendingRequestsRef.current.delete(message.requestId)
-
-      if (message.type === 'warmup-complete') {
-        pending.resolve()
-        return
-      }
-
-      if (message.type === 'generate-complete') {
-        activeGenerateRequestIdRef.current = null
-        pending.resolve(message.scenarios)
-        return
-      }
-
-      if (message.type === 'canceled') {
-        if (message.requestId === activeGenerateRequestIdRef.current) {
-          activeGenerateRequestIdRef.current = null
-        }
-        pending.reject(new Error('aborted'))
-        return
-      }
-
-      if (message.requestId === activeGenerateRequestIdRef.current) {
-        activeGenerateRequestIdRef.current = null
-      }
-      pending.reject(new Error(message.message))
-    }
-
-    worker.onerror = () => {
-      debugLog('worker runtime error')
-      const pendingEntries = [...pendingRequestsRef.current.values()]
-      pendingRequestsRef.current.clear()
-      activeGenerateRequestIdRef.current = null
-      worker.terminate()
-      workerRef.current = null
-      for (const pending of pendingEntries) {
-        pending.reject(new Error('worker-error'))
+      const activeRequest = activeGenerateRequestIdRef.current
+      if (activeRequest) {
+        cancelAIRequest(activeRequest)
       }
     }
-
-    workerRef.current = worker
-    return worker
   }, [])
 
   // Warm up and validate the currently selected model runtime in the background
   // so generation can reuse a known-good pipeline when the user starts.
-  const scheduleWarmup = useCallback((targetModelId: ModelPresetId = modelId) => {
-    if (warmedModelsRef.current.has(targetModelId)) return
-    warmedModelsRef.current.add(targetModelId)
-    const requestId = nextRequestId()
-    activeWarmupRequestIdRef.current = requestId
-    setWarmupModelId(targetModelId)
-    setIsWarmupInProgress(true)
-    debugLog('schedule warmup', {
-      requestId,
-      modelId: targetModelId,
-      language: i18n.language,
-    })
+  const scheduleWarmup = useCallback(
+    (targetModelId: ModelPresetId = modelId) => {
+      if (warmedModelsRef.current.has(targetModelId)) return
+      warmedModelsRef.current.add(targetModelId)
+      const requestId = `warmup-${targetModelId}-${i18n.language}`
+      activeWarmupRequestIdRef.current = requestId
+      setWarmupModelId(targetModelId)
+      setIsWarmupInProgress(true)
+      debugLog('schedule warmup', {
+        requestId,
+        modelId: targetModelId,
+        language: i18n.language,
+      })
 
-    pendingRequestsRef.current.set(requestId, {
-      kind: 'warmup',
-      resolve: () => {
-        if (activeWarmupRequestIdRef.current === requestId) {
-          activeWarmupRequestIdRef.current = null
-          setIsWarmupInProgress(false)
-        }
-      },
-      reject: () => {
-        warmedModelsRef.current.delete(targetModelId)
-        if (activeWarmupRequestIdRef.current === requestId) {
-          activeWarmupRequestIdRef.current = null
-          setIsWarmupInProgress(false)
-        }
-      },
-    })
-
-    ensureWorker().postMessage({
-      type: 'warmup',
-      requestId,
-      modelId: targetModelId,
-      language: i18n.language as 'en-US' | 'pt-BR',
-    })
-  }, [ensureWorker, i18n.language, modelId, nextRequestId])
+      void requestAIWarmup({
+        modelId: targetModelId,
+        language: i18n.language as 'en-US' | 'pt-BR',
+      })
+        .catch(() => {
+          warmedModelsRef.current.delete(targetModelId)
+        })
+        .finally(() => {
+          if (activeWarmupRequestIdRef.current === requestId) {
+            activeWarmupRequestIdRef.current = null
+            setIsWarmupInProgress(false)
+          }
+        })
+    },
+    [i18n.language, modelId]
+  )
 
   useEffect(() => {
     const warmupId = window.setTimeout(() => {
@@ -308,7 +210,14 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       itemsTotal: scenarioCount,
     })
 
-    const requestId = nextRequestId()
+    const { requestId, promise } = requestAIGenerate({
+      modelId,
+      countryCode: selectedCountry,
+      language: i18n.language as 'en-US' | 'pt-BR',
+      principleIds: selectedPrinciples,
+      count: scenarioCount,
+      onProgress: (nextProgress) => setProgress(nextProgress),
+    })
     activeGenerateRequestIdRef.current = requestId
     debugLog('generate requested', {
       requestId,
@@ -319,23 +228,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     })
 
     try {
-      const generated = await new Promise<ScenarioPreset[]>((resolve, reject) => {
-        pendingRequestsRef.current.set(requestId, {
-          kind: 'generate',
-          resolve: (value) => resolve((value ?? []) as ScenarioPreset[]),
-          reject,
-        })
-
-        ensureWorker().postMessage({
-          type: 'generate',
-          requestId,
-          modelId,
-          countryCode: selectedCountry,
-          language: i18n.language as 'en-US' | 'pt-BR',
-          principleIds: selectedPrinciples,
-          count: scenarioCount,
-        })
-      })
+      const generated = await promise
 
       if (generated.length === 0) {
         throw new Error('No scenarios could be generated.')
@@ -372,10 +265,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
     debugLog('cancel requested', { requestId })
 
-    workerRef.current?.postMessage({ type: 'cancel', requestId })
-    workerRef.current?.terminate()
-    workerRef.current = null
-    rejectPendingRequest(requestId, 'aborted')
+    cancelAIRequest(requestId)
     activeGenerateRequestIdRef.current = null
   }
 
