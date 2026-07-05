@@ -1,4 +1,15 @@
-import { Check, ChevronLeft, Copy, RefreshCw, Zap, Users, Shield, Compass, Microscope, Sparkles } from 'lucide-react'
+import {
+  Check,
+  ChevronLeft,
+  Copy,
+  RefreshCw,
+  Zap,
+  Users,
+  Shield,
+  Compass,
+  Microscope,
+  Sparkles,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -59,7 +70,9 @@ export function SessionSetupStep({
         <h1 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl md:text-4xl">
           {t('session.title')}
         </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">{t('session.description')}</p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">
+          {t('session.description')}
+        </p>
 
         {/* Preset Selector */}
         <div className="mt-8 rounded-lg border border-[#21262d] bg-[#111320] p-5 sm:p-6">
@@ -68,7 +81,6 @@ export function SessionSetupStep({
             {t('session.presetsLabel').toUpperCase()}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
-            
             {/* Versão Pais */}
             <button
               type="button"
@@ -81,9 +93,13 @@ export function SessionSetupStep({
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center justify-center p-2 rounded-lg bg-emerald-500/10 ${
-                    currentPreset === 'pais' ? 'text-emerald-300' : 'text-emerald-400 group-hover:scale-110 transition-transform duration-300'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center p-2 rounded-lg bg-emerald-500/10 ${
+                      currentPreset === 'pais'
+                        ? 'text-emerald-300'
+                        : 'text-emerald-400 group-hover:scale-110 transition-transform duration-300'
+                    }`}
+                  >
                     <Users size={18} />
                   </span>
                   <span className="font-mono text-[9px] tracking-wider uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full text-emerald-400 font-bold whitespace-nowrap">
@@ -111,9 +127,13 @@ export function SessionSetupStep({
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center justify-center p-2 rounded-lg bg-yellow-500/10 ${
-                    currentPreset === 'jovens' ? 'text-yellow-300' : 'text-yellow-400 group-hover:scale-110 transition-transform duration-300'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center p-2 rounded-lg bg-yellow-500/10 ${
+                      currentPreset === 'jovens'
+                        ? 'text-yellow-300'
+                        : 'text-yellow-400 group-hover:scale-110 transition-transform duration-300'
+                    }`}
+                  >
                     <Compass size={18} />
                   </span>
                   <span className="font-mono text-[9px] tracking-wider uppercase bg-yellow-500/10 px-2 py-0.5 rounded-full text-yellow-400 font-bold whitespace-nowrap">
@@ -141,9 +161,13 @@ export function SessionSetupStep({
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center justify-center p-2 rounded-lg bg-teal-500/10 ${
-                    currentPreset === 'biologos' ? 'text-teal-300' : 'text-teal-400 group-hover:scale-110 transition-transform duration-300'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center p-2 rounded-lg bg-teal-500/10 ${
+                      currentPreset === 'biologos'
+                        ? 'text-teal-300'
+                        : 'text-teal-400 group-hover:scale-110 transition-transform duration-300'
+                    }`}
+                  >
                     <Microscope size={18} />
                   </span>
                   <span className="font-mono text-[9px] tracking-wider uppercase bg-teal-500/10 px-2 py-0.5 rounded-full text-teal-400 font-bold whitespace-nowrap">
@@ -171,9 +195,13 @@ export function SessionSetupStep({
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center justify-center p-2 rounded-lg bg-blue-500/10 ${
-                    currentPreset === 'originais' ? 'text-blue-300' : 'text-blue-400 group-hover:scale-110 transition-transform duration-300'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center p-2 rounded-lg bg-blue-500/10 ${
+                      currentPreset === 'originais'
+                        ? 'text-blue-300'
+                        : 'text-blue-400 group-hover:scale-110 transition-transform duration-300'
+                    }`}
+                  >
                     <Shield size={18} />
                   </span>
                   <span className="font-mono text-[9px] tracking-wider uppercase bg-blue-500/10 px-2 py-0.5 rounded-full text-blue-400 font-bold whitespace-nowrap">
@@ -183,7 +211,7 @@ export function SessionSetupStep({
                 <h4 className="mt-4 text-sm font-black tracking-tight text-white group-hover:text-blue-300 transition-colors duration-300">
                   {t('session.presetOriginais')}
                 </h4>
-                 <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">
                   {t('session.presetOriginaisDesc')}
                 </p>
               </div>
@@ -201,16 +229,20 @@ export function SessionSetupStep({
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
                 <div className="flex items-center justify-between md:block">
-                  <span className={`inline-flex items-center justify-center p-2.5 rounded-xl bg-purple-500/10 ${
-                    currentPreset === 'todos' ? 'text-purple-300' : 'text-purple-400 group-hover:scale-110 transition-transform duration-300'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center justify-center p-2.5 rounded-xl bg-purple-500/10 ${
+                      currentPreset === 'todos'
+                        ? 'text-purple-300'
+                        : 'text-purple-400 group-hover:scale-110 transition-transform duration-300'
+                    }`}
+                  >
                     <Sparkles size={20} />
                   </span>
                   <span className="md:hidden font-mono text-[9px] tracking-wider uppercase bg-purple-500/10 px-2 py-0.5 rounded-full text-purple-400 font-bold whitespace-nowrap">
                     Completo
                   </span>
                 </div>
-                
+
                 <div className="flex-1">
                   <div className="hidden md:flex items-center gap-2">
                     <h4 className="text-sm font-black tracking-tight text-white group-hover:text-purple-300 transition-colors duration-300">
@@ -229,7 +261,6 @@ export function SessionSetupStep({
                 </div>
               </div>
             </button>
-
           </div>
         </div>
 

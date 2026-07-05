@@ -6,6 +6,7 @@ import { SessionResultStep } from './components/SessionResultStep'
 import { SessionSetupStep } from './components/SessionSetupStep'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
+import { AIScenarioStep } from './components/AIScenarioStep'
 import { getScenarioDatabase } from './data/scenarios'
 import { buildJudgmentSequence, evaluateInteractiveSession } from './engine/linterEngine'
 import { createRng, generateSeed, normalizeSeed, shuffleWithRng } from './engine/random'
@@ -81,7 +82,14 @@ const readPresetFromUrl = (): string => {
   }
 
   const raw = new URLSearchParams(window.location.search).get(PRESET_QUERY_PARAM)
-  if (raw && (raw === 'pais' || raw === 'jovens' || raw === 'biologos' || raw === 'originais' || raw === 'todos')) {
+  if (
+    raw &&
+    (raw === 'pais' ||
+      raw === 'jovens' ||
+      raw === 'biologos' ||
+      raw === 'originais' ||
+      raw === 'todos')
+  ) {
     return raw
   }
   return 'todos'
@@ -131,7 +139,9 @@ const clampSituationCount = (requestedCount: number, maxAvailableCount: number):
 
 const readConfiguredSituationCount = (): number => {
   if (typeof window !== 'undefined') {
-    const fromQuery = parseSituationCount(new URLSearchParams(window.location.search).get(SITUATION_COUNT_QUERY_PARAM))
+    const fromQuery = parseSituationCount(
+      new URLSearchParams(window.location.search).get(SITUATION_COUNT_QUERY_PARAM)
+    )
     if (fromQuery !== null) {
       return fromQuery
     }
@@ -154,7 +164,10 @@ function App() {
         id: 'transparency',
         label: t('principles.transparency.label'),
         status: t('principles.transparency.status'),
-        metadata: [t('principles.transparency.metadata.access'), t('principles.transparency.metadata.state')],
+        metadata: [
+          t('principles.transparency.metadata.access'),
+          t('principles.transparency.metadata.state'),
+        ],
         value: t('principles.transparency.value'),
         code: 'CHK_012',
       },
@@ -162,7 +175,10 @@ function App() {
         id: 'accountability',
         label: t('principles.accountability.label'),
         status: t('principles.accountability.status'),
-        metadata: [t('principles.accountability.metadata.resignation'), t('principles.accountability.metadata.state')],
+        metadata: [
+          t('principles.accountability.metadata.resignation'),
+          t('principles.accountability.metadata.state'),
+        ],
         value: t('principles.accountability.value'),
         code: 'CHK_034',
       },
@@ -170,19 +186,22 @@ function App() {
         id: 'equality',
         label: t('principles.equality.label'),
         status: t('principles.equality.status'),
-        metadata: [t('principles.equality.metadata.payGap'), t('principles.equality.metadata.state')],
+        metadata: [
+          t('principles.equality.metadata.payGap'),
+          t('principles.equality.metadata.state'),
+        ],
         value: t('principles.equality.value'),
         code: 'CHK_088',
       },
     ],
-    [t],
+    [t]
   )
 
   const scenarioDatabase = useMemo(() => getScenarioDatabase(t), [t])
   const maxSituationCount = useMemo(() => scenarioDatabase.length * 2, [scenarioDatabase])
   const configuredSituationCount = useMemo(
     () => clampSituationCount(readConfiguredSituationCount(), maxSituationCount),
-    [maxSituationCount],
+    [maxSituationCount]
   )
 
   const principleById = useMemo(() => {
@@ -194,6 +213,7 @@ function App() {
   }, [principles])
 
   const [step, setStep] = useState<Step>(1)
+  const [currentView, setCurrentView] = useState<'linter' | 'ai-generator'>('linter')
   const [principleRanking, setPrincipleRanking] = useState<string[]>([...DEFAULT_PRINCIPLE_ORDER])
   const [seed, setSeed] = useState<string>(() => readSeedFromUrl() ?? generateSeed())
   const [preset, setPreset] = useState<string>(() => readPresetFromUrl())
@@ -224,7 +244,7 @@ function App() {
       principleRanking
         .map((id) => principleById.get(id))
         .filter((principle): principle is Principle => Boolean(principle)),
-    [principleById, principleRanking],
+    [principleById, principleRanking]
   )
 
   const activeScenarios = useMemo(() => {
@@ -244,7 +264,12 @@ function App() {
     }
 
     // 2. Preset selection
-    if (preset === 'pais' || preset === 'jovens' || preset === 'biologos' || preset === 'originais') {
+    if (
+      preset === 'pais' ||
+      preset === 'jovens' ||
+      preset === 'biologos' ||
+      preset === 'originais'
+    ) {
       const mappedIds = PRESET_MAPPINGS[preset]
       if (mappedIds) {
         const filtered = scenarioDatabase.filter((s) => mappedIds.includes(s.id))
@@ -256,24 +281,34 @@ function App() {
 
     // 3. Default (All scenarios) randomized
     const requestedScenarioCount = Math.max(1, Math.floor(configuredSituationCount / 2))
-    const shuffledScenarios = shuffleWithRng(scenarioDatabase, createRng(`${seed}:scenario-selection`))
+    const shuffledScenarios = shuffleWithRng(
+      scenarioDatabase,
+      createRng(`${seed}:scenario-selection`)
+    )
     return shuffledScenarios.slice(0, requestedScenarioCount)
   }, [configuredSituationCount, scenarioDatabase, seed, preset])
 
   const judgmentSequence = useMemo(
     () => buildJudgmentSequence({ seed, scenarios: activeScenarios }),
-    [activeScenarios, seed],
+    [activeScenarios, seed]
   )
 
-  const progressItems = useMemo(
-    () => [
+  const progressItems = useMemo(() => {
+    if (currentView === 'ai-generator') {
+      return [
+        { label: t('aiScreen.countryLabel'), active: true, complete: false },
+        { label: t('aiScreen.navLabel'), active: false, complete: false },
+        { label: t('progress.judgment'), active: false, complete: false },
+        { label: t('progress.sessionResults'), active: false, complete: false },
+      ]
+    }
+    return [
       { label: t('progress.rankPrinciples'), active: step === 1, complete: step > 1 },
       { label: t('progress.sessionSeed'), active: step === 2, complete: step > 2 },
       { label: t('progress.judgment'), active: step === 3, complete: step > 3 },
       { label: t('progress.sessionResults'), active: step === 4, complete: false },
-    ],
-    [step, t],
-  )
+    ]
+  }, [currentView, step, t])
 
   const activeComplication = useMemo(() => {
     const currentItem = judgmentSequence[currentIndex]
@@ -297,7 +332,9 @@ function App() {
       return undefined
     }
 
-    const lastThree = judgmentSequence.slice(currentIndex - 3, currentIndex).map((item) => answers[item.id])
+    const lastThree = judgmentSequence
+      .slice(currentIndex - 3, currentIndex)
+      .map((item) => answers[item.id])
     const allAcceptable = lastThree.every((val) => val === 'ACCEPTABLE')
     const allOutrageous = lastThree.every((val) => val === 'OUTRAGEOUS')
 
@@ -395,6 +432,7 @@ function App() {
       analyzeTimeoutRef.current = undefined
     }
 
+    setCurrentView('linter')
     setStep(1)
     setPrincipleRanking([...DEFAULT_PRINCIPLE_ORDER])
     setAnswers({})
@@ -407,49 +445,69 @@ function App() {
     <main className="safe-screen min-h-dvh overflow-x-clip bg-[#0a0c10] text-slate-100 selection:bg-cyan-400/30">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,240,255,0.08),transparent_34%),linear-gradient(90deg,rgba(88,166,255,0.04)_1px,transparent_1px),linear-gradient(rgba(88,166,255,0.04)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px] opacity-70 sm:opacity-100" />
       <div className="relative flex min-h-dvh flex-col md:flex-row">
-        <Sidebar onHomeClick={resetToInitialState} />
+        <Sidebar
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          onHomeClick={resetToInitialState}
+        />
         <section className="flex min-h-dvh flex-1 flex-col border-t border-[#21262d] bg-[#0d1117]/95 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:pb-24 md:border-l md:border-t-0 md:pb-0">
-          <TopBar progressItems={progressItems} step={step} hasFailures={Boolean(session && (session.contradictionCount > 0 || session.isFlatLineVote))} />
-          {step === 1 && (
-            <RankingStep principles={rankedPrinciples} onReorder={handleReorder} onNext={() => setStep(2)} />
-          )}
-          {step === 2 && (
-            <SessionSetupStep
-              seed={seed}
-              itemCount={judgmentSequence.length}
-              onSeedChange={handleSeedChange}
-              onNewSeed={handleNewSeed}
-              onBack={() => setStep(1)}
-              onStart={beginJudging}
-              currentPreset={preset}
-              onPresetChange={(presetId) => {
-                setPreset(presetId)
-                setAnswers({})
-                setCurrentIndex(0)
-                setSession(null)
-              }}
-            />
-          )}
-          {step === 3 && (
-            <JudgingStep
-              item={judgmentSequence[currentIndex]}
-              index={currentIndex}
-              total={judgmentSequence.length}
-              isAnalyzing={isAnalyzing}
-              canGoBack={currentIndex > 0}
-              activeComplication={activeComplication}
-              activeAntiGamingWarning={activeAntiGamingWarning}
-              onVerdict={handleVerdict}
-              onBack={handleBack}
-            />
-          )}
-          {step === 4 && session && (
-            <SessionResultStep
-              session={session}
-              principles={principles}
-              onRerunSameSeed={beginJudging}
-              onNewSeedRun={restartWithNewSeed}
-            />
+          <TopBar
+            progressItems={progressItems}
+            step={step}
+            hasFailures={Boolean(
+              session && (session.contradictionCount > 0 || session.isFlatLineVote)
+            )}
+          />
+          {currentView === 'ai-generator' ? (
+            <AIScenarioStep principles={principles} />
+          ) : (
+            <>
+              {step === 1 && (
+                <RankingStep
+                  principles={rankedPrinciples}
+                  onReorder={handleReorder}
+                  onNext={() => setStep(2)}
+                />
+              )}
+              {step === 2 && (
+                <SessionSetupStep
+                  seed={seed}
+                  itemCount={judgmentSequence.length}
+                  onSeedChange={handleSeedChange}
+                  onNewSeed={handleNewSeed}
+                  onBack={() => setStep(1)}
+                  onStart={beginJudging}
+                  currentPreset={preset}
+                  onPresetChange={(presetId) => {
+                    setPreset(presetId)
+                    setAnswers({})
+                    setCurrentIndex(0)
+                    setSession(null)
+                  }}
+                />
+              )}
+              {step === 3 && (
+                <JudgingStep
+                  item={judgmentSequence[currentIndex]}
+                  index={currentIndex}
+                  total={judgmentSequence.length}
+                  isAnalyzing={isAnalyzing}
+                  canGoBack={currentIndex > 0}
+                  activeComplication={activeComplication}
+                  activeAntiGamingWarning={activeAntiGamingWarning}
+                  onVerdict={handleVerdict}
+                  onBack={handleBack}
+                />
+              )}
+              {step === 4 && session && (
+                <SessionResultStep
+                  session={session}
+                  principles={principles}
+                  onRerunSameSeed={beginJudging}
+                  onNewSeedRun={restartWithNewSeed}
+                />
+              )}
+            </>
           )}
         </section>
       </div>
@@ -458,4 +516,3 @@ function App() {
 }
 
 export default App
-

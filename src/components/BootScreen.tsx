@@ -27,15 +27,30 @@ function timestamp(index: number): string {
 function buildBootLines(t: (key: string, options?: Record<string, string>) => string): BootLine[] {
   return [
     { delay: 28, tone: 'info', channel: 'system.core', message: t('boot.lines.coldBoot') },
-    { delay: 34, tone: 'info', channel: 'mem.alloc', message: t('boot.lines.reserveHeap', { heap: '4096MB' }) },
+    {
+      delay: 34,
+      tone: 'info',
+      channel: 'mem.alloc',
+      message: t('boot.lines.reserveHeap', { heap: '4096MB' }),
+    },
     { delay: 32, tone: 'info', channel: 'mem.alloc', message: t('boot.lines.mapSpace') },
     { delay: 36, tone: 'info', channel: 'net.link', message: t('boot.lines.stabilizeMetrics') },
     { delay: 34, tone: 'info', channel: 'net.link', message: t('boot.lines.handshakeStream') },
     { delay: 36, tone: 'info', channel: 'logic.core', message: t('boot.lines.loadValidators') },
     { delay: 34, tone: 'info', channel: 'logic.core', message: t('boot.lines.compileRuleset') },
     { delay: 36, tone: 'info', channel: 'config.parse', message: t('boot.lines.readManifest') },
-    { delay: 100, tone: 'warn', channel: 'config.parse', message: t('boot.lines.deprecatedModule', { module: 'universal_empathy' }) },
-    { delay: 32, tone: 'warn', channel: 'config.parse', message: t('boot.lines.stripModule', { module: 'universal_empathy' }) },
+    {
+      delay: 100,
+      tone: 'warn',
+      channel: 'config.parse',
+      message: t('boot.lines.deprecatedModule', { module: 'universal_empathy' }),
+    },
+    {
+      delay: 32,
+      tone: 'warn',
+      channel: 'config.parse',
+      message: t('boot.lines.stripModule', { module: 'universal_empathy' }),
+    },
     { delay: 40, tone: 'info', channel: 'logic.core', message: t('boot.lines.rebindValidators') },
     { delay: 36, tone: 'info', channel: 'engine.init', message: t('boot.lines.mountEngine') },
     { delay: 42, tone: 'ok', channel: 'engine.init', message: t('boot.lines.engineOnline') },
@@ -154,28 +169,40 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.88))]" />
 
       <div className="relative flex h-full w-full items-center justify-center px-3 py-4 sm:px-6 sm:py-7 md:px-8 md:py-10">
-        <section className={`boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px] will-change-transform ${
-          isFadingOut
-            ? prefersReducedMotion
-              ? 'opacity-0'
-              : 'scale-[0.98] opacity-0 translate-y-2'
-            : 'scale-100 opacity-100 translate-y-0'
-        }`}>
+        <section
+          className={`boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px] will-change-transform ${
+            isFadingOut
+              ? prefersReducedMotion
+                ? 'opacity-0'
+                : 'scale-[0.98] opacity-0 translate-y-2'
+              : 'scale-100 opacity-100 translate-y-0'
+          }`}
+        >
           <header className="flex items-center justify-between border-b border-cyan-400/20 bg-cyan-400/5 px-3 py-2.5 font-mono text-[11px] tracking-wide text-cyan-300 sm:px-4 sm:text-xs">
             <span>culture-lint://boot</span>
             <span className="text-slate-400">runtime init</span>
           </header>
 
-          <div ref={logContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 font-mono text-[12px] leading-[1.55] sm:px-3 sm:py-3 sm:text-[13px] md:text-sm">
+          <div
+            ref={logContainerRef}
+            className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 font-mono text-[12px] leading-[1.55] sm:px-3 sm:py-3 sm:text-[13px] md:text-sm"
+          >
             {bootLines.slice(0, activeLineIndex + 1).map((line, index) => {
               const styles = TONE_STYLES[line.tone]
               const typedMessage = typedLines[index]
               const isActiveLine = index === activeLineIndex && !sequenceComplete
 
               return (
-                <div key={`${line.channel}-${index}`} className="mt-0.5 grid grid-cols-[auto_auto_1fr] items-start gap-x-1.5 gap-y-0.5 sm:gap-x-2">
-                  <span className="text-[10px] text-slate-600 sm:text-[11px]">{timestamp(index)}</span>
-                  <span className={`${styles.prompt} pt-[1px]`}>{line.tone === 'warn' ? '⚠' : '▸'}</span>
+                <div
+                  key={`${line.channel}-${index}`}
+                  className="mt-0.5 grid grid-cols-[auto_auto_1fr] items-start gap-x-1.5 gap-y-0.5 sm:gap-x-2"
+                >
+                  <span className="text-[10px] text-slate-600 sm:text-[11px]">
+                    {timestamp(index)}
+                  </span>
+                  <span className={`${styles.prompt} pt-[1px]`}>
+                    {line.tone === 'warn' ? '⚠' : '▸'}
+                  </span>
                   <div className="min-w-0 break-words">
                     <span className={styles.channel}>{line.channel}</span>
                     <span className="mx-1 text-slate-700">::</span>
@@ -193,19 +220,23 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
         </section>
       </div>
 
-      <div className={`boot-author-panel absolute bottom-5 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm px-4 py-2.5 rounded-2xl border border-cyan-400/10 bg-black/45 backdrop-blur-[6px] text-center font-mono z-10 flex flex-col items-center gap-1.5 shadow-[0_0_24px_rgba(0,240,255,0.03)] hover:border-cyan-400/30 ${
-        isFadingOut
-          ? prefersReducedMotion
-            ? 'opacity-0'
-            : 'opacity-0 translate-y-3'
-          : 'opacity-100 translate-y-0'
-      }`}>
+      <div
+        className={`boot-author-panel absolute bottom-5 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm px-4 py-2.5 rounded-2xl border border-cyan-400/10 bg-black/45 backdrop-blur-[6px] text-center font-mono z-10 flex flex-col items-center gap-1.5 shadow-[0_0_24px_rgba(0,240,255,0.03)] hover:border-cyan-400/30 ${
+          isFadingOut
+            ? prefersReducedMotion
+              ? 'opacity-0'
+              : 'opacity-0 translate-y-3'
+            : 'opacity-100 translate-y-0'
+        }`}
+      >
         <div className="pointer-events-none text-slate-600 text-[10px] tracking-wide">
           {t('appName')} <span className="text-slate-700">v2026.3.2</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-300">
           <span className="pointer-events-none text-slate-400 font-medium">{t('boot.author')}</span>
-          <span className="font-bold text-white tracking-wide pointer-events-none">Guilherme Giani</span>
+          <span className="font-bold text-white tracking-wide pointer-events-none">
+            Guilherme Giani
+          </span>
           <span className="text-slate-600 pointer-events-none">•</span>
           <a
             href="https://www.linkedin.com/in/guilhermegiani/"

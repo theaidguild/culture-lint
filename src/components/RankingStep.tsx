@@ -30,7 +30,7 @@ export function RankingStep({ principles, onReorder, onNext }: RankingStepProps)
   const { t } = useTranslation()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
   const orderIds = principles.map((principle) => principle.id)
@@ -72,7 +72,9 @@ export function RankingStep({ principles, onReorder, onNext }: RankingStepProps)
             <span className="h-0.5 w-10 bg-[#30363d]" />
           </div>
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl md:text-5xl">{t('rank.title')}</h1>
+        <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl md:text-5xl">
+          {t('rank.title')}
+        </h1>
         <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-400">{t('rank.description')}</p>
         <p className="mt-3 font-mono text-xs text-cyan-300">{t('rank.hint')}</p>
 
@@ -131,7 +133,9 @@ function SortablePrincipleRow({
   onMoveDown,
 }: SortablePrincipleRowProps) {
   const { t } = useTranslation()
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: principle.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: principle.id,
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -143,9 +147,7 @@ function SortablePrincipleRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-stretch gap-3 rounded-xl border bg-[#161b22] p-4 transition sm:p-5 ${
-        isDragging
-          ? 'border-cyan-400 shadow-[0_0_35px_rgba(0,240,255,0.25)]'
-          : 'border-[#21262d]'
+        isDragging ? 'border-cyan-400 shadow-[0_0_35px_rgba(0,240,255,0.25)]' : 'border-[#21262d]'
       }`}
     >
       <button
@@ -169,7 +171,9 @@ function SortablePrincipleRow({
           </span>
           <span className="font-mono text-xs text-slate-500">{t('rank.rankLabel', { rank })}</span>
         </div>
-        <p className="mt-2 text-sm italic leading-6 text-slate-200">&quot;{principle.value}&quot;</p>
+        <p className="mt-2 text-sm italic leading-6 text-slate-200">
+          &quot;{principle.value}&quot;
+        </p>
       </div>
       <div className="flex shrink-0 flex-col justify-center gap-1">
         <button

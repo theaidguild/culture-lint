@@ -71,7 +71,8 @@ const STATIC_SCENARIOS = [
     category: 'SO-BR/SEXUALITY',
     exceptionType: 'ShiftingLogicException',
     exceptionCode: 'CL_SEM_1004',
-  },  {
+  },
+  {
     id: 'fura-fila-saude',
     principleId: 'equality',
     category: 'SO-BR/HEALTHCARE',
@@ -210,7 +211,8 @@ const STATIC_SCENARIOS = [
     category: 'SO-BR/BIO_COLLECT',
     exceptionType: 'TypeMismatchException',
     exceptionCode: 'CL_SEM_1306',
-  },] as const satisfies Array<
+  },
+] as const satisfies Array<
   Pick<ScenarioPreset, 'id' | 'principleId' | 'category' | 'exceptionType' | 'exceptionCode'>
 >
 

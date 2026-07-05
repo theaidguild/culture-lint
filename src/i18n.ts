@@ -11,7 +11,9 @@ const resources = {
   'en-US': enUS,
 } as const
 
-const isSupportedLanguage = (language: string): language is (typeof SUPPORTED_LANGUAGES)[number] => {
+const isSupportedLanguage = (
+  language: string
+): language is (typeof SUPPORTED_LANGUAGES)[number] => {
   return SUPPORTED_LANGUAGES.includes(language as (typeof SUPPORTED_LANGUAGES)[number])
 }
 

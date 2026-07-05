@@ -14,9 +14,13 @@ type DiffSegment = {
   isDifferent: boolean
 }
 
-const tokenizeForDiff = (value: string): string[] => value.split(/(\s+)/).filter((token) => token.length > 0)
+const tokenizeForDiff = (value: string): string[] =>
+  value.split(/(\s+)/).filter((token) => token.length > 0)
 
-const buildDiffSegments = (left: string, right: string): { left: DiffSegment[]; right: DiffSegment[] } => {
+const buildDiffSegments = (
+  left: string,
+  right: string
+): { left: DiffSegment[]; right: DiffSegment[] } => {
   const leftTokens = tokenizeForDiff(left)
   const rightTokens = tokenizeForDiff(right)
   const rows = leftTokens.length + 1
@@ -110,22 +114,26 @@ export function SessionResultStep({
       [...session.judgments]
         .map((judgment, index) => ({ judgment, index }))
         .sort((a, b) => {
-          const rankA = rankIndexById.get(a.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
-          const rankB = rankIndexById.get(b.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          const rankA =
+            rankIndexById.get(a.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
+          const rankB =
+            rankIndexById.get(b.judgment.scenario.principleId) ?? Number.MAX_SAFE_INTEGER
           if (rankA !== rankB) {
             return rankA - rankB
           }
           return a.index - b.index
         })
         .map(({ judgment }) => judgment),
-    [rankIndexById, session.judgments],
+    [rankIndexById, session.judgments]
   )
 
   const principleStatuses = useMemo(
     () =>
       session.principleRanking.map((id) => {
         const principle = principles.find((candidate) => candidate.id === id)
-        const relevant = session.judgments.filter((judgment) => judgment.scenario.principleId === id)
+        const relevant = session.judgments.filter(
+          (judgment) => judgment.scenario.principleId === id
+        )
         const failed = relevant.some((judgment) => !judgment.isConsistent)
         return {
           id,
@@ -134,24 +142,31 @@ export function SessionResultStep({
           failed,
         }
       }),
-    [principles, session.judgments, session.principleRanking],
+    [principles, session.judgments, session.principleRanking]
   )
 
   return (
     <div className="flex flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-12">
       <div>
-        <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">{t('sessionResult.title')}</h1>
-        <div className={`mt-3 border-l-2 pl-3 py-1.5 font-mono text-sm ${
-          session.isFlatLineVote
-            ? 'border-amber-500 bg-amber-500/5'
-            : hasContradictions
-              ? 'border-red-500 bg-red-500/5'
-              : 'border-emerald-500 bg-emerald-500/5'
-        }`}>
+        <h1 className="text-2xl font-black text-white sm:text-3xl md:text-4xl">
+          {t('sessionResult.title')}
+        </h1>
+        <div
+          className={`mt-3 border-l-2 pl-3 py-1.5 font-mono text-sm ${
+            session.isFlatLineVote
+              ? 'border-amber-500 bg-amber-500/5'
+              : hasContradictions
+                ? 'border-red-500 bg-red-500/5'
+                : 'border-emerald-500 bg-emerald-500/5'
+          }`}
+        >
           {session.isFlatLineVote ? (
             <span className="font-black text-amber-400 font-sans tracking-wide">
               {t('sessionResult.summaryFlatLine', {
-                verdict: session.flatLineVerdict === 'ACCEPTABLE' ? t('judge.acceptable') : t('judge.outrageous')
+                verdict:
+                  session.flatLineVerdict === 'ACCEPTABLE'
+                    ? t('judge.acceptable')
+                    : t('judge.outrageous'),
               })}
             </span>
           ) : hasContradictions ? (
@@ -167,7 +182,9 @@ export function SessionResultStep({
             </span>
           )}
         </div>
-        <p className="mt-2 font-mono text-xs text-slate-500">{t('sessionResult.seedUsed', { seed: session.seed })}</p>
+        <p className="mt-2 font-mono text-xs text-slate-500">
+          {t('sessionResult.seedUsed', { seed: session.seed })}
+        </p>
       </div>
 
       <section className="mt-6 rounded-lg border border-cyan-400/60 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)] sm:p-6">
@@ -189,7 +206,9 @@ export function SessionResultStep({
               {!entry.tested ? (
                 <span className="text-slate-500">{t('sessionResult.notTested')}</span>
               ) : entry.failed ? (
-                <span className="font-black text-red-400">{t('sessionResult.contradictionFound')}</span>
+                <span className="font-black text-red-400">
+                  {t('sessionResult.contradictionFound')}
+                </span>
               ) : (
                 <span className="font-black text-emerald-400">{t('sessionResult.consistent')}</span>
               )}
@@ -198,7 +217,9 @@ export function SessionResultStep({
         </ul>
       </section>
 
-      <h2 className="mt-8 font-mono text-sm font-black text-cyan-300">{t('sessionResult.scenarioBreakdown')}</h2>
+      <h2 className="mt-8 font-mono text-sm font-black text-cyan-300">
+        {t('sessionResult.scenarioBreakdown')}
+      </h2>
       <div className="mt-4 space-y-4">
         {orderedJudgments.map((judgment, index) => (
           <JudgmentOutcomeCard
@@ -234,22 +255,28 @@ export function SessionResultStep({
   )
 }
 
-function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: ScenarioJudgment; defaultExpanded: boolean }) {
+function JudgmentOutcomeCard({
+  judgment,
+  defaultExpanded,
+}: {
+  judgment: ScenarioJudgment
+  defaultExpanded: boolean
+}) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { scenario, verdictA, verdictB, isConsistent } = judgment
   const hasFailed = !isConsistent
   const subjectDiff = useMemo(
     () => buildDiffSegments(scenario.caseStudyA.subject, scenario.caseStudyB.subject),
-    [scenario.caseStudyA.subject, scenario.caseStudyB.subject],
+    [scenario.caseStudyA.subject, scenario.caseStudyB.subject]
   )
   const actDiff = useMemo(
     () => buildDiffSegments(scenario.caseStudyA.act, scenario.caseStudyB.act),
-    [scenario.caseStudyA.act, scenario.caseStudyB.act],
+    [scenario.caseStudyA.act, scenario.caseStudyB.act]
   )
   const contextDiff = useMemo(
     () => buildDiffSegments(scenario.caseStudyA.context, scenario.caseStudyB.context),
-    [scenario.caseStudyA.context, scenario.caseStudyB.context],
+    [scenario.caseStudyA.context, scenario.caseStudyB.context]
   )
 
   return (
@@ -270,7 +297,9 @@ function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: Scenario
         <span className="flex shrink-0 items-center gap-3">
           <span
             className={`rounded border px-2 py-1 font-mono text-xs font-black ${
-              hasFailed ? 'border-red-400/70 text-red-400' : 'border-emerald-400/70 text-emerald-400'
+              hasFailed
+                ? 'border-red-400/70 text-red-400'
+                : 'border-emerald-400/70 text-emerald-400'
             }`}
           >
             {hasFailed ? t('sessionResult.doubleStandard') : t('sessionResult.consistentBadge')}
@@ -310,7 +339,9 @@ function JudgmentOutcomeCard({ judgment, defaultExpanded }: { judgment: Scenario
           </div>
           <div
             className={`mt-4 rounded border p-4 font-mono text-xs leading-6 sm:text-sm ${
-              hasFailed ? 'border-red-500/50 text-red-300' : 'border-emerald-500/40 text-emerald-300'
+              hasFailed
+                ? 'border-red-500/50 text-red-300'
+                : 'border-emerald-500/40 text-emerald-300'
             }`}
           >
             {hasFailed ? t('sessionResult.contradictionNote') : t('sessionResult.consistentNote')}
@@ -352,7 +383,9 @@ function VerdictCell({
         {segments.map((segment, index) => (
           <span
             key={`${segment.text}-${index}`}
-            className={segment.isDifferent ? 'rounded-sm bg-amber-400/20 px-0.5 text-amber-100' : undefined}
+            className={
+              segment.isDifferent ? 'rounded-sm bg-amber-400/20 px-0.5 text-amber-100' : undefined
+            }
           >
             {segment.text}
           </span>
@@ -371,7 +404,9 @@ function VerdictCell({
         <span className="text-slate-500">{t('sessionResult.yourVerdict')}</span>
         <span
           className={`rounded border px-2 py-0.5 font-black ${
-            isOutrageous ? 'border-red-400/70 text-red-400' : 'border-emerald-400/70 text-emerald-400'
+            isOutrageous
+              ? 'border-red-400/70 text-red-400'
+              : 'border-emerald-400/70 text-emerald-400'
           }`}
         >
           {isOutrageous ? t('judge.outrageous') : t('judge.acceptable')}

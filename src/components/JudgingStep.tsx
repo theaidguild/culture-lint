@@ -1,4 +1,11 @@
-import { ChevronLeft, FileCode2, ThumbsDown, ThumbsUp, ShieldAlert, AlertTriangle } from 'lucide-react'
+import {
+  ChevronLeft,
+  FileCode2,
+  ThumbsDown,
+  ThumbsUp,
+  ShieldAlert,
+  AlertTriangle,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type JudgmentItem, type JudgmentVerdict } from '../types/linter'
 
@@ -44,7 +51,9 @@ export function JudgingStep({
     <div className="flex flex-1 items-start justify-center px-4 py-8 sm:px-6 lg:px-20">
       <div className="w-full max-w-3xl">
         <div className="flex items-center justify-between font-mono text-xs text-slate-400">
-          <span className="text-cyan-300">{t('judge.progress', { current: index + 1, total })}</span>
+          <span className="text-cyan-300">
+            {t('judge.progress', { current: index + 1, total })}
+          </span>
           <button
             type="button"
             onClick={onBack}
@@ -55,7 +64,10 @@ export function JudgingStep({
           </button>
         </div>
         <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#21262d]">
-          <div className="h-full bg-cyan-400 transition-all" style={{ width: `${progressPercent}%` }} />
+          <div
+            className="h-full bg-cyan-400 transition-all"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
 
         <h1 className="mt-8 text-xl font-black tracking-tight text-white sm:text-2xl md:text-3xl">
@@ -104,14 +116,14 @@ export function JudgingStep({
               {t('judge.complicationSub')}
             </p>
             <div className="mt-4 border-l-2 border-amber-500 bg-amber-500/5 px-4 py-3">
-              <p className="font-mono text-sm leading-6 text-amber-200">
-                {activeComplication}
-              </p>
+              <p className="font-mono text-sm leading-6 text-amber-200">{activeComplication}</p>
             </div>
           </div>
         )}
 
-        <p className="mt-8 text-center font-mono text-sm font-black text-slate-300">{t('judge.prompt')}</p>
+        <p className="mt-8 text-center font-mono text-sm font-black text-slate-300">
+          {t('judge.prompt')}
+        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <button
             type="button"
