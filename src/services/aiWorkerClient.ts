@@ -2,6 +2,21 @@ import type { AIWorkerRequest, AIWorkerResponse } from './aiGeneratorWorkerProto
 import type { ModelPresetId, GenerationProgress } from './aiScenarioGenerator'
 import type { ScenarioPreset } from '../types/linter'
 
+export type AIStatusKind = 'idle' | 'warmup' | 'generate' | 'error'
+
+export type AIStatusSnapshot = {
+  kind: AIStatusKind
+  requestId?: string
+  modelId?: ModelPresetId
+  phase?: GenerationProgress['phase']
+  percent?: number
+  label?: string
+  message?: string
+}
+
+const AI_STATUS_KEY = 'culture-lint:ai-status'
+const AI_STATUS_EVENT = 'culture-lint-ai-status'
+
 type PendingRequest = {
   type: 'warmup' | 'generate'
   resolve: (value?: unknown) => void
@@ -27,6 +42,39 @@ function debugLog(message: string, meta?: Record<string, unknown>) {
   }
   // eslint-disable-next-line no-console
   console.debug(`${AI_DEBUG_PREFIX} ${message}`)
+}
+
+function setAIStatus(snapshot: AIStatusSnapshot) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(AI_STATUS_KEY, JSON.stringify(snapshot))
+    window.dispatchEvent(new Event(AI_STATUS_EVENT))
+  } catch {
+    // Diagnostics only; ignore storage failures.
+  }
+}
+
+export function readAIStatusSnapshot(): AIStatusSnapshot | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.sessionStorage.getItem(AI_STATUS_KEY)
+    return raw ? (JSON.parse(raw) as AIStatusSnapshot) : null
+  } catch {
+    return null
+  }
+}
+
+export function subscribeAIStatus(onChange: () => void) {
+  if (typeof window === 'undefined') return () => undefined
+
+  window.addEventListener(AI_STATUS_EVENT, onChange)
+  window.addEventListener('storage', onChange)
+  return () => {
+    window.removeEventListener(AI_STATUS_EVENT, onChange)
+    window.removeEventListener('storage', onChange)
+  }
 }
 
 let workerRef: Worker | null = null
@@ -67,6 +115,23 @@ function getWorker() {
 
     if (message.type === 'progress') {
       pending?.onProgress?.(message.progress)
+      if (pending?.type === 'warmup') {
+        setAIStatus({
+          kind: 'warmup',
+          requestId: message.requestId,
+          phase: message.progress.phase,
+          percent: message.progress.percent,
+          label: message.progress.label,
+        })
+      } else if (pending?.type === 'generate') {
+        setAIStatus({
+          kind: 'generate',
+          requestId: message.requestId,
+          phase: message.progress.phase,
+          percent: message.progress.percent,
+          label: message.progress.label,
+        })
+      }
       return
     }
 
@@ -77,25 +142,30 @@ function getWorker() {
     pendingRequests.delete(message.requestId)
 
     if (message.type === 'warmup-complete') {
+      setAIStatus({ kind: 'idle', requestId: message.requestId })
       pending.resolve()
       return
     }
 
     if (message.type === 'generate-complete') {
+      setAIStatus({ kind: 'idle', requestId: message.requestId })
       pending.resolve(message.scenarios)
       return
     }
 
     if (message.type === 'canceled') {
+      setAIStatus({ kind: 'idle', requestId: message.requestId, message: 'aborted' })
       pending.reject(new Error('aborted'))
       return
     }
 
+    setAIStatus({ kind: 'error', requestId: message.requestId, message: message.message })
     pending.reject(new Error(message.message))
   }
 
   worker.onerror = () => {
     debugLog('worker runtime error')
+    setAIStatus({ kind: 'error', message: 'worker-error' })
     rejectAllPending('worker-error')
     clearWorker()
   }
@@ -127,6 +197,14 @@ export function requestAIWarmup(params: {
 
   const requestId = nextRequestId()
   debugLog('request warmup', { requestId, warmupKey })
+  setAIStatus({
+    kind: 'warmup',
+    requestId,
+    modelId: params.modelId,
+    phase: 'downloading',
+    percent: 0,
+    label: 'Starting warmup...',
+  })
 
   const promise = new Promise<void>((resolve, reject) => {
     post(
@@ -138,14 +216,26 @@ export function requestAIWarmup(params: {
       },
       {
         type: 'warmup',
-        onProgress: params.onProgress,
+        onProgress: (progress) => {
+          setAIStatus({
+            kind: 'warmup',
+            requestId,
+            modelId: params.modelId,
+            phase: progress.phase,
+            percent: progress.percent,
+            label: progress.label,
+          })
+          params.onProgress?.(progress)
+        },
         resolve: () => {
           warmedKeys.add(warmupKey)
           warmupPromises.delete(warmupKey)
+          setAIStatus({ kind: 'idle', requestId, modelId: params.modelId })
           resolve()
         },
         reject: (error) => {
           warmupPromises.delete(warmupKey)
+          setAIStatus({ kind: 'error', requestId, modelId: params.modelId, message: String(error) })
           reject(error)
         },
       }
@@ -168,6 +258,15 @@ export function requestAIGenerate(params: GenerateParams): {
     count: params.count,
   })
 
+  setAIStatus({
+    kind: 'generate',
+    requestId,
+    modelId: params.modelId,
+    phase: 'generating',
+    percent: 0,
+    label: 'Starting generation...',
+  })
+
   const promise = new Promise<ScenarioPreset[]>((resolve, reject) => {
     post(
       {
@@ -181,9 +280,25 @@ export function requestAIGenerate(params: GenerateParams): {
       },
       {
         type: 'generate',
-        resolve: (value) => resolve((value ?? []) as ScenarioPreset[]),
-        reject,
-        onProgress: params.onProgress,
+        resolve: (value) => {
+          setAIStatus({ kind: 'idle', requestId, modelId: params.modelId })
+          resolve((value ?? []) as ScenarioPreset[])
+        },
+        reject: (error) => {
+          setAIStatus({ kind: 'error', requestId, modelId: params.modelId, message: String(error) })
+          reject(error)
+        },
+        onProgress: (progress) => {
+          setAIStatus({
+            kind: 'generate',
+            requestId,
+            modelId: params.modelId,
+            phase: progress.phase,
+            percent: progress.percent,
+            label: progress.label,
+          })
+          params.onProgress?.(progress)
+        },
       }
     )
   })
@@ -193,6 +308,7 @@ export function requestAIGenerate(params: GenerateParams): {
 
 export function cancelAIRequest(requestId: string) {
   debugLog('cancel request', { requestId })
+  setAIStatus({ kind: 'idle', requestId, message: 'canceled' })
   getWorker().postMessage({ type: 'cancel', requestId })
   const pending = pendingRequests.get(requestId)
   if (pending) {
