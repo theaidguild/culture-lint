@@ -13,6 +13,7 @@ import {
   type InteractiveSessionRun,
   type JudgmentVerdict,
   type Principle,
+  type ScenarioPreset,
 } from './types/linter'
 
 type Step = 1 | 2 | 3 | 4
@@ -20,7 +21,50 @@ type Step = 1 | 2 | 3 | 4
 const DEFAULT_PRINCIPLE_ORDER = ['transparency', 'accountability', 'equality'] as const
 const SEED_QUERY_PARAM = 'seed'
 const SITUATION_COUNT_QUERY_PARAM = 'situations'
+const SCENARIOS_QUERY_PARAM = 'scenarios'
+const PRESET_QUERY_PARAM = 'preset'
 const DEFAULT_SITUATION_COUNT = 8
+
+const PRESET_MAPPINGS: Record<string, string[]> = {
+  pais: [
+    'fura-fila-saude',
+    'perturbacao-sossego-comunidade',
+    'alerta-fake-news-whatsapp',
+    'furto-fome-supermercado',
+    'mentira-politica-eleitor',
+    'presente-agrado-reparticao',
+    'cuidados-pais-idosos',
+    'partilha-heranca-familiar',
+  ],
+  jovens: [
+    'cancelamento-critica-influenciador',
+    'divisao-conta-streaming',
+    'meme-inteligencia-artificial',
+    'trabalho-faculdade-credito',
+    'alimentacao-vegana-boicote',
+    'consumo-fast-fashion',
+  ],
+  biologos: [
+    'pesquisa-cientifica-financiada',
+    'especie-invasora-conservacao',
+    'patente-remedio-indigena',
+    'zoologico-conservacao-bem-estar',
+    'divulgacao-cientifica-alerta',
+    'coleta-especime-licenca',
+  ],
+  originais: [
+    'inclusividade-seletiva',
+    'cancelamento-do-bem',
+    'stf-due-process',
+    'corrupcao-estimada',
+    'liberdade-expressao-seletiva',
+    'seguranca-publica-seletiva',
+    'vazamento-privacidade',
+    'racismo-e-linguagem',
+    'tolerancia-religiosa',
+    'identidade-sexual-paradox',
+  ],
+}
 
 const readSeedFromUrl = (): string | null => {
   if (typeof window === 'undefined') {
@@ -31,13 +75,39 @@ const readSeedFromUrl = (): string | null => {
   return raw ? normalizeSeed(raw) : null
 }
 
-const writeSeedToUrl = (seed: string) => {
+const readPresetFromUrl = (): string => {
+  if (typeof window === 'undefined') {
+    return 'todos'
+  }
+
+  const raw = new URLSearchParams(window.location.search).get(PRESET_QUERY_PARAM)
+  if (raw && (raw === 'pais' || raw === 'jovens' || raw === 'biologos' || raw === 'originais' || raw === 'todos')) {
+    return raw
+  }
+  return 'todos'
+}
+
+const readForcedScenariosFromUrl = (): string[] | null => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const raw = new URLSearchParams(window.location.search).get(SCENARIOS_QUERY_PARAM)
+  return raw ? raw.split(',').map((id) => id.trim().toLowerCase()) : null
+}
+
+const writeParamsToUrl = (seed: string, preset: string) => {
   if (typeof window === 'undefined') {
     return
   }
 
   const url = new URL(window.location.href)
   url.searchParams.set(SEED_QUERY_PARAM, seed)
+  if (preset === 'todos') {
+    url.searchParams.delete(PRESET_QUERY_PARAM)
+  } else {
+    url.searchParams.set(PRESET_QUERY_PARAM, preset)
+  }
   window.history.replaceState(null, '', url.toString())
 }
 
@@ -126,6 +196,7 @@ function App() {
   const [step, setStep] = useState<Step>(1)
   const [principleRanking, setPrincipleRanking] = useState<string[]>([...DEFAULT_PRINCIPLE_ORDER])
   const [seed, setSeed] = useState<string>(() => readSeedFromUrl() ?? generateSeed())
+  const [preset, setPreset] = useState<string>(() => readPresetFromUrl())
   const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -133,8 +204,8 @@ function App() {
   const analyzeTimeoutRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    writeSeedToUrl(seed)
-  }, [seed])
+    writeParamsToUrl(seed, preset)
+  }, [seed, preset])
 
   useEffect(() => {
     return () => {
@@ -157,10 +228,37 @@ function App() {
   )
 
   const activeScenarios = useMemo(() => {
+    // 1. URL explicit scenarios have highest priority
+    const forcedIds = readForcedScenariosFromUrl()
+    if (forcedIds && forcedIds.length > 0) {
+      const filtered: ScenarioPreset[] = []
+      for (const id of forcedIds) {
+        const found = scenarioDatabase.find((s) => s.id === id)
+        if (found) {
+          filtered.push(found)
+        }
+      }
+      if (filtered.length > 0) {
+        return filtered
+      }
+    }
+
+    // 2. Preset selection
+    if (preset === 'pais' || preset === 'jovens' || preset === 'biologos' || preset === 'originais') {
+      const mappedIds = PRESET_MAPPINGS[preset]
+      if (mappedIds) {
+        const filtered = scenarioDatabase.filter((s) => mappedIds.includes(s.id))
+        if (filtered.length > 0) {
+          return filtered
+        }
+      }
+    }
+
+    // 3. Default (All scenarios) randomized
     const requestedScenarioCount = Math.max(1, Math.floor(configuredSituationCount / 2))
     const shuffledScenarios = shuffleWithRng(scenarioDatabase, createRng(`${seed}:scenario-selection`))
     return shuffledScenarios.slice(0, requestedScenarioCount)
-  }, [configuredSituationCount, scenarioDatabase, seed])
+  }, [configuredSituationCount, scenarioDatabase, seed, preset])
 
   const judgmentSequence = useMemo(
     () => buildJudgmentSequence({ seed, scenarios: activeScenarios }),
@@ -323,6 +421,13 @@ function App() {
               onNewSeed={handleNewSeed}
               onBack={() => setStep(1)}
               onStart={beginJudging}
+              currentPreset={preset}
+              onPresetChange={(presetId) => {
+                setPreset(presetId)
+                setAnswers({})
+                setCurrentIndex(0)
+                setSession(null)
+              }}
             />
           )}
           {step === 3 && (

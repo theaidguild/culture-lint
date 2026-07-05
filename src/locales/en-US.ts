@@ -47,6 +47,15 @@ const enUS = {
       title: 'Step 2: Prepare the Judgment Session',
       description:
         'You are about to judge a series of individual acts, one at a time. A single test is easy to game, so the acts are shuffled to make it hard to notice when you apply two different standards to the same behavior.',
+      presetsLabel: 'SCENARIO CASES SET',
+      presetPais: 'Parents Version (+70 Years)',
+      presetPaisDesc: 'Daily situations with simple language (healthcare, family, WhatsApp, noise, supermarkets).',
+      presetJovens: 'Nephews Version (21 Years)',
+      presetJovensDesc: 'Focused on social networks, internet culture, Artificial Intelligence, and streaming.',
+      presetOriginais: 'Original Cases',
+      presetOriginaisDesc: 'The original 10 political, judicial, and digital culture scenarios.',
+      presetTodos: 'All Cases',
+      presetTodosDesc: 'Combines all 19 scenarios in the system (original and simplified cases).',
       briefingTitle: 'HOW THIS WORKS',
       briefingBody:
         'Each situation is shown on its own with no scores or hints. Some are mirror images of each other, performed by different actors. Judge each one honestly; only at the end do we compare your verdicts to reveal any double standard.',
@@ -411,6 +420,386 @@ const enUS = {
         complications: {
           ifAcceptable: 'By authorizing target attacks if their political views diverge, online mobs dox and threaten the physical safety of an LGBTQ+ youth who simply expressed moderate economic views. Do you defend this "community defense"?',
           ifOutrageous: 'By enforcing absolute protection from digital invalidation, the state mandates that reviewing any public action of an LGBTQ+ politician is classified as hate speech, creating an elite untouchable class of leaders. Do you endorse this immunity?',
+        },
+      },
+      'fura-fila-saude': {
+        title: 'Skipping the hospital queue',
+        caseStudyA: {
+          subject: 'A highly influential politician whom you DO NOT support',
+          act: 'Makes phone calls and uses private contacts to secure immediate admission or expedite a serious surgery for their elderly parent',
+          context: 'This causes them to skip ahead of all other patients who have been patiently waiting on the official public healthcare queue for months',
+          justificationLogic: 'An absurd and unjust privilege of the powerful, skipping the queue at the expense of ordinary people suffering under public healthcare.',
+        },
+        caseStudyB: {
+          subject: 'A beloved member of your own family (or a politician you DO support)',
+          act: 'Makes phone calls and uses private contacts to secure immediate admission or expedite a serious surgery for their elderly parent',
+          context: 'This causes them to skip ahead of all other patients who have been patiently waiting on the official public healthcare queue for months',
+          justificationLogic: 'A natural, loving gesture of a desperate child. Anyone with a good heart would do the exact same to save the life of someone they love.',
+        },
+        complications: {
+          ifAcceptable: 'If anyone can skip the queue out of love for their family, public hospitals become a jungle where only those with contacts or money can survive, condemning the poorest to a silent death. Do you agree with this?',
+          ifOutrageous: 'If we strictly punish anyone trying to save their own family, would you be willing to let your own parent suffer in a hospital corridor for months just to "set an example" of code compliance? Would you have that level of coldness?',
+        },
+      },
+      'perturbacao-sossego-comunidade': {
+        title: 'Late-night loud noise',
+        caseStudyA: {
+          subject: 'A group of unknown youth in the neighborhood',
+          act: 'Places massive speakers on the sidewalk playing loud, noisy music all night long',
+          context: 'The loud music continues disturbing the sleep of all residents until 2 o\'clock on Sunday morning',
+          justificationLogic: 'A total lack of education and respect for the peace of neighbors and elder citizens. A chaotic misconduct that must be immediately shut down by law enforcement.',
+        },
+        caseStudyB: {
+          subject: 'The neighborhood church that you attend and support (or a beautiful wedding celebration of highly beloved friends)',
+          act: 'Places massive speakers on the sidewalk playing loud, noisy music all night long',
+          context: 'The loud music continues disturbing the sleep of all residents until 2 o\'clock on Sunday morning',
+          justificationLogic: 'A beautiful celebration of fellowship and community faith. Neighbors should be more patient and tolerant, as this does not happen every day.',
+        },
+        complications: {
+          ifAcceptable: 'If we tolerate loud late-night parties, elder and sick neighbors will be repeatedly unable to sleep, worsening their health conditions for the sake of other people\'s fun. Do you accept causing this health damage to them?',
+          ifOutrageous: 'If we absolutely forbid any festive or religious noise after 10 PM, we eliminate all traditional street festivals, religious processions and happy family gatherings of the neighborhood. Do you want to live in a completely silent, lifeless neighborhood?',
+        },
+      },
+      'alerta-fake-news-whatsapp': {
+        title: 'Scary messages on WhatsApp',
+        caseStudyA: {
+          subject: 'An individual supporting political candidates you DO NOT favor',
+          act: 'Shares a terrifying audio in WhatsApp group chats warning that the current government plans to "confiscate all savings and pensions" next month',
+          context: 'The rumor has absolutely no basis in authentic news outlets but scares the elderly residents deeply',
+          justificationLogic: 'A malicious lie created solely to spread panic and fear among vulnerable people. Anyone starting and spreading such major rumors should be punished.',
+        },
+        caseStudyB: {
+          subject: 'A well-intentioned relative of your own family or someone who supports candidates you DO favor',
+          act: 'Shares a terrifying audio in WhatsApp group chats warning that the current government plans to "confiscate all savings and pensions" next month',
+          context: 'The rumor has absolutely no basis in authentic news outlets but scares the elderly residents deeply',
+          justificationLogic: 'Just an important warning for caution and safety. It is better to be safe than sorry and alert people before harm happens, after all, where there is smoke, there is fire.',
+        },
+        complications: {
+          ifAcceptable: 'By letting people spread scary lies freely without verification, dozens of retirees panic financially and withdraw all their money at once, becoming easy targets for street muggers and scammers. Do you accept this consequence?',
+          ifOutrageous: 'By trying to silence any warning or distrust audios that aren\'t in official newspapers, the government gains the power to censor family groups and silence any popular denunciations of real abuses of power. Do you agree with this WhatsApp control?',
+        },
+      },
+      'furto-fome-supermercado': {
+        title: 'Taking groceries from the market without paying',
+        caseStudyA: {
+          subject: 'A strong, healthy man whom you DO NOT support',
+          act: 'Secretly takes a loaf of bread and two cartons of milk from a large foreign supermarket chain',
+          context: 'He hides the products under his coat to avoid paying, claiming he was starving and unemployed for days',
+          justificationLogic: 'It is a blatant theft and a lack of character. Hunger does not give anyone the right to take what belongs to others; if everyone did this, stores would go bankrupt, and it would turn into a lawless land.',
+        },
+        caseStudyB: {
+          subject: 'A kind, elderly mother going through extreme poverty',
+          act: 'Secretly takes a loaf of bread and two cartons of milk from a large foreign supermarket chain',
+          context: 'She hides the products under her coat to avoid paying, claiming she was starving and unemployed for days',
+          justificationLogic: 'It is a desperate act of a mother wanting to feed her hungry little children. Human life and dignity are worth much more than the profit of a wealthy supermarket chain.',
+        },
+        complications: {
+          ifAcceptable: 'By accepting theft out of desperation, organized crime gangs start hiring needy people to steal goods in bulk, knowing they won\'t be arrested. This leads to the closure of neighborhood supermarkets in poorer areas. Do you accept this outcome?',
+          ifOutrageous: 'By punishing food theft with absolute severity, the state arrests and sentences a mother of three young children to years in prison over a liter of milk, driving the family into debt and leaving the kids abandoned in an orphanage. Do you defend this dry law?',
+        },
+      },
+      'mentira-politica-eleitor': {
+        title: 'Lies told during a political debate',
+        caseStudyA: {
+          subject: 'An arrogant politician from the political opposition to yours',
+          act: 'Fabricates and spreads completely false economic statistics during a major live television debate on Sunday',
+          context: 'He does this knowing the numbers are fake, aiming to deceive elderly voters and win the local election',
+          justificationLogic: 'A very serious and anti-democratic lie that sabotages voters\' conscious choices. This candidate proves he is a liar and should have his candidacy annulada.',
+        },
+        caseStudyB: {
+          subject: 'The main politician whom you support, trust, and defend',
+          act: 'Fabricates and spreads completely false economic statistics during a major live television debate on Sunday',
+          context: 'He does this knowing the numbers are fake, aiming to deceive elderly voters and win the local election',
+          justificationLogic: 'In today\'s politics, this is a necessary tactical defense against attacks. All sides exaggerate figures; the most important thing is to defeat dangerous opponents.',
+        },
+        complications: {
+          ifAcceptable: 'If we accept tactical lies from our side, politicians realize they don\'t need to deliver any real public work, just lying on TV is enough. The truth vanishes and all public services decay through masked corruption. Do you agree to this tradeoff?',
+          ifOutrageous: 'If we strictly punish any inaccurate statements made in debates, the electoral court gains absolute power to suspend popular candidates for any poorly phrased sentence, destroying the freedom of opposition. Do you trust this power in the hands of judges?',
+        },
+      },
+      'presente-agrado-reparticao': {
+        title: 'Thanking a civil servant with a small gift',
+        caseStudyA: {
+          subject: 'A wealthy, arrogant businessman whom you DO NOT like',
+          act: 'Offers a box of expensive chocolates and fifty reais to the clerk at the health center or civic registry',
+          context: 'He offers this sweet gesture so she will prioritize his paperwork ahead of the batch, speeding up his service',
+          justificationLogic: 'This is bribery and petty corruption. Skipping ahead of ordinary citizens who wait in line because of treats offered to clerks is a grave breach of ethics.',
+        },
+        caseStudyB: {
+          subject: 'A humble, friendly elderly neighbor from your street',
+          act: 'Offers a box of expensive chocolates and fifty reais to the clerk at the health center or civic registry',
+          context: 'He offers this sweet gesture so she will prioritize his paperwork ahead of the batch, speeding up his service',
+          justificationLogic: 'It was merely a loving gesture and a token of appreciation for the clerk\'s hard work on low wages. It didn\'t harm anyone, it simply resolved his issue quickly.',
+        },
+        complications: {
+          ifAcceptable: 'If we normalize giving financial "treats" to expedite public tasks, civil servants will intentionally slow down the files of those who don\'t bring gifts, severely punishing poorer citizens who can\'t afford them. Do you support this system?',
+          ifOutrageous: 'By severely criminalizing any minor treat or warm gift to public servants, the state starts investigating and firing lunch ladies and attendants who received a Christmas panettone from students\' parents, treating them as criminals. Do you support this witch hunt?',
+        },
+      },
+      'cancelamento-critica-influenciador': {
+        title: 'Exposures and online boycotts',
+        caseStudyA: {
+          subject: 'An extremely famous digital influencer with political views opposite to yours',
+          act: 'Makes an inappropriate remark or joke and immediately faces a massive "exposed" boycott campaign online',
+          context: 'Thousands of users mobilize on Twitter and Instagram to demand sponsors drop him and force platforms to ban him',
+          justificationLogic: 'They reap what they sowed. Prejudiced or harmful figures must face economic impacts online to enforce digital responsibility.',
+        },
+        caseStudyB: {
+          subject: 'An extremely famous digital influencer whom you love and align with ideologically',
+          act: 'Makes an inappropriate remark or joke and immediately faces a massive "exposed" boycott campaign online',
+          context: 'Thousands of users mobilize on Twitter and Instagram to demand sponsors drop him and force platforms to ban him',
+          justificationLogic: 'Online cancel culture is a toxic disease and a virtual lynching mob. Silly past mistakes shouldn\'t destroy a person\'s mental health and lifetime career.',
+        },
+        complications: {
+          ifAcceptable: 'By endorsing virtual economic lynching, radical factions start hunting down and doxing small indie meme creators over ironical double-meaning jokes, ruining 19-year-old college students\' lives. Do you support this hunt?',
+          ifOutrageous: 'By completely banning exposures or sponsor protests, users lose their only democratic leverage against untouchable billionaire influencers spreading hate speech. How should victims speak out without exposed tags?',
+        },
+      },
+      'divisao-conta-streaming': {
+        title: 'Password sharing restrictions',
+        caseStudyA: {
+          subject: 'A major international media streaming corporation',
+          act: 'Imposes strict location-tracking limits and forbids users from sharing premium account passwords with buddies living elsewhere',
+          context: 'The firm claims that cheap password sharing and digital piracy directly harm content funding for rising filmmakers and actors',
+          justificationLogic: 'The corporation has full legal rights to protect its model. Account splitting directly breaches the contractual terms of service.',
+        },
+        caseStudyB: {
+          subject: 'You and your core group of three best friends from college',
+          act: 'Utilize a network-spoofing utility or split the subscription costs of a single premium account across four different houses',
+          context: 'You do this to save subscription fees, arguing individual prices are exploitative and network models should be open access',
+          justificationLogic: 'Billion-dollar corporate monopolies already rake in massive profits from consumers. Sharing fees between struggling students is simply smart consumption.',
+        },
+        complications: {
+          ifAcceptable: 'If arbitrary tech bypasses are legitimate because of high prices, users start pirating independent local book publishers and small indie game developers, driving them out of business. Do you support uncontrolled pirating?',
+          ifOutrageous: 'By severely policing home-network boundaries, giant legal teams slap massive fines on low-income students for sharing academic reference PDF tools. Do you defend this aggressive copyright policing?',
+        },
+      },
+      'meme-inteligencia-artificial': {
+        title: 'Humorous clips generated by Artificial Intelligence',
+        caseStudyA: {
+          subject: 'An anonymous meme maker from the opposing political faction',
+          act: 'Employs hyper-realistic Artificial Intelligence vocals to craft a false clip where your favored candidate makes clumsy remarks',
+          context: 'The clip goes viral on TikTok as a comedy parody, but many elderly commentators mistake it as legitimate footage and grow furious',
+          justificationLogic: 'This is high-grade technological disinformation. Generative AI manipulated to mimic voice and image seamlessly should be banned.',
+        },
+        caseStudyB: {
+          subject: 'An anonymous meme maker belonging to your own political faction / comedic community',
+          act: 'Employs hyper-realistic Artificial Intelligence vocals to craft a false clip of an opponent politician singing anime cartoon tunes',
+          context: 'The clip goes viral on TikTok as a comedy parody, but many elderly commentators mistake it as legitimate footage and grow furious',
+          justificationLogic: 'It is harmless, transgressive digital humor and a satire meme. Everyone knows it is artificial; banning it leads to massive online censorship.',
+        },
+        complications: {
+          ifAcceptable: 'If synthetic audio parodies are unregulated, scammers employ the duplicate AI voice of influencers to trick aging relatives into doing urgent bank transfers, robbing them of their lifesavings. Do you agree to let this warning threshold down?',
+          ifOutrageous: 'If we completely ban AI-generated deepfake audio, creators get sued for doing funny dubbing parodies of classic films, killing internet video-remix culture. Do you tolerate losing digital remix freedom?',
+        },
+      },
+      'pesquisa-cientifica-financiada': {
+        title: 'Private funding and political sponsorship',
+        caseStudyA: {
+          subject: 'A corporate private laboratory funded by an agribusiness lobby opposing ecological laws',
+          act: 'Publishes and disseminates a peer-reviewed study claiming that applying a modern chemical pesticide does not harm local soil or bee populations',
+          context: 'The research meets standard methodological rigor but was fully funded by the agrochemical industrial association',
+          justificationLogic: 'This is science corrupted by corporate capital. The conflict of interest is flagrant, and the paper is biased to justify ecological damage.',
+        },
+        caseStudyB: {
+          subject: 'Your university\'s campus laboratory (or a highly reputable national environmental conservation NGO)',
+          act: 'Publishes and disseminates a peer-reviewed study claiming that an immediate ban on a chemical pesticide will not harm regional organic agro-productivity',
+          context: 'The research meets standard methodological rigor but was fully funded by the local green political party',
+          justificationLogic: 'The scientific research retains its strict methodological excellence. The public interest in ecological sustainability outweighs financial sponsorship conflicts.',
+        },
+        complications: {
+          ifAcceptable: 'If funding conflicts are excused for positive environmental impacts, labs might share exaggerated containment statistics to secure public forestry funding. Do you accept this methodology flex?',
+          ifOutrageous: 'If we reject any study with agribusiness or partisan funding, 80% of vaccine and medical research would halt due to zero funding. Do you agree to this veto?',
+        },
+      },
+      'especie-invasora-conservacao': {
+        title: 'Eradication of ecological invasive species',
+        caseStudyA: {
+          subject: 'An environmental activist circle backing the eradication of wild boars using chemical baits',
+          act: 'Openly advocates for lethal population control and mass culling via firearms or poison baits',
+          context: 'They claim wild boars are introduced species destroying crops, soil, water sources, and threatening native fauna',
+          justificationLogic: 'This is an essential ecological management measure. Biodiversity protection demands absolute rigor and immediate culling over emotional arguments.',
+        },
+        caseStudyB: {
+          subject: 'A board advocating for culling feral cat colonies or cute stray dogs on an avian conservation island',
+          act: 'Openly advocates for lethal population control and mass culling via firearms or poison baits',
+          context: 'They claim cats are introduced species destroying rare seabirds, nests, and threatening native fauna',
+          justificationLogic: 'An outrageous, brutal act of violence against friendly domestic animals. Stray cats must be protected; management should utilize slow trap-neuter-return options.',
+        },
+        complications: {
+          ifAcceptable: 'If we accept culling any destructive invasive species, we justify killing urban squirrels, horses, and pigeons in every city plaza. Do you tolerate firearm culling in leisure plazas?',
+          ifOutrageous: 'By delaying cat culls to seek expensive neuter programs, two rare endemic bird species get wiped out in six months by hunting instincts. Do you tolerate real extinction to protect cute pets?',
+        },
+      },
+      'patente-remedio-indigena': {
+        title: 'Intellectual rights on traditional knowledge',
+        caseStudyA: {
+          subject: 'A giant private multinational pharmaceutical conglomerate',
+          act: 'Studies a medicinal herb, registers a chemical patent, and markets the new antibiotic globally',
+          context: 'The firm performs the molecule isolation research but relied entirely on historical herbal recipes from local rural indigenous tribes',
+          justificationLogic: 'Vile imperialist biopiracy and stealing native heritage. Corporate pharmaceutical gains must be heavily taxed or patents revoked.',
+        },
+        caseStudyB: {
+          subject: 'A renowned public academic researcher and ecologist from an ally federal university',
+          act: 'Studies a medicinal herb, registers a chemical patent, and markets the new antibiotic globally',
+          context: 'He performs the molecule isolation research but relied entirely on historical herbal recipes from local rural indigenous tribes',
+          justificationLogic: 'True patriotic scientific development and bio-innovation. The national researcher deserves the patent to secure university research budgets.',
+        },
+        complications: {
+          ifAcceptable: 'If we let researchers patent traditional knowledge without sharing benefits, researchers extract ancestral wisdom without compensating underfunded community basic sanitation. Do you accept this scientific abuse?',
+          ifOutrageous: 'By banning patents based on plants without decades of tribal court approvals, investors avoid biodiverse research, delaying antibiotic synthesis. Do you tolerate this delay in global health?',
+        },
+      },
+      'cuidados-pais-idosos': {
+        title: 'Responsibility for parental eldercare',
+        caseStudyA: {
+          subject: 'A wealthy, ambitious entrepreneur you DO NOT support',
+          act: 'Decides to place their elderly mother who needs daily assistance into a professional care facility',
+          context: 'He does this to focus 14 hours a day on closing multi-million dollar business deals and traveling frequently',
+          justificationLogic: 'Cowardly and selfish family abandonment. Leaving the person who gave you life in the hands of strangers just to seek wealth is an unacceptable moral failure.',
+        },
+        caseStudyB: {
+          subject: 'A hardworking, dedicated freelance professional you DO support',
+          act: 'Decides to place their elderly mother who needs daily assistance into a professional care facility',
+          context: 'She does this to focus 12 hours a day on keeping her small business open and paying household bills',
+          justificationLogic: 'A realistic and responsible decision. Hiring specialized care ensures professional assistance and safety while the daughter works to sustain the home.',
+        },
+        complications: {
+          ifAcceptable: 'If anyone can delegate daily parental care to nursing facilities without close family oversight, we weaken family bonds, encouraging people to abandon seniors at the first sign of stress. Do you accept this indifference?',
+          ifOutrageous: 'If we demand children personally and fully look after elderly parents at home at all costs, we force millions to leave the workforce, causing severe family poverty. Do you support this extreme demand?',
+        },
+      },
+      'partilha-heranca-familiar': {
+        title: 'Fair division of family inheritance',
+        caseStudyA: {
+          subject: 'A distant brother-in-law whom you DO NOT like',
+          act: 'Legally demands an absolutely equal division of every single cent left by the deceased grandmother',
+          context: 'He does this despite knowing that one of the grandchildren has severe cerebral palsy and requires highly expensive specialized medical care',
+          justificationLogic: 'Cold materialism and heartless greed. Denying preferential help in an inheritance to a vulnerable family member is a gross injustice.',
+        },
+        caseStudyB: {
+          subject: 'A hardworking nephew who is highly beloved by you',
+          act: 'Legally demands an absolutely equal division of every single cent left by the deceased grandmother',
+          context: 'He does this despite knowing that one of the grandchildren has severe cerebral palsy and requires highly expensive specialized medical care',
+          justificationLogic: 'Civil justice demands an equal division of parts. Inheritance is not charity, and every descendant has an absolute legal and moral right to their equal share.',
+        },
+        complications: {
+          ifAcceptable: 'If inheritances can be stalled or altered based on subjective emotional or physical needs, families will spend decades in endless court battles over who "deserves more", destroying family harmony. Do you prefer this inheritance chaos?',
+          ifOutrageous: 'By mandating that inheritances completely ignore the survival of a disabled family member, the state legitimizes the healthy getting wealthier while the vulnerable are left to struggle. Do you agree with this cold-hearted division?',
+        },
+      },
+      'trabalho-faculdade-credito': {
+        title: 'Author split on college assignments',
+        caseStudyA: {
+          subject: 'A lazy classmate who did absolutely no work on the college project',
+          act: 'Asks to put their name on the final submitted paper to avoid failing the semester',
+          context: 'They spent the weekend traveling for fun and playing video games, while you worked late into the night writing the paper',
+          justificationLogic: 'Pure opportunism and lack of character. Classmates who do no work should not receive grades and must face the consequences of failing.',
+        },
+        caseStudyB: {
+          subject: 'Your closest best friend who has been feeling extremely exhausted',
+          act: 'Asks to put their name on the final submitted paper to avoid failing the semester',
+          context: 'They spent the weekend traveling for fun and playing video games, while you worked late into the night writing the paper',
+          justificationLogic: 'A little help for a friend is harmless. Personal crises and burnout happen, and loyalty in friendship is far more important than academic bureaucracy.',
+        },
+        complications: {
+          ifAcceptable: 'If any student can copy achievements without effort, we produce incompetent and negligent professionals in critical areas like medicine or engineering. Do you accept putting society in the hands of those who do not study?',
+          ifOutrageous: 'By enforcing zero tolerance for peer assistance on homework, we penalize empathy on campuses, punishing youth struggling with mental health episodes. Do you prefer a completely cold and policed college environment?',
+        },
+      },
+      'alimentacao-vegana-boicote': {
+        title: 'Boycotting animal-based businesses',
+        caseStudyA: {
+          subject: 'An arrogant social media influencer whom you DO NOT support',
+          act: 'Leads a fierce online campaign calling for the firing of workers at a local neighborhood steakhouse',
+          context: 'He argues that any business exploiting or selling animal meat is an accomplice to systemic animal torture and cruelty',
+          justificationLogic: 'Absurd radical activism trying to destroy honest family jobs and livelihoods for the sake of an extreme food ideology.',
+        },
+        caseStudyB: {
+          subject: 'A charismatic and consistent young animal rights advocate you DO support',
+          act: 'Leads a fierce online campaign calling for the firing of workers at a local neighborhood steakhouse',
+          context: 'He argues that any business exploiting or selling animal meat is an accomplice to systemic animal torture and cruelty',
+          justificationLogic: 'A legitimate ecological awareness campaign. To end the systematic slaughter and exploitation of animals, one must act firmly against the economic chains that profit from suffering.',
+        },
+        complications: {
+          ifAcceptable: 'If we allow digital boycotts against traditional meat businesses, we cause massive unemployment among bakers, butchers, and cooks, increasing poverty in humble neighborhoods. Do you support this outcome?',
+          ifOutrageous: 'If we ban aggressive protests against animal slaughter and confinement, we shield polluting industries from social accountability, perpetuating animal suffering under the protection of the law. Do you defend this immunity?',
+        },
+      },
+      'consumo-fast-fashion': {
+        title: 'Buying cheap import clothing',
+        caseStudyA: {
+          subject: 'A wealthy, entitled fashionista whom you DO NOT like',
+          act: 'Buys dozens of cheap items of clothing from popular foreign mobile shopping apps',
+          context: 'These fast-fashion brands generate high pollution and face allegations of utilizing labor under slave-like conditions',
+          justificationLogic: 'Irresponsible consumerism and complicity with modern slavery. The person buys purely out of vanity while ignoring human suffering across the globe.',
+        },
+        caseStudyB: {
+          subject: 'An underfunded college student with a tight-knit budget you DO support',
+          act: 'Buys dozens of cheap items of clothing from popular foreign mobile shopping apps',
+          context: 'These fast-fashion brands generate high pollution and face allegations of utilizing labor under slave-like conditions',
+          justificationLogic: 'A necessary and smart economic choice. Underfunded families have a right to dress well and cleanly without being forced to pay abusive prices charged by luxury retail brands.',
+        },
+        complications: {
+          ifAcceptable: 'By supporting cheap foreign brands with obscure supply chains, we shut down our local textile factories, causing bankruptcies and unemployment among vulnerable seamstresses. Do you agree with this domestic economic decline?',
+          ifOutrageous: 'By placing heavy taxes or criminalizing cheap clothing imports, we prevent low-income families from accessing affordable clothing, keeping fashion a class privilege. Do you want this economic divide?',
+        },
+      },
+      'zoologico-conservacao-bem-estar': {
+        title: 'Keeping wild animals in zoos',
+        caseStudyA: {
+          subject: 'A wealthy entertainment mogul whom you DO NOT support',
+          act: 'Keeps two rare hyacinth macaws in supervised enclosures for public viewing',
+          context: 'The animals were bred in captivity under the pretext of educating younger generations and connecting them with nature',
+          justificationLogic: 'Unacceptable cruelty and commercialization of wildlife. Wild animals must live completely free in nature inside cages for tourists.',
+        },
+        caseStudyB: {
+          subject: 'A highly respected national biodiversity conservation foundation you DO support',
+          act: 'Keeps two rare hyacinth macaws in supervised enclosures for public viewing',
+          context: 'The animals were bred in captivity under the pretext of educating younger generations and connecting them with nature',
+          justificationLogic: 'A vital preservation action and environmental education. Modern zoos house animals that would not survive in devastated wild habitats, raising conservation awareness.',
+        },
+        complications: {
+          ifAcceptable: 'If we release all captive animals under the banner of absolute animal freedom, animals raised by humans without hunting skills will starve or be devoured in hours. Do you prefer a cruel death in the wild?',
+          ifOutrageous: 'By banning zoo exhibits, we deny city children the chance to see live wildlife, reducing public support for environmental charities. Do you accept distancing future generations from nature?',
+        },
+      },
+      'divulgacao-cientifica-alerta': {
+        title: 'Science communication and risk framing',
+        caseStudyA: {
+          subject: 'An international academic researcher seeking media attention',
+          act: 'Publishes an alarmist video warning about a high health risk from a common crop pesticide',
+          context: 'This pesticide is widely used by local small-scale family farmers, and the study used extreme, unrealistic lab dosages',
+          justificationLogic: 'Deceitful environmental alarmism using science to trigger panic and disrupt crop output of honest small-scale farmers.',
+        },
+        caseStudyB: {
+          subject: 'A charismatic young ecology lecturer whom you DO support',
+          act: 'Publishes an alarmist video warning about a high health risk from a common crop pesticide',
+          context: 'This pesticide is widely used by local small-scale family farmers, and the study used extreme, unrealistic lab dosages',
+          justificationLogic: 'A brave and necessary public warning. Faced with toxic manufacturer lobbying, raising alarm to protect human lives is a legitimate precautionary step.',
+        },
+        complications: {
+          ifAcceptable: 'If we allow alarmist alerts without realistic dosage checks, we trigger health panics and ban crop products, driving up food prices for workforces. Do you accept higher food cost based on unverified fears?',
+          ifOutrageous: 'By demanding perfect decades-long clinical studies before warning the public, people consume harmful toxins for years without any precaution guidance. Do you support treating citizens as lab rats?',
+        },
+      },
+      'coleta-especime-licenca': {
+        title: 'Specimen hunting without permits',
+        caseStudyA: {
+          subject: 'An international amateur specimen collector you DO NOT like',
+          act: 'Collects rare butterflies from native forests to catalog them in custom storage plates',
+          context: 'He bypassed federal environment agency forms and permits to complete the collecting faster',
+          justificationLogic: 'Illegal biological poaching and disrespecting national agencies. Specimen collecting without official license is a crime and must be punished.',
+        },
+        caseStudyB: {
+          subject: 'A highly respected local research entomologist you DO support',
+          act: 'Collects rare butterflies from native forests to catalog them in custom storage plates',
+          context: 'He bypassed federal environment agency forms and permits to complete the collecting faster',
+          justificationLogic: 'Invaluable academic research that cannot be paralyzed by bureaucratic slow procedures. Local scientists catalog species before forests are lost to fires.',
+        },
+        complications: {
+          ifAcceptable: 'By overriding state collection permits to move faster, we facilitate biopiracy and lose sovereignty over domestic genetic specimens, which can be free-patented abroad. Do you support this lawlessness?',
+          ifOutrageous: 'If we strictly enforce bureaucracy with severe jail threat for campus biologists, research halts and species go extinct before being cataloged. Do you place bureaucracy above biological knowledge?',
         },
       },
     },
