@@ -5,7 +5,11 @@ import { Layout } from './components/Layout.tsx'
 import { LinterPage } from './pages/LinterPage.tsx'
 import i18n from './i18n'
 import { requestAIWarmup } from './services/aiWorkerClient'
-import type { ModelPresetId } from './services/aiScenarioGenerator'
+import {
+  MODEL_PRESETS,
+  suggestDefaultModelId,
+  type ModelPresetId,
+} from './services/aiScenarioGenerator'
 
 const AIPage = lazy(() => import('./pages/AIPage.tsx'))
 
@@ -17,10 +21,11 @@ export function Root() {
   useEffect(() => {
     if (boot) return
 
-    const queryModel = new URLSearchParams(window.location.search).get(
-      'model'
-    ) as ModelPresetId | null
-    const modelId: ModelPresetId = queryModel === 'qwen25' ? 'qwen25' : 'smollm2'
+    const queryModel = new URLSearchParams(window.location.search).get('model')
+    const modelId: ModelPresetId =
+      queryModel && queryModel in MODEL_PRESETS
+        ? (queryModel as ModelPresetId)
+        : suggestDefaultModelId()
 
     void requestAIWarmup({
       modelId,

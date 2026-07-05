@@ -112,6 +112,7 @@ function post(request: AIWorkerRequest, pending: PendingRequest) {
 export function requestAIWarmup(params: {
   modelId: ModelPresetId
   language: 'en-US' | 'pt-BR'
+  onProgress?: (progress: GenerationProgress) => void
 }): Promise<void> {
   const warmupKey = `${params.modelId}|${params.language}`
 
@@ -137,6 +138,7 @@ export function requestAIWarmup(params: {
       },
       {
         type: 'warmup',
+        onProgress: params.onProgress,
         resolve: () => {
           warmedKeys.add(warmupKey)
           warmupPromises.delete(warmupKey)

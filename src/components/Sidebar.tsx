@@ -1,14 +1,28 @@
 import { FileCode2, Home, Settings, ShieldCheck, Sparkles } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 export function Sidebar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [rootSelection, setRootSelection] = useState<'home' | 'linter'>('linter')
 
   const handleHomeClick = () => {
+    setRootSelection('home')
     navigate('/', { state: { reset: true } })
   }
+
+  const isHomeRoute = location.pathname === '/'
+  const isHomeActive = isHomeRoute && rootSelection === 'home'
+
+  const homeLink = (isActive: boolean) =>
+    `grid h-11 w-11 place-items-center rounded-md transition ${
+      isActive
+        ? 'text-cyan-300 bg-cyan-400/5 border border-cyan-500/20'
+        : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/10'
+    }`
 
   const mobileLink = (isActive: boolean) =>
     `grid h-11 w-11 place-items-center rounded-md transition ${
@@ -30,11 +44,16 @@ export function Sidebar() {
             type="button"
             onClick={handleHomeClick}
             aria-label={t('sidebar.returnInitialState')}
-            className="grid h-11 w-11 place-items-center rounded-md text-slate-500 hover:text-slate-300 transition"
+            className={homeLink(isHomeActive)}
           >
             <Home size={18} />
           </button>
-          <NavLink to="/" end className={({ isActive }) => mobileLink(isActive)}>
+          <NavLink
+            to="/"
+            end
+            onClick={() => setRootSelection('linter')}
+            className={({ isActive }) => mobileLink(isActive && !(isHomeRoute && isHomeActive))}
+          >
             <FileCode2 size={18} />
           </NavLink>
           <NavLink to="/ai" className={({ isActive }) => mobileLink(isActive)}>
@@ -54,7 +73,7 @@ export function Sidebar() {
             type="button"
             onClick={handleHomeClick}
             aria-label={t('sidebar.returnInitialState')}
-            className="grid h-11 w-11 place-items-center rounded-md text-slate-500 hover:text-slate-200 transition"
+            className={homeLink(isHomeActive)}
           >
             <Home size={17} />
           </button>
@@ -62,7 +81,10 @@ export function Sidebar() {
             to="/"
             end
             title="Culture Linter"
-            className={({ isActive }) => desktopLink(isActive)}
+            onClick={() => setRootSelection('linter')}
+            className={({ isActive }) =>
+              desktopLink(isActive && !(isHomeRoute && isHomeActive))
+            }
           >
             <FileCode2 size={17} />
           </NavLink>

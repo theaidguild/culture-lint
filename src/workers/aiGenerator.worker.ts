@@ -58,6 +58,20 @@ self.onmessage = (event: MessageEvent<AIWorkerRequest>) => {
           modelId: request.modelId,
           language: request.language,
           signal: controller.signal,
+          onProgress: (progress) => {
+            debugLog('warmup progress', {
+              requestId: request.requestId,
+              phase: progress.phase,
+              percent: progress.percent,
+              uiStage: progress.uiStage,
+              label: progress.label,
+            })
+            postMessageToMain({
+              type: 'progress',
+              requestId: request.requestId,
+              progress,
+            })
+          },
         })
 
         if (controller.signal.aborted) {

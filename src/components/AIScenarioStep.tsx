@@ -14,10 +14,12 @@ import {
   Zap,
 } from 'lucide-react'
 import {
+  MODEL_PRESETS,
   SUPPORTED_COUNTRIES,
   type GenerationProgress,
   type GenerationUiStage,
   type ModelPresetId,
+  suggestDefaultModelId,
 } from '../services/aiScenarioGenerator'
 import { cancelAIRequest, requestAIGenerate, requestAIWarmup } from '../services/aiWorkerClient'
 import {
@@ -79,6 +81,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
   const isPt = i18n.language === 'pt-BR'
   const [searchParams, setSearchParams] = useSearchParams()
+  const defaultModelId = useMemo(() => suggestDefaultModelId(), [])
 
   // Setup form state, hydrated from URL params (and pushed back on change).
   const [selectedCountry, setSelectedCountry] = useState(
@@ -91,9 +94,13 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const [caseCount, setCaseCount] = useState<number>(() =>
     parseCountParam(searchParams.get('count'))
   )
-  const [modelId, setModelId] = useState<ModelPresetId>(
-    () => (searchParams.get('model') as ModelPresetId) || 'smollm2'
-  )
+  const [modelId, setModelId] = useState<ModelPresetId>(() => {
+    const fromUrl = searchParams.get('model')
+    if (fromUrl && fromUrl in MODEL_PRESETS) {
+      return fromUrl as ModelPresetId
+    }
+    return defaultModelId
+  })
 
   const [screenState, setScreenState] = useState<AIScreenState>('setup')
   const [scenarios, setScenarios] = useState<ScenarioPreset[]>([])
@@ -106,6 +113,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   })
   const [isWarmupInProgress, setIsWarmupInProgress] = useState(false)
   const [warmupModelId, setWarmupModelId] = useState<ModelPresetId | null>(null)
+  const [warmupProgress, setWarmupProgress] = useState<GenerationProgress | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
 
   const [judgmentSequence, setJudgmentSequence] = useState<JudgmentItem[]>([])
@@ -136,14 +144,14 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     next.set('country', selectedCountry)
     next.set('principles', selectedPrinciples.join(','))
     next.set('count', String(caseCount))
-    if (modelId !== 'smollm2') {
+    if (modelId !== defaultModelId) {
       next.set('model', modelId)
     } else {
       next.delete('model')
     }
     setSearchParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCountry, selectedPrinciples, caseCount, modelId])
+  }, [selectedCountry, selectedPrinciples, caseCount, modelId, defaultModelId])
 
   useEffect(() => {
     return () => {
@@ -165,6 +173,12 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       activeWarmupRequestIdRef.current = requestId
       setWarmupModelId(targetModelId)
       setIsWarmupInProgress(true)
+      setWarmupProgress({
+        phase: 'downloading',
+        percent: 0,
+        label: isPt ? 'Preparando aquecimento...' : 'Preparing warmup...',
+        uiStage: 'preparing',
+      })
       debugLog('schedule warmup', {
         requestId,
         modelId: targetModelId,
@@ -174,18 +188,30 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       void requestAIWarmup({
         modelId: targetModelId,
         language: i18n.language as 'en-US' | 'pt-BR',
+        onProgress: (nextProgress) => {
+          setWarmupProgress(nextProgress)
+        },
       })
         .catch(() => {
           warmedModelsRef.current.delete(targetModelId)
+          setWarmupProgress((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  label: isPt ? 'Falha ao aquecer modelo.' : 'Model warmup failed.',
+                }
+              : prev
+          )
         })
         .finally(() => {
           if (activeWarmupRequestIdRef.current === requestId) {
             activeWarmupRequestIdRef.current = null
             setIsWarmupInProgress(false)
+            setWarmupProgress(null)
           }
         })
     },
-    [i18n.language, modelId]
+    [i18n.language, isPt, modelId]
   )
 
   useEffect(() => {
@@ -553,13 +579,22 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   }}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
-                  <option value="smollm2">SmolLM2-360M-Instruct (fast)</option>
+                  <option value="smollm135">SmolLM2-135M-Instruct (mobile-safe)</option>
+                  <option value="smollm2">SmolLM2-360M-Instruct (balanced)</option>
                   <option value="qwen25">Qwen2.5-0.5B-Instruct (quality)</option>
                 </select>
                 {isWarmupInProgress && warmupModelId === modelId && (
-                  <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                    <span className="inline-block h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
-                    {isPt ? 'Aquecendo modelo' : 'Warming model'}
+                  <div className="mt-2 space-y-2">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
+                      {isPt ? 'Aquecendo modelo' : 'Warming model'}
+                      {warmupProgress ? `(${warmupProgress.percent}%)` : ''}
+                    </div>
+                    {warmupProgress && (
+                      <div className="rounded border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-mono text-cyan-200">
+                        {warmupProgress.label}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -624,8 +659,8 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                 <Sparkles size={16} />
                 {isWarmupInProgress && warmupModelId === modelId
                   ? isPt
-                    ? 'AQUECENDO MODELO...'
-                    : 'WARMING MODEL...'
+                    ? `AQUECENDO MODELO${warmupProgress ? ` ${warmupProgress.percent}%` : '...'}`
+                    : `WARMING MODEL${warmupProgress ? ` ${warmupProgress.percent}%` : '...'}`
                   : t('aiScreen.generateBtn')}
               </button>
             </div>

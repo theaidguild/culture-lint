@@ -9,6 +9,7 @@ export const SUPPORTED_COUNTRIES = [
 ]
 
 export const MODEL_PRESETS = {
+  smollm135: 'HuggingFaceTB/SmolLM2-135M-Instruct',
   smollm2: 'HuggingFaceTB/SmolLM2-360M-Instruct',
   qwen25: 'onnx-community/Qwen2.5-0.5B-Instruct',
 } as const
@@ -27,6 +28,13 @@ export interface GenerationProgress {
   itemsCompleted?: number
   itemsTotal?: number
 }
+
+const FAST_MODE = true
+const HEALTHCHECK_MAX_NEW_TOKENS = FAST_MODE ? 12 : 24
+const GENERATION_MAX_NEW_TOKENS = FAST_MODE ? 224 : 384
+const GENERATION_TEMPERATURES = FAST_MODE ? [0.7] : [0.7, 0.6, 0.5]
+const ENABLE_FALLBACK_ON_EMPTY = !FAST_MODE
+const FAST_MODE_REFILL_MAX_ATTEMPTS = 2
 
 interface RuntimeSelection {
   device: Backend
@@ -75,8 +83,9 @@ export async function detectBackend(
     try {
       const adapter = await gpu.requestAdapter()
       if (adapter) {
-        // Qwen2.5-0.5B in q4f16 is known to degenerate on many GPUs; use q4.
-        const dtype = modelId === 'qwen25' ? 'q4' : 'q4f16'
+        // Prefer q4 for known fragile combinations to reduce warmup failures
+        // that otherwise force a second full pipeline load.
+        const dtype = modelId === 'smollm2' || modelId === 'qwen25' ? 'q4' : 'q4f16'
         debugLog('detectBackend -> webgpu selected', { modelId, dtype })
         return { device: 'webgpu', dtype }
       }
@@ -86,6 +95,18 @@ export async function detectBackend(
   }
   debugLog('detectBackend -> wasm selected', { modelId, dtype: 'q4' })
   return { device: 'wasm', dtype: 'q4' }
+}
+
+export function suggestDefaultModelId(): ModelPresetId {
+  const userAgent = navigator.userAgent
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent)
+  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
+  const cores = navigator.hardwareConcurrency ?? 4
+
+  if (isMobile || mem <= 4 || cores <= 4) return 'smollm135'
+  if (mem <= 8 || cores <= 8) return 'smollm2'
+  // Keep desktop default stable and allow explicit opt-in to heavier models.
+  return 'smollm2'
 }
 
 // Module-level pipeline cache: keyed by `${model}|${device}|${dtype}` so a
@@ -225,6 +246,8 @@ interface RawScenario {
   context: string
 }
 
+type PartialRawScenario = Partial<RawScenario>
+
 class DegenerateGenerationError extends Error {
   constructor() {
     super('degenerate-generation')
@@ -252,7 +275,7 @@ function repairMalformedJson(text: string): string {
   // Common corruption: missing closing quote before the next key.
   // Example: ...education for all,"rival":...  -> ...education for all","rival":...
   repaired = repaired.replace(
-    /([A-Za-z0-9\)\.\!\?])\s*,\s*"(title|act|rival|ally|context)"\s*:/g,
+    /([A-Za-z0-9).!?])\s*,\s*"(title|act|rival|ally|context)"\s*:/g,
     '$1","$2":'
   )
   // Handle unescaped quotes that appear before a known key transition.
@@ -388,26 +411,147 @@ function extractObjects(text: string): unknown[] | null {
   return results.length > 0 ? results : null
 }
 
+function normalizeKey(rawKey: string): string {
+  return rawKey
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function getStringByAliases(
+  obj: Record<string, unknown>,
+  aliases: string[],
+  deepSearch = false
+): string | null {
+  const aliasSet = new Set(aliases)
+  for (const [key, value] of Object.entries(obj)) {
+    if (!aliasSet.has(normalizeKey(key))) continue
+    if (isNonEmptyString(value)) return value.trim()
+  }
+
+  if (!deepSearch) return null
+
+  for (const value of Object.values(obj)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+    const nested = getStringByAliases(value as Record<string, unknown>, aliases, false)
+    if (nested) return nested
+  }
+
+  return null
+}
+
+function normalizeRawScenario(item: unknown): RawScenario | null {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+  const obj = item as Record<string, unknown>
+
+  const title = getStringByAliases(obj, ['title', 'titulo'], true)
+  const act = getStringByAliases(
+    obj,
+    ['act', 'acao', 'acaoprincipal', 'action', 'action1', 'caseact', 'fato'],
+    true
+  )
+  const rival = getStringByAliases(
+    obj,
+    ['rival', 'opponent', 'opositor', 'adversario', 'rivalname'],
+    true
+  )
+  const ally = getStringByAliases(
+    obj,
+    ['ally', 'allied', 'aliado', 'governista', 'allyname'],
+    true
+  )
+  const context = getStringByAliases(
+    obj,
+    ['context', 'contexto', 'descricao', 'detalhes', 'justificativa'],
+    true
+  )
+
+  if (!title || !act || !rival || !ally || !context) return null
+  return { title, act, rival, ally, context }
+}
+
+function cleanLooseValue(raw: string): string {
+  return raw
+    .replace(/^\s*[:=-]?\s*/, '')
+    .replace(/[\]"}]+\s*$/g, '')
+    .replace(/\\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractLooseField(text: string, aliases: string[]): string | undefined {
+  for (const alias of aliases) {
+    const normalizedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const quoted = new RegExp(`"${normalizedAlias}"\\s*:\\s*"([^"\\n]{4,220})"`, 'i')
+    const quotedMatch = text.match(quoted)
+    if (quotedMatch?.[1]) {
+      return cleanLooseValue(quotedMatch[1])
+    }
+
+    const unquoted = new RegExp(`${normalizedAlias}\\s*[:=-]\\s*([^,\\n\\r]{4,220})`, 'i')
+    const unquotedMatch = text.match(unquoted)
+    if (unquotedMatch?.[1]) {
+      return cleanLooseValue(unquotedMatch[1])
+    }
+  }
+  return undefined
+}
+
+function extractLooseScenario(text: string): PartialRawScenario {
+  return {
+    title: extractLooseField(text, ['title', 'titulo']),
+    act: extractLooseField(text, ['act', 'acao', 'action', 'action1', 'fato']),
+    rival: extractLooseField(text, ['rival', 'opponent', 'adversario', 'opositor']),
+    ally: extractLooseField(text, ['ally', 'aliado', 'allied', 'governista']),
+    context: extractLooseField(text, ['context', 'contexto', 'descricao', 'detalhes']),
+  }
+}
+
+function materializeLooseScenario(config: {
+  partial: PartialRawScenario
+  language: 'en-US' | 'pt-BR'
+  countryCode: string
+  principleId: string
+}): RawScenario | null {
+  const isPt = config.language === 'pt-BR'
+  const hasUsefulSignal =
+    isNonEmptyString(config.partial.title) ||
+    isNonEmptyString(config.partial.act) ||
+    isNonEmptyString(config.partial.context)
+
+  if (!hasUsefulSignal) return null
+
+  const fallbackTitle = isPt
+    ? `Caso ${config.principleId} em ${config.countryCode}`
+    : `${config.principleId} case in ${config.countryCode}`
+  const fallbackAct = isPt
+    ? 'Uso de recursos públicos para benefício privado.'
+    : 'Use of public resources for private benefit.'
+  const fallbackRival = isPt
+    ? 'Uma figura conservadora de oposição impopular'
+    : 'An unpopular conservative opposition figure'
+  const fallbackAlly = isPt
+    ? 'Uma figura progressista alinhada ao governo'
+    : 'A progressive figure aligned with the government'
+  const fallbackContext = isPt
+    ? `O caso ganhou repercussão nacional em ${config.countryCode}.`
+    : `The case gained nationwide attention in ${config.countryCode}.`
+
+  return {
+    title: config.partial.title?.trim() || fallbackTitle,
+    act: config.partial.act?.trim() || fallbackAct,
+    rival: config.partial.rival?.trim() || fallbackRival,
+    ally: config.partial.ally?.trim() || fallbackAlly,
+    context: config.partial.context?.trim() || fallbackContext,
+  }
+}
+
 function validateScenarios(items: unknown[]): RawScenario[] {
   const valid: RawScenario[] = []
   for (const item of items) {
-    if (!item || typeof item !== 'object') continue
-    const obj = item as Record<string, unknown>
-    if (
-      isNonEmptyString(obj.title) &&
-      isNonEmptyString(obj.act) &&
-      isNonEmptyString(obj.rival) &&
-      isNonEmptyString(obj.ally) &&
-      isNonEmptyString(obj.context)
-    ) {
-      valid.push({
-        title: obj.title.trim(),
-        act: obj.act.trim(),
-        rival: obj.rival.trim(),
-        ally: obj.ally.trim(),
-        context: obj.context.trim(),
-      })
-    }
+    const normalized = normalizeRawScenario(item)
+    if (normalized) valid.push(normalized)
   }
   return valid
 }
@@ -455,7 +599,7 @@ async function runHealthCheck(config: {
 }): Promise<boolean> {
   const prompt = buildHealthMessages(config.language)
   const output = await config.handle(prompt, {
-    max_new_tokens: 24,
+    max_new_tokens: HEALTHCHECK_MAX_NEW_TOKENS,
     do_sample: false,
     top_p: 1,
     repetition_penalty: 1,
@@ -619,11 +763,13 @@ export async function warmupHealthyGenerator(config: {
   modelId: ModelPresetId
   language: 'en-US' | 'pt-BR'
   signal?: AbortSignal
+  onProgress?: (progress: GenerationProgress) => void
 }): Promise<void> {
   await ensureHealthyRuntime({
     modelId: config.modelId,
     language: config.language,
     signal: config.signal,
+    onProgress: config.onProgress,
   })
 }
 
@@ -708,7 +854,7 @@ async function runGeneration(config: {
   )
 
   const output = await config.handle(messages, {
-    max_new_tokens: 384,
+    max_new_tokens: GENERATION_MAX_NEW_TOKENS,
     do_sample: true,
     temperature: config.temperature,
     top_p: 0.9,
@@ -742,6 +888,22 @@ async function runGeneration(config: {
     if (items) {
       const validated = validateScenarios(items)
       if (validated.length > 0) return validated[0]
+    }
+
+    if (FAST_MODE) {
+      const loose = materializeLooseScenario({
+        partial: extractLooseScenario(candidate),
+        language: config.language,
+        countryCode: config.countryCode,
+        principleId: config.principleId,
+      })
+      if (loose) {
+        debugLog('runGeneration loose salvage hit', {
+          principleId: config.principleId,
+          titlePreview: loose.title.slice(0, 60),
+        })
+        return loose
+      }
     }
   }
 
@@ -781,15 +943,16 @@ export async function generateAIScenarios(
     handle: PipelineHandle
     progressStart: number
     progressEnd: number
+    label?: string
   }) => {
     const raw: RawScenario[] = []
-    const temperatures = [0.7, 0.6, 0.5]
+    const temperatures = GENERATION_TEMPERATURES
     let runtimeDegraded = false
 
     onProgress?.({
       phase: 'generating',
       percent: runtime.progressStart,
-      label: `Synthesizing ${count} scenarios one at a time...`,
+      label: runtime.label ?? `Synthesizing ${count} scenarios one at a time...`,
       uiStage: 'drafting',
       itemsCompleted: 0,
       itemsTotal: count,
@@ -799,7 +962,8 @@ export async function generateAIScenarios(
       if (signal?.aborted) throw new Error('aborted')
       const principleId = activePrincipleIds[i % activePrincipleIds.length]
       let result: RawScenario | null = null
-      for (const temperature of temperatures) {
+      for (let attemptIdx = 0; attemptIdx < temperatures.length; attemptIdx++) {
+        const temperature = temperatures[attemptIdx]
         if (signal?.aborted) throw new Error('aborted')
         try {
           result = await runGeneration({
@@ -825,6 +989,8 @@ export async function generateAIScenarios(
           throw error
         }
         if (result) break
+        const hasAnotherAttempt = attemptIdx < temperatures.length - 1
+        if (!hasAnotherAttempt) continue
         onProgress?.({
           phase: 'generating',
           percent: toRangePercent(
@@ -870,18 +1036,87 @@ export async function generateAIScenarios(
 
   if (signal?.aborted) throw new Error('aborted')
 
-  let { raw, runtimeDegraded } = await attemptGeneration({
+  const firstAttempt = await attemptGeneration({
     handle: healthyRuntime.handle,
     progressStart: 42,
     progressEnd: 86,
   })
+  let { raw } = firstAttempt
+  const { runtimeDegraded } = firstAttempt
   debugLog('attemptGeneration complete', {
     runtime: `${healthyRuntime.device}:${healthyRuntime.dtype}`,
     generated: raw.length,
     runtimeDegraded,
   })
 
-  if ((runtimeDegraded || raw.length === 0) && healthyRuntime.device !== 'wasm') {
+  if (FAST_MODE && !runtimeDegraded && raw.length > 0 && raw.length < count) {
+    const missing = count - raw.length
+    debugLog('fast refill start', {
+      runtime: `${healthyRuntime.device}:${healthyRuntime.dtype}`,
+      generated: raw.length,
+      requested: count,
+      missing,
+    })
+
+    onProgress?.({
+      phase: 'generating',
+      percent: 88,
+      label: `Refining missing scenarios (${missing})...`,
+      uiStage: 'refining',
+      itemsCompleted: raw.length,
+      itemsTotal: count,
+    })
+
+    const refillPrinciples = activePrincipleIds.length > 0 ? activePrincipleIds : ['equality']
+    for (let attempt = 0; attempt < FAST_MODE_REFILL_MAX_ATTEMPTS && raw.length < count; attempt++) {
+      if (signal?.aborted) throw new Error('aborted')
+      const principleId = refillPrinciples[(raw.length + attempt) % refillPrinciples.length]
+      let refillResult: RawScenario | null
+      try {
+        refillResult = await runGeneration({
+          handle: healthyRuntime.handle,
+          countryCode,
+          language,
+          principleId,
+          index: raw.length,
+          avoidTitles: raw.map((r) => r.title),
+          temperature: GENERATION_TEMPERATURES[0],
+          signal,
+          onToken,
+        })
+      } catch (error) {
+        if (error instanceof DegenerateGenerationError) {
+          debugLog('fast refill degenerate output', { attempt: attempt + 1 })
+          break
+        }
+        throw error
+      }
+
+      if (refillResult) {
+        raw.push(refillResult)
+        onProgress?.({
+          phase: 'generating',
+          percent: toRangePercent(
+            Math.round((raw.length / count) * 100),
+            88,
+            96
+          ),
+          label: `Recovered ${raw.length}/${count} scenarios.`,
+          uiStage: raw.length >= count ? 'finalizing' : 'refining',
+          itemsCompleted: raw.length,
+          itemsTotal: count,
+        })
+      }
+    }
+
+    debugLog('fast refill complete', { generated: raw.length, requested: count })
+  }
+
+  const shouldFallback =
+    healthyRuntime.device !== 'wasm' &&
+    (runtimeDegraded || (ENABLE_FALLBACK_ON_EMPTY && raw.length === 0))
+
+  if (shouldFallback) {
     onProgress?.({
       phase: 'compiling',
       percent: 46,
@@ -910,6 +1145,11 @@ export async function generateAIScenarios(
       progressEnd: 92,
     }))
     debugLog('fallback attempt complete', { generated: raw.length })
+  } else if (raw.length === 0) {
+    debugLog('skip fallback on empty result', {
+      runtime: `${healthyRuntime.device}:${healthyRuntime.dtype}`,
+      fastMode: FAST_MODE,
+    })
   }
 
   onProgress?.({
