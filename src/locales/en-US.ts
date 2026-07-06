@@ -49,6 +49,8 @@ const enUS = {
       generatingLog4: 'Assembling cross-partisan judgment gauntlet...',
       generationFailed:
         'We could not finish creating this scenario set just now. Adjust the selection and try again.',
+      generationMissingTopics:
+        'The AI could not meet the required topic mix for this run (at least 2 religion and 2 abortion cases when requesting more than 6). Please retry generation.',
       generationForbidden:
         'The AI endpoint rejected this browser request. Verify that your same-origin proxy or backend can reach RunPod, then try again.',
       generationCanceled:

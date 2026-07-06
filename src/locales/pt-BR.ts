@@ -49,6 +49,8 @@ const ptBR = {
       generatingLog4: 'Montando o corredor de julgamentos moras...',
       generationFailed:
         'Não foi possível concluir a criação dos cenários desta vez. Ajuste a seleção e tente novamente.',
+      generationMissingTopics:
+        'A IA não conseguiu atingir a mistura obrigatória de temas nesta execução (pelo menos 2 casos sobre religião e 2 sobre aborto quando o pedido é maior que 6). Tente gerar novamente.',
       generationForbidden:
         'O endpoint de IA recusou esta chamada do navegador. Verifique se o proxy ou backend no mesmo domínio consegue acessar o RunPod e tente novamente.',
       generationCanceled:

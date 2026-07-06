@@ -62,6 +62,10 @@ function resolveGenerationErrorMessage(
     return t('aiScreen.generationForbidden')
   }
 
+  if (error.message === 'runpod-missing-required-topics') {
+    return t('aiScreen.generationMissingTopics')
+  }
+
   return t('aiScreen.generationFailed')
 }
 

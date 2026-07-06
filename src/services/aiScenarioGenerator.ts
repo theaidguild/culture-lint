@@ -19,6 +19,12 @@ export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating
 export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
 type ControversyAcceptanceMode = 'strict' | 'relaxed' | 'fallback'
 type ScenarioValidationMode = 'strict' | 'relaxed' | 'fallback'
+type ScenarioTopic = 'religion' | 'abortion'
+
+interface TopicQuota {
+  topic: ScenarioTopic
+  minimum: number
+}
 
 export interface GenerationProgress {
   phase: GenerationPhase
@@ -182,6 +188,62 @@ const SAFE_CIVICS_TERMS_PT = [
   'doacao beneficente',
   'dialogo respeitoso',
   'debate cordial',
+]
+
+const RELIGION_TERMS_EN = [
+  'religion',
+  'religious',
+  'church',
+  'temple',
+  'mosque',
+  'synagogue',
+  'faith',
+  'pastor',
+  'priest',
+  'imam',
+  'rabbi',
+  'evangelical',
+  'catholic',
+  'spiritual',
+  'blasphemy',
+]
+
+const RELIGION_TERMS_PT = [
+  'religiao',
+  'religios',
+  'igreja',
+  'templo',
+  'mesquita',
+  'sinagoga',
+  'fe',
+  'pastor',
+  'padre',
+  'bispo',
+  'evangelic',
+  'catolic',
+  'espirit',
+  'blasfem',
+]
+
+const ABORTION_TERMS_EN = [
+  'abortion',
+  'abortions',
+  'aborted',
+  'aborting',
+  'pregnancy termination',
+  'termination of pregnancy',
+  'pro-choice',
+  'pro life',
+]
+
+const ABORTION_TERMS_PT = [
+  'aborto',
+  'abortamento',
+  'interrupcao da gravidez',
+  'interrupcao de gravidez',
+  'interrupcao gestacional',
+  'pro escolha',
+  'pro-vida',
 ]
 
 type LocalAIModelListResponse = {
@@ -581,6 +643,102 @@ function resolveAcceptanceModeForAttempt(attempt: number): ControversyAcceptance
   return 'fallback'
 }
 
+function resolveTopicQuotas(expectedCount: number): TopicQuota[] {
+  if (expectedCount <= 6) return []
+  return [
+    { topic: 'religion', minimum: 2 },
+    { topic: 'abortion', minimum: 2 },
+  ]
+}
+
+function getTopicTerms(language: 'en-US' | 'pt-BR', topic: ScenarioTopic): readonly string[] {
+  if (topic === 'religion') {
+    return language === 'pt-BR' ? RELIGION_TERMS_PT : RELIGION_TERMS_EN
+  }
+  return language === 'pt-BR' ? ABORTION_TERMS_PT : ABORTION_TERMS_EN
+}
+
+function scenarioMatchesTopic(
+  scenario: RawScenario,
+  language: 'en-US' | 'pt-BR',
+  topic: ScenarioTopic
+): boolean {
+  const text = normalizeTextForChecks(`${scenario.title} ${scenario.act} ${scenario.context}`)
+  return includesAnyTerm(text, getTopicTerms(language, topic))
+}
+
+function countTopicMatches(
+  scenarios: RawScenario[],
+  language: 'en-US' | 'pt-BR',
+  topic: ScenarioTopic
+): number {
+  return scenarios.filter((scenario) => scenarioMatchesTopic(scenario, language, topic)).length
+}
+
+function resolveMissingTopicQuotas(
+  scenarios: RawScenario[],
+  language: 'en-US' | 'pt-BR',
+  quotas: TopicQuota[]
+): TopicQuota[] {
+  return quotas
+    .map((quota) => {
+      const current = countTopicMatches(scenarios, language, quota.topic)
+      return { topic: quota.topic, minimum: Math.max(0, quota.minimum - current) }
+    })
+    .filter((quota) => quota.minimum > 0)
+}
+
+function hasAllTopicQuotas(
+  scenarios: RawScenario[],
+  language: 'en-US' | 'pt-BR',
+  quotas: TopicQuota[]
+): boolean {
+  return resolveMissingTopicQuotas(scenarios, language, quotas).length === 0
+}
+
+function selectFinalScenariosWithQuotas(config: {
+  scenarios: RawScenario[]
+  generationCount: number
+  language: 'en-US' | 'pt-BR'
+  quotas: TopicQuota[]
+}): RawScenario[] | null {
+  const { scenarios, generationCount, language, quotas } = config
+  if (scenarios.length < generationCount) return null
+  if (quotas.length === 0) return scenarios.slice(0, generationCount)
+
+  const selected: RawScenario[] = []
+  const used = new Set<string>()
+
+  for (const quota of quotas) {
+    const alreadySelectedForTopic = countTopicMatches(selected, language, quota.topic)
+    const needed = Math.max(0, quota.minimum - alreadySelectedForTopic)
+    if (needed === 0) continue
+
+    for (const scenario of scenarios) {
+      if (selected.length >= generationCount) break
+      const signature = scenarioSignature(scenario)
+      if (used.has(signature)) continue
+      if (!scenarioMatchesTopic(scenario, language, quota.topic)) continue
+      selected.push(scenario)
+      used.add(signature)
+      const updatedCount = countTopicMatches(selected, language, quota.topic)
+      if (updatedCount >= quota.minimum) break
+    }
+  }
+
+  for (const scenario of scenarios) {
+    if (selected.length >= generationCount) break
+    const signature = scenarioSignature(scenario)
+    if (used.has(signature)) continue
+    selected.push(scenario)
+    used.add(signature)
+  }
+
+  if (selected.length < generationCount) return null
+  if (!hasAllTopicQuotas(selected, language, quotas)) return null
+  return selected
+}
+
 function tAcceptanceMode(language: 'en-US' | 'pt-BR', mode: ControversyAcceptanceMode): string {
   return tStatus(language, `aiStatus.acceptanceModes.${mode}`)
 }
@@ -736,23 +894,32 @@ function buildRunpodScenarioMessages(config: {
   principleIds: string[]
   count: number
   attempt: number
+  missingQuotas?: TopicQuota[]
 }): Array<{ role: 'system' | 'user'; content: string }> {
   const isPt = config.language === 'pt-BR'
   const principleList = config.principleIds.join(', ')
+  const missingReligion = config.missingQuotas?.find((quota) => quota.topic === 'religion')?.minimum ?? 0
+  const missingAbortion = config.missingQuotas?.find((quota) => quota.topic === 'abortion')?.minimum ?? 0
+  const hasTopicTargets = missingReligion > 0 || missingAbortion > 0
   const escalation =
     config.attempt > 1
       ? isPt
         ? ' PRIORIDADE MAXIMA: descarte qualquer ideia neutra ou consensual. So aceite casos que gerem conflito moral real e divisao plausivel.'
         : ' MAXIMUM PRIORITY: reject neutral or consensus-friendly ideas. Keep only cases with real moral conflict and plausible social split.'
       : ''
+  const topicConstraint = hasTopicTargets
+    ? isPt
+      ? ` COTA OBRIGATORIA NESTA RESPOSTA: inclua pelo menos ${missingReligion} caso(s) sobre religiao e ${missingAbortion} caso(s) sobre aborto (podem coexistir no mesmo caso, mas os dois temas devem aparecer explicitamente em title/act/context).`
+      : ` MANDATORY QUOTA FOR THIS RESPONSE: include at least ${missingReligion} religion case(s) and ${missingAbortion} abortion case(s) (they may overlap, but both themes must be explicit in title/act/context).`
+    : ''
 
   const system = isPt
     ? 'Voce e um arquiteto de testes de coerencia moral. Gere dilemas espelhados de alta friccao social em JSON estrito. Proibido produzir conteudo pedagogico neutro, campanhas civicas consensuais ou exemplos universalmente aceitaveis. Responda APENAS com um array JSON valido, sem markdown, sem texto extra e sem comentarios.'
     : 'You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples. Reply ONLY with a valid JSON array, no markdown, no extra prose, and no comments.'
 
   const user = isPt
-    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Use estes principios em rotacao: ${principleList}. Cada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual. Escreva em portugues brasileiro.${escalation}`
-    : `Generate ${config.count} JSON objects for ${config.countryCode}. Rotate these principles: ${principleList}. Every object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act.${escalation}`
+    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Use estes principios em rotacao: ${principleList}. Cada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
+    : `Generate ${config.count} JSON objects for ${config.countryCode}. Rotate these principles: ${principleList}. Every object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act.${topicConstraint}${escalation}`
 
   return [
     { role: 'system', content: system },
@@ -768,10 +935,11 @@ export async function generateAIScenariosWithRunpod(
   const selectedModelId = resolveSafeModelId(config.model)
   const requestedModel = resolveRunpodModelName(selectedModelId)
   const generationCount = resolveSafeScenarioCount(count)
+  const topicQuotas = resolveTopicQuotas(generationCount)
   const batchSize = resolveRunpodBatchSize(generationCount, activePrincipleIds.length)
   const maxAttempts = Math.max(
     RUNPOD_MAX_GENERATION_ATTEMPTS + 2,
-    Math.ceil(generationCount / Math.max(1, batchSize)) + 4
+    Math.ceil(generationCount / Math.max(1, batchSize)) + 8
   )
 
   onProgress?.({
@@ -800,7 +968,8 @@ export async function generateAIScenariosWithRunpod(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const remainingCount = generationCount - parsed.length
-    if (remainingCount <= 0) break
+    const missingQuotas = resolveMissingTopicQuotas(parsed, language, topicQuotas)
+    if (remainingCount <= 0 && missingQuotas.length === 0) break
 
     if (attempt > 1) {
       onProgress?.({
@@ -817,7 +986,10 @@ export async function generateAIScenariosWithRunpod(
       })
     }
 
-    const requestedCountForAttempt = Math.min(batchSize, remainingCount)
+    const requestedCountForAttempt =
+      remainingCount > 0
+        ? Math.min(batchSize, remainingCount)
+        : Math.max(2, Math.min(batchSize, missingQuotas.reduce((sum, quota) => sum + quota.minimum, 0)))
 
     const response = await fetchRunpodJson<LocalAIChatCompletionsResponse>({
       path: '/chat/completions',
@@ -835,6 +1007,7 @@ export async function generateAIScenariosWithRunpod(
           principleIds: activePrincipleIds,
           count: requestedCountForAttempt,
           attempt,
+          missingQuotas,
         }),
       },
       signal,
@@ -886,6 +1059,25 @@ export async function generateAIScenariosWithRunpod(
     throw new Error('runpod-invalid-json-response')
   }
 
+  const finalRawScenarios = selectFinalScenariosWithQuotas({
+    scenarios: parsed,
+    generationCount,
+    language,
+    quotas: topicQuotas,
+  })
+
+  if (!finalRawScenarios) {
+    debugLog('runpod missing required topic quotas', {
+      model,
+      countryCode,
+      generationCount,
+      quotas: topicQuotas,
+      missing: resolveMissingTopicQuotas(parsed, language, topicQuotas),
+      parsedCount: parsed.length,
+    })
+    throw new Error('runpod-missing-required-topics')
+  }
+
   onProgress?.({
     phase: 'generating',
     percent: 80,
@@ -900,7 +1092,7 @@ export async function generateAIScenariosWithRunpod(
 
   const isPt = language === 'pt-BR'
   const now = Date.now()
-  const scenarios: ScenarioPreset[] = parsed.slice(0, generationCount).map((scenario, index) => {
+  const scenarios: ScenarioPreset[] = finalRawScenarios.map((scenario, index) => {
     const principleId = activePrincipleIds[index % activePrincipleIds.length]
     return {
       id: `ai-local-${now}-${index}`,
