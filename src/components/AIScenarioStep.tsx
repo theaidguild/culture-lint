@@ -56,6 +56,19 @@ const ALLOWED_COUNTS = [4, 6, 8] as const
 const GENERATION_STAGE_ORDER = ['preparing', 'drafting', 'finalizing'] as const
 const AI_DEBUG_PREFIX = '[ai-debug][ui]'
 
+function resolveGenerationErrorMessage(
+  error: unknown,
+  t: ReturnType<typeof useTranslation>['t']
+): string {
+  if (!(error instanceof Error)) return t('aiScreen.generationFailed')
+
+  if (error.message === 'runpod-http-403') {
+    return t('aiScreen.generationForbidden')
+  }
+
+  return t('aiScreen.generationFailed')
+}
+
 function debugLog(message: string, meta?: Record<string, unknown>) {
   if (meta) {
     console.debug(`${AI_DEBUG_PREFIX} ${message}`, meta)
@@ -245,7 +258,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
         message: err instanceof Error ? err.message : String(err),
       })
       console.error(err)
-      setFeedbackMessage({ tone: 'error', text: t('aiScreen.generationFailed') })
+      setFeedbackMessage({ tone: 'error', text: resolveGenerationErrorMessage(err, t) })
       setScreenState('setup')
     } finally {
       setIsCancelling(false)

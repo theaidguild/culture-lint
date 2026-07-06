@@ -49,6 +49,8 @@ const enUS = {
       generatingLog4: 'Assembling cross-partisan judgment gauntlet...',
       generationFailed:
         'We could not finish creating this scenario set just now. Adjust the selection and try again.',
+      generationForbidden:
+        'The AI endpoint rejected this browser request. Verify that your same-origin proxy or backend can reach RunPod, then try again.',
       generationCanceled:
         'Scenario creation was stopped. You can adjust your selection and try again when ready.',
       tryAgain: 'RETRY GENERATION',

@@ -49,6 +49,8 @@ const ptBR = {
       generatingLog4: 'Montando o corredor de julgamentos moras...',
       generationFailed:
         'Não foi possível concluir a criação dos cenários desta vez. Ajuste a seleção e tente novamente.',
+      generationForbidden:
+        'O endpoint de IA recusou esta chamada do navegador. Verifique se o proxy ou backend no mesmo domínio consegue acessar o RunPod e tente novamente.',
       generationCanceled:
         'A criação dos cenários foi interrompida. Você pode ajustar a seleção e tentar novamente.',
       tryAgain: 'TENTAR NOVAMENTE',

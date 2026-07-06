@@ -204,7 +204,7 @@ type LocalAIChatCompletionsResponse = {
 }
 
 const AI_DEBUG_PREFIX = '[ai-debug][generator]'
-const DEFAULT_RUNPOD_BASE_PATH = 'https://67zqqbuwug0fxi-11434.proxy.runpod.net/v1'
+const DEFAULT_RUNPOD_BASE_PATH = '/api/runpod'
 const DEFAULT_RUNPOD_TIMEOUT_MS = 45000
 
 let runpodModelsCache: Promise<string[]> | null = null

@@ -38,12 +38,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          VITE_RUNPOD_BASE_PATH: ${{ vars.VITE_RUNPOD_BASE_PATH }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           if [[ "$REPO_NAME" == *.github.io ]]; then
             BASE_PATH="/"
           else
             BASE_PATH="/$REPO_NAME/"
+          fi
+
+          if [[ -z "$VITE_RUNPOD_BASE_PATH" ]]; then
+            echo "Missing VITE_RUNPOD_BASE_PATH GitHub Actions variable" >&2
+            exit 1
           fi
 
           echo "Building with base path: $BASE_PATH"
