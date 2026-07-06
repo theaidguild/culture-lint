@@ -18,9 +18,6 @@ export type ModelPresetId = keyof typeof MODEL_PRESETS
 export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating' | 'done'
 export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
 
-const MOBILE_SAFE_MODEL_ID: ModelPresetId = 'qwen257b'
-const MOBILE_SAFE_MAX_SCENARIOS = 2
-
 export interface GenerationProgress {
   phase: GenerationPhase
   percent: number
@@ -28,12 +25,6 @@ export interface GenerationProgress {
   uiStage?: GenerationUiStage
   itemsCompleted?: number
   itemsTotal?: number
-}
-
-type DeviceProfile = {
-  isMobile: boolean
-  mem: number
-  cores: number
 }
 
 interface RawScenario {
@@ -221,29 +212,12 @@ function tStatus(language: 'en-US' | 'pt-BR', key: string, options?: Record<stri
   return i18n.t(key, { lng: language, ...options })
 }
 
-function getDeviceProfile(): DeviceProfile {
-  const userAgent = navigator.userAgent
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent)
-  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
-  const cores = navigator.hardwareConcurrency ?? 4
-  return { isMobile, mem, cores }
-}
-
-export function isMobileSafeAIMode(): boolean {
-  const profile = getDeviceProfile()
-  return profile.isMobile || profile.mem <= 4 || profile.cores <= 4
-}
-
 export function resolveSafeModelId(requested?: ModelPresetId): ModelPresetId {
-  if (isMobileSafeAIMode()) return MOBILE_SAFE_MODEL_ID
   return requested ?? 'qwen257b'
 }
 
 export function resolveSafeScenarioCount(requestedCount: number): number {
   const bounded = Math.max(1, Math.floor(requestedCount))
-  if (isMobileSafeAIMode()) {
-    return Math.min(MOBILE_SAFE_MAX_SCENARIOS, bounded)
-  }
   return bounded
 }
 

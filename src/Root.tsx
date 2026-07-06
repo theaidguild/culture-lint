@@ -4,11 +4,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import BootScreen from './components/BootScreen.tsx'
 import { Layout } from './components/Layout.tsx'
 import { LinterPage } from './pages/LinterPage.tsx'
-import {
-  readAIStatusSnapshot,
-  subscribeAIStatus,
-  type AIStatusSnapshot,
-} from './services/aiWorkerClient'
 
 const AIPage = lazy(() => import('./pages/AIPage.tsx'))
 
@@ -31,7 +26,6 @@ export function Root() {
       return []
     }
   })
-  const [aiStatus, setAIStatus] = useState<AIStatusSnapshot | null>(() => readAIStatusSnapshot())
 
   useEffect(() => {
     if (!isDebugVisible) return
@@ -53,12 +47,6 @@ export function Root() {
       window.removeEventListener('storage', syncTrace)
     }
   }, [isDebugVisible])
-
-  useEffect(() => {
-    return subscribeAIStatus(() => {
-      setAIStatus(readAIStatusSnapshot())
-    })
-  }, [])
 
   return (
     <>
@@ -88,23 +76,6 @@ export function Root() {
               <div>{t('debug.noTrace')}</div>
             )}
           </div>
-        </div>
-      )}
-      {aiStatus && aiStatus.kind !== 'idle' && (
-        <div className="fixed bottom-3 left-3 right-3 z-[65] rounded-xl border border-cyan-400/25 bg-black/80 px-3 py-2.5 font-mono text-[11px] text-cyan-100 shadow-[0_0_22px_rgba(0,240,255,0.16)] backdrop-blur-sm sm:left-auto sm:right-3 sm:max-w-md">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">
-                {t('aiStatus.loadingMonitorTitle')}
-              </div>
-              <div className="mt-1 truncate text-slate-200">
-                {aiStatus.modelId ?? t('aiStatus.unknownModel')} · {aiStatus.phase ?? t('aiStatus.starting')}
-              </div>
-            </div>
-            <div className="shrink-0 text-cyan-300">{aiStatus.percent ?? 0}%</div>
-          </div>
-          {aiStatus.label && <div className="mt-1.5 text-slate-300">{aiStatus.label}</div>}
-          {aiStatus.message && <div className="mt-1.5 text-amber-300">{aiStatus.message}</div>}
         </div>
       )}
       {!boot && <BootScreen onComplete={() => setBoot(true)} />}
