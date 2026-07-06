@@ -17,6 +17,7 @@ export type ModelPresetId = keyof typeof MODEL_PRESETS
 
 export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating' | 'done'
 export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
+type ControversyAcceptanceMode = 'strict' | 'relaxed' | 'fallback'
 
 export interface GenerationProgress {
   phase: GenerationPhase
@@ -496,6 +497,62 @@ function hasRequiredControversyShape(
   return hasConflict && hasInstitution && !isSafeOnly
 }
 
+function hasRelaxedControversyShape(
+  scenario: RawScenario,
+  language: 'en-US' | 'pt-BR'
+): boolean {
+  const text = normalizeTextForChecks(`${scenario.title} ${scenario.act} ${scenario.context}`)
+  const conflictTerms =
+    language === 'pt-BR' ? CONTROVERSY_CONFLICT_TERMS_PT : CONTROVERSY_CONFLICT_TERMS_EN
+  const institutionTerms =
+    language === 'pt-BR' ? CONTROVERSY_INSTITUTION_TERMS_PT : CONTROVERSY_INSTITUTION_TERMS_EN
+  const safeTerms = language === 'pt-BR' ? SAFE_CIVICS_TERMS_PT : SAFE_CIVICS_TERMS_EN
+
+  const hasConflict = includesAnyTerm(text, conflictTerms)
+  const hasInstitution = includesAnyTerm(text, institutionTerms)
+  const isSafeOnly = includesAnyTerm(text, safeTerms) && !hasConflict
+
+  return !isSafeOnly && (hasConflict || hasInstitution)
+}
+
+function selectAcceptedScenarios(
+  scenarios: RawScenario[],
+  language: 'en-US' | 'pt-BR',
+  attempt: number,
+  maxAttempts: number
+): { accepted: RawScenario[]; mode: ControversyAcceptanceMode } {
+  if (attempt <= 1) {
+    return {
+      accepted: scenarios.filter((scenario) => hasRequiredControversyShape(scenario, language)),
+      mode: 'strict',
+    }
+  }
+
+  if (attempt < maxAttempts) {
+    return {
+      accepted: scenarios.filter((scenario) => hasRelaxedControversyShape(scenario, language)),
+      mode: 'relaxed',
+    }
+  }
+
+  return {
+    accepted: scenarios,
+    mode: 'fallback',
+  }
+}
+
+function resolveAcceptanceModeForAttempt(
+  attempt: number,
+  maxAttempts: number
+): ControversyAcceptanceMode {
+  if (attempt >= maxAttempts) return 'fallback'
+  return attempt <= 1 ? 'strict' : 'relaxed'
+}
+
+function tAcceptanceMode(language: 'en-US' | 'pt-BR', mode: ControversyAcceptanceMode): string {
+  return tStatus(language, `aiStatus.acceptanceModes.${mode}`)
+}
+
 function scoreScenarioSetForControversy(
   scenarios: RawScenario[],
   language: 'en-US' | 'pt-BR',
@@ -505,6 +562,31 @@ function scoreScenarioSetForControversy(
   const matches = scenarios.filter((scenario) => hasRequiredControversyShape(scenario, language)).length
   const denominator = Math.max(1, expectedCount)
   return Math.round((matches / denominator) * 100)
+}
+
+function scenarioSignature(scenario: RawScenario): string {
+  return [scenario.title, scenario.act, scenario.rival, scenario.ally, scenario.context]
+    .map((value) => normalizeTextForChecks(value).replace(/\s+/g, ' ').trim())
+    .join('|')
+}
+
+function mergeUniqueScenarios(current: RawScenario[], incoming: RawScenario[]): RawScenario[] {
+  const seen = new Set(current.map(scenarioSignature))
+  const merged = [...current]
+
+  for (const scenario of incoming) {
+    const signature = scenarioSignature(scenario)
+    if (seen.has(signature)) continue
+    seen.add(signature)
+    merged.push(scenario)
+  }
+
+  return merged
+}
+
+function resolveRunpodBatchSize(totalCount: number, principleCount: number): number {
+  if (totalCount <= 4) return totalCount
+  return Math.min(totalCount, Math.max(3, Math.min(4, principleCount + 1)))
 }
 
 function parseTimeoutMs(raw: unknown): number {
@@ -654,6 +736,11 @@ export async function generateAIScenariosWithRunpod(
   const selectedModelId = resolveSafeModelId(config.model)
   const requestedModel = resolveRunpodModelName(selectedModelId)
   const generationCount = resolveSafeScenarioCount(count)
+  const batchSize = resolveRunpodBatchSize(generationCount, activePrincipleIds.length)
+  const maxAttempts = Math.max(
+    RUNPOD_MAX_GENERATION_ATTEMPTS,
+    Math.ceil(generationCount / Math.max(1, batchSize)) + 2
+  )
 
   onProgress?.({
     phase: 'compiling',
@@ -677,23 +764,28 @@ export async function generateAIScenariosWithRunpod(
   })
 
   let parsed: RawScenario[] = []
-  let bestPartial: RawScenario[] = []
   let lastContentPreview = ''
 
-  for (let attempt = 1; attempt <= RUNPOD_MAX_GENERATION_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const remainingCount = generationCount - parsed.length
+    if (remainingCount <= 0) break
+
     if (attempt > 1) {
       onProgress?.({
         phase: 'generating',
         percent: 35,
         label: tStatus(language, 'aiStatus.retryingScenario', {
           current: attempt,
-          total: RUNPOD_MAX_GENERATION_ATTEMPTS,
+          total: maxAttempts,
+          mode: tAcceptanceMode(language, resolveAcceptanceModeForAttempt(attempt, maxAttempts)),
         }),
         uiStage: 'refining',
-        itemsCompleted: 0,
+        itemsCompleted: parsed.length,
         itemsTotal: generationCount,
       })
     }
+
+    const requestedCountForAttempt = Math.min(batchSize, remainingCount)
 
     const response = await fetchRunpodJson<LocalAIChatCompletionsResponse>({
       path: '/chat/completions',
@@ -709,7 +801,7 @@ export async function generateAIScenariosWithRunpod(
           countryCode,
           language,
           principleIds: activePrincipleIds,
-          count: generationCount,
+          count: requestedCountForAttempt,
           attempt,
         }),
       },
@@ -725,31 +817,27 @@ export async function generateAIScenariosWithRunpod(
 
     const extracted = extractJsonArray(content)
     const candidate = extracted ? validateScenarios(extracted) : []
-    const controversyScore = scoreScenarioSetForControversy(candidate, language, generationCount)
+    const acceptance = selectAcceptedScenarios(candidate, language, attempt, maxAttempts)
+    const controversyScore = scoreScenarioSetForControversy(
+      acceptance.accepted,
+      language,
+      requestedCountForAttempt
+    )
+    const merged = mergeUniqueScenarios(parsed, acceptance.accepted)
 
     debugLog('runpod generation quality', {
       attempt,
       parsedCount: candidate.length,
+      acceptedCount: acceptance.accepted.length,
+      acceptanceMode: acceptance.mode,
+      accumulatedCount: merged.length,
       controversyScore,
-      expectedCount: generationCount,
+      expectedCount: requestedCountForAttempt,
     })
 
-    const minAccepted = Math.max(1, Math.floor(generationCount * 0.7))
-    if (candidate.length >= minAccepted && controversyScore >= 30) {
-      parsed = candidate
-      break
+    if (merged.length > parsed.length) {
+      parsed = merged
     }
-    if (candidate.length > bestPartial.length && controversyScore >= 30) {
-      bestPartial = candidate
-    }
-  }
-
-  if (parsed.length === 0 && bestPartial.length > 0) {
-    debugLog('runpod using best partial result', {
-      count: bestPartial.length,
-      expected: generationCount,
-    })
-    parsed = bestPartial
   }
 
   if (parsed.length === 0) {
@@ -758,6 +846,8 @@ export async function generateAIScenariosWithRunpod(
       model,
       countryCode,
       count: generationCount,
+      batchSize,
+      maxAttempts,
     })
     throw new Error('runpod-invalid-json-response')
   }

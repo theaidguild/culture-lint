@@ -102,8 +102,12 @@ const ptBR = {
       runtimeValidationInconclusive:
         'Validação inconclusiva. Continuando com configurações seguras...',
       synthesizingScenarios: 'Sintetizando {{count}} cenários, um de cada vez...',
-      retryingScenario:
-        'Tentando novamente o cenário {{current}}/{{total}} com temperatura menor...',
+      retryingScenario: 'Tentando novamente o cenário {{current}}/{{total}} em modo {{mode}}...',
+      acceptanceModes: {
+        strict: 'estrito',
+        relaxed: 'flexível',
+        fallback: 'fallback',
+      },
       generatedScenarios: 'Gerados {{got}}/{{total}} cenários.',
       refiningMissing: 'Refinando cenários pendentes ({{missing}})...',
       recoveredScenarios: 'Recuperados {{got}}/{{total}} cenários.',

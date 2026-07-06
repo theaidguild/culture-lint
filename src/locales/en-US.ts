@@ -101,7 +101,12 @@ const enUS = {
       validatingRuntime: 'Validating runtime...',
       runtimeValidationInconclusive: 'Runtime validation inconclusive. Continuing with safe defaults...',
       synthesizingScenarios: 'Synthesizing {{count}} scenarios one at a time...',
-      retryingScenario: 'Retrying scenario {{current}}/{{total}} at lower temperature...',
+      retryingScenario: 'Retrying scenario {{current}}/{{total}} in {{mode}} mode...',
+      acceptanceModes: {
+        strict: 'strict',
+        relaxed: 'relaxed',
+        fallback: 'fallback',
+      },
       generatedScenarios: 'Generated {{got}}/{{total}} scenarios.',
       refiningMissing: 'Refining missing scenarios ({{missing}})...',
       recoveredScenarios: 'Recovered {{got}}/{{total}} scenarios.',
