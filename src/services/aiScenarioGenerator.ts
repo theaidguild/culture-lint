@@ -591,14 +591,15 @@ async function fetchRunpodJson<T>(config: {
   signal?: AbortSignal
 }): Promise<T> {
   const composed = composeAbortSignal(config.signal)
+  const method = config.method ?? 'GET'
+  const hasBody = config.body !== undefined
 
   try {
     const response = await fetch(joinRunpodPath(config.path), {
-      method: config.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: config.body ? JSON.stringify(config.body) : undefined,
+      method,
+      // Keep GET requests as simple CORS requests (no custom headers) to avoid preflight failures.
+      headers: hasBody ? { 'Content-Type': 'application/json' } : undefined,
+      body: hasBody ? JSON.stringify(config.body) : undefined,
       signal: composed.signal,
     })
 
