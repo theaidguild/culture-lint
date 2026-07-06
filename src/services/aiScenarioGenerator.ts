@@ -18,6 +18,7 @@ export type ModelPresetId = keyof typeof MODEL_PRESETS
 export type GenerationPhase = 'idle' | 'downloading' | 'compiling' | 'generating' | 'done'
 export type GenerationUiStage = 'preparing' | 'drafting' | 'refining' | 'finalizing' | 'done'
 type ControversyAcceptanceMode = 'strict' | 'relaxed' | 'fallback'
+type ScenarioValidationMode = 'strict' | 'relaxed' | 'fallback'
 
 export interface GenerationProgress {
   phase: GenerationPhase
@@ -393,74 +394,107 @@ function normalizeKey(rawKey: string): string {
     .replace(/[^a-z0-9]/g, '')
 }
 
-function isNonEmptyString(v: unknown): v is string {
-  return typeof v === 'string' && v.trim().length > 3
+function isStringWithMinLength(v: unknown, minLength: number): v is string {
+  return typeof v === 'string' && v.trim().length >= minLength
 }
 
 function getStringByAliases(
   obj: Record<string, unknown>,
   aliases: string[],
-  deepSearch = false
+  deepSearch = false,
+  minLength = 4
 ): string | null {
   const aliasSet = new Set(aliases)
 
   for (const [key, value] of Object.entries(obj)) {
     if (!aliasSet.has(normalizeKey(key))) continue
-    if (isNonEmptyString(value)) return value.trim()
+    if (isStringWithMinLength(value, minLength)) return value.trim()
   }
 
   if (!deepSearch) return null
 
   for (const value of Object.values(obj)) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue
-    const nested = getStringByAliases(value as Record<string, unknown>, aliases, false)
+    const nested = getStringByAliases(value as Record<string, unknown>, aliases, false, minLength)
     if (nested) return nested
   }
 
   return null
 }
 
-function normalizeRawScenario(item: unknown): RawScenario | null {
+function resolveValidationModeForAttempt(attempt: number): ScenarioValidationMode {
+  if (attempt <= 1) return 'strict'
+  if (attempt === 2) return 'relaxed'
+  return 'fallback'
+}
+
+function normalizeRawScenario(item: unknown, mode: ScenarioValidationMode): RawScenario | null {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return null
   const obj = item as Record<string, unknown>
+  const fieldMinLength = mode === 'strict' ? 4 : mode === 'relaxed' ? 3 : 2
 
-  const title = getStringByAliases(obj, ['title', 'titulo'], true)
+  const title = getStringByAliases(
+    obj,
+    ['title', 'titulo', 'headline', 'summary', 'tema'],
+    true,
+    fieldMinLength
+  )
   const act = getStringByAliases(
     obj,
-    ['act', 'acao', 'acaoprincipal', 'action', 'action1', 'caseact', 'fato'],
-    true
+    ['act', 'acao', 'acaoprincipal', 'action', 'action1', 'caseact', 'fato', 'conduct'],
+    true,
+    fieldMinLength
   )
   const rival = getStringByAliases(
     obj,
-    ['rival', 'opponent', 'opositor', 'adversario', 'rivalname'],
-    true
+    ['rival', 'opponent', 'opositor', 'adversario', 'rivalname', 'actora', 'critic'],
+    true,
+    fieldMinLength
   )
   const ally = getStringByAliases(
     obj,
-    ['ally', 'allied', 'aliado', 'governista', 'allyname'],
-    true
+    ['ally', 'allied', 'aliado', 'governista', 'allyname', 'actorb', 'defender'],
+    true,
+    fieldMinLength
   )
   const context = getStringByAliases(
     obj,
-    ['context', 'contexto', 'descricao', 'detalhes', 'justificativa'],
-    true
+    ['context', 'contexto', 'descricao', 'detalhes', 'justificativa', 'background'],
+    true,
+    fieldMinLength
   )
 
-  if (!title || !act || !rival || !ally || !context) return null
-  return { title, act, rival, ally, context }
+  const fallbackTitle = title ?? act?.slice(0, 72) ?? context?.slice(0, 72) ?? null
+  const fallbackContext = context ?? act ?? null
+
+  if (!fallbackTitle || !act || !rival || !ally || !fallbackContext) return null
+  return {
+    title: fallbackTitle.trim(),
+    act: act.trim(),
+    rival: rival.trim(),
+    ally: ally.trim(),
+    context: fallbackContext.trim(),
+  }
 }
 
-function validateScenarios(items: unknown[]): RawScenario[] {
+function validateScenarios(items: unknown[], mode: ScenarioValidationMode): RawScenario[] {
   const valid: RawScenario[] = []
   for (const item of items) {
-    const normalized = normalizeRawScenario(item)
+    const normalized = normalizeRawScenario(item, mode)
     if (!normalized) continue
 
     const rivalNorm = normalizeKey(normalized.rival)
     const allyNorm = normalizeKey(normalized.ally)
     if (rivalNorm.length < 4 || allyNorm.length < 4 || rivalNorm === allyNorm) continue
 
-    if (normalized.title.length < 14 || normalized.act.length < 28 || normalized.context.length < 28)
+    const minTitleLength = mode === 'strict' ? 14 : mode === 'relaxed' ? 8 : 4
+    const minBodyLength = mode === 'strict' ? 28 : mode === 'relaxed' ? 18 : 8
+
+    if (
+      normalized.title.length < minTitleLength ||
+      normalized.act.length < minBodyLength ||
+      normalized.context.length < minBodyLength
+    )
       continue
 
     valid.push(normalized)
@@ -541,12 +575,10 @@ function selectAcceptedScenarios(
   }
 }
 
-function resolveAcceptanceModeForAttempt(
-  attempt: number,
-  maxAttempts: number
-): ControversyAcceptanceMode {
-  if (attempt >= maxAttempts) return 'fallback'
-  return attempt <= 1 ? 'strict' : 'relaxed'
+function resolveAcceptanceModeForAttempt(attempt: number): ControversyAcceptanceMode {
+  if (attempt <= 1) return 'strict'
+  if (attempt === 2) return 'relaxed'
+  return 'fallback'
 }
 
 function tAcceptanceMode(language: 'en-US' | 'pt-BR', mode: ControversyAcceptanceMode): string {
@@ -738,8 +770,8 @@ export async function generateAIScenariosWithRunpod(
   const generationCount = resolveSafeScenarioCount(count)
   const batchSize = resolveRunpodBatchSize(generationCount, activePrincipleIds.length)
   const maxAttempts = Math.max(
-    RUNPOD_MAX_GENERATION_ATTEMPTS,
-    Math.ceil(generationCount / Math.max(1, batchSize)) + 2
+    RUNPOD_MAX_GENERATION_ATTEMPTS + 2,
+    Math.ceil(generationCount / Math.max(1, batchSize)) + 4
   )
 
   onProgress?.({
@@ -777,7 +809,7 @@ export async function generateAIScenariosWithRunpod(
         label: tStatus(language, 'aiStatus.retryingScenario', {
           current: attempt,
           total: maxAttempts,
-          mode: tAcceptanceMode(language, resolveAcceptanceModeForAttempt(attempt, maxAttempts)),
+          mode: tAcceptanceMode(language, resolveAcceptanceModeForAttempt(attempt)),
         }),
         uiStage: 'refining',
         itemsCompleted: parsed.length,
@@ -816,7 +848,8 @@ export async function generateAIScenariosWithRunpod(
     }
 
     const extracted = extractJsonArray(content)
-    const candidate = extracted ? validateScenarios(extracted) : []
+    const validationMode = resolveValidationModeForAttempt(attempt)
+    const candidate = extracted ? validateScenarios(extracted, validationMode) : []
     const acceptance = selectAcceptedScenarios(candidate, language, attempt, maxAttempts)
     const controversyScore = scoreScenarioSetForControversy(
       acceptance.accepted,
@@ -827,6 +860,7 @@ export async function generateAIScenariosWithRunpod(
 
     debugLog('runpod generation quality', {
       attempt,
+      validationMode,
       parsedCount: candidate.length,
       acceptedCount: acceptance.accepted.length,
       acceptanceMode: acceptance.mode,

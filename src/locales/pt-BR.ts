@@ -65,7 +65,8 @@ const ptBR = {
       compilingIndicator: 'compilando árvore de compilação...',
       cancel: 'ABORTAR',
       canceling: 'CANCELANDO',
-      partialResult: 'Gerados {{got}} de {{want}}. Tentar novamente?',
+      partialResult:
+        'Gerados {{gotScenarios}}/{{wantScenarios}} cenários ({{gotCases}}/{{wantCases}} casos). Tentar novamente?',
       progressEyebrow: 'Criação em andamento',
       progressCurrentLabel: 'Atualização',
       progressRoadmapLabel: 'Caminho da criação',

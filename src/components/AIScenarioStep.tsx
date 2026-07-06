@@ -766,7 +766,12 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
 
             {scenarios.length < scenarioCount && (
               <div className="mt-4 border border-amber-500/30 bg-amber-500/5 px-4 py-3 rounded text-xs font-mono text-amber-300">
-                {t('aiScreen.partialResult', { got: scenarios.length, want: scenarioCount })}
+                {t('aiScreen.partialResult', {
+                  gotScenarios: scenarios.length,
+                  wantScenarios: scenarioCount,
+                  gotCases: scenarios.length * 2,
+                  wantCases: caseCount,
+                })}
               </div>
             )}
 

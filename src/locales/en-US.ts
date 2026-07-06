@@ -65,7 +65,8 @@ const enUS = {
       compilingIndicator: 'compiling compilation-tree...',
       cancel: 'ABORT',
       canceling: 'CANCELING',
-      partialResult: 'Generated {{got}} of {{want}}. Retry?',
+      partialResult:
+        'Generated {{gotScenarios}}/{{wantScenarios}} scenarios ({{gotCases}}/{{wantCases}} cases). Retry?',
       progressEyebrow: 'Scenario creation in progress',
       progressCurrentLabel: 'Current update',
       progressRoadmapLabel: 'Creation roadmap',
