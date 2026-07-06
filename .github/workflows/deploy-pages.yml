@@ -48,10 +48,8 @@ jobs:
             BASE_PATH="/$REPO_NAME/"
           fi
 
-          if [[ -z "$VITE_RUNPOD_BASE_PATH" ]]; then
-            echo "Missing VITE_RUNPOD_BASE_PATH GitHub Actions variable" >&2
-            exit 1
-          fi
+          # Keep CI builds deterministic even when repository variables are not set.
+          export VITE_RUNPOD_BASE_PATH="${VITE_RUNPOD_BASE_PATH:-/api/runpod}"
 
           echo "Building with base path: $BASE_PATH"
           pnpm exec tsc -b
