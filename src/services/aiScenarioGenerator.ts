@@ -542,7 +542,7 @@ function normalizeRawScenario(item: unknown, mode: ScenarioValidationMode): RawS
 function simplifyPublicLanguageText(value: string, language: 'en-US' | 'pt-BR'): string {
   const cleaned = value.replace(/\s+/g, ' ').trim()
 
-  const replacements =
+  const replacements: Array<[RegExp, string]> =
     language === 'pt-BR'
       ? [
           [/\bconforme\b/gi, 'de acordo com'],
