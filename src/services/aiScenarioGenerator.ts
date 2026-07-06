@@ -539,27 +539,91 @@ function normalizeRawScenario(item: unknown, mode: ScenarioValidationMode): RawS
   }
 }
 
-function validateScenarios(items: unknown[], mode: ScenarioValidationMode): RawScenario[] {
+function simplifyPublicLanguageText(value: string, language: 'en-US' | 'pt-BR'): string {
+  const cleaned = value.replace(/\s+/g, ' ').trim()
+
+  const replacements =
+    language === 'pt-BR'
+      ? [
+          [/\bconforme\b/gi, 'de acordo com'],
+          [/\bmediante\b/gi, 'com'],
+          [/\bsupracitado\b/gi, 'citado acima'],
+          [/\boutrossim\b/gi, 'alem disso'],
+          [/\btodavia\b/gi, 'mas'],
+          [/\bdestarte\b/gi, 'assim'],
+          [/\bhodiern[oa]mente\b/gi, 'hoje'],
+          [/\bviabilizar\b/gi, 'permitir'],
+          [/\bmitigar\b/gi, 'reduzir'],
+          [/\bimplementar\b/gi, 'colocar em pratica'],
+          [/\bperpetrar\b/gi, 'cometer'],
+          [/\bdeliberadamente\b/gi, 'de proposito'],
+          [/\bnao obstante\b/gi, 'mesmo assim'],
+          [/\bpor conseguinte\b/gi, 'por isso'],
+        ]
+      : [
+          [/\btherefore\b/gi, 'so'],
+          [/\bnotwithstanding\b/gi, 'even so'],
+          [/\bfurthermore\b/gi, 'also'],
+          [/\bmoreover\b/gi, 'also'],
+          [/\bhence\b/gi, 'so'],
+          [/\bthus\b/gi, 'so'],
+          [/\bupon\b/gi, 'on'],
+          [/\bendeavor\b/gi, 'try'],
+          [/\butilize\b/gi, 'use'],
+          [/\bmitigate\b/gi, 'reduce'],
+          [/\bfacilitate\b/gi, 'help'],
+          [/\bperpetrate\b/gi, 'commit'],
+          [/\baforementioned\b/gi, 'mentioned above'],
+          [/\binstitutional framework\b/gi, 'institution rules'],
+        ]
+
+  let simplified = cleaned
+  for (const [pattern, replacement] of replacements) {
+    simplified = simplified.replace(pattern, replacement)
+  }
+
+  return simplified.replace(/\s+/g, ' ').trim()
+}
+
+function simplifyPublicLanguageScenario(
+  scenario: RawScenario,
+  language: 'en-US' | 'pt-BR'
+): RawScenario {
+  return {
+    ...scenario,
+    title: simplifyPublicLanguageText(scenario.title, language),
+    act: simplifyPublicLanguageText(scenario.act, language),
+    context: simplifyPublicLanguageText(scenario.context, language),
+  }
+}
+
+function validateScenarios(
+  items: unknown[],
+  mode: ScenarioValidationMode,
+  language: 'en-US' | 'pt-BR'
+): RawScenario[] {
   const valid: RawScenario[] = []
   for (const item of items) {
     const normalized = normalizeRawScenario(item, mode)
     if (!normalized) continue
 
-    const rivalNorm = normalizeKey(normalized.rival)
-    const allyNorm = normalizeKey(normalized.ally)
+    const plainLanguage = simplifyPublicLanguageScenario(normalized, language)
+
+    const rivalNorm = normalizeKey(plainLanguage.rival)
+    const allyNorm = normalizeKey(plainLanguage.ally)
     if (rivalNorm.length < 4 || allyNorm.length < 4 || rivalNorm === allyNorm) continue
 
     const minTitleLength = mode === 'strict' ? 14 : mode === 'relaxed' ? 8 : 4
     const minBodyLength = mode === 'strict' ? 28 : mode === 'relaxed' ? 18 : 8
 
     if (
-      normalized.title.length < minTitleLength ||
-      normalized.act.length < minBodyLength ||
-      normalized.context.length < minBodyLength
+      plainLanguage.title.length < minTitleLength ||
+      plainLanguage.act.length < minBodyLength ||
+      plainLanguage.context.length < minBodyLength
     )
       continue
 
-    valid.push(normalized)
+    valid.push(plainLanguage)
   }
   return valid
 }
@@ -943,14 +1007,17 @@ function buildRunpodScenarioMessages(config: {
       ? ` COTA OBRIGATORIA NESTA RESPOSTA: inclua pelo menos ${missingReligion} caso(s) sobre religiao e ${missingAbortion} caso(s) sobre aborto (podem coexistir no mesmo caso, mas os dois temas devem aparecer explicitamente em title/act/context).`
       : ` MANDATORY QUOTA FOR THIS RESPONSE: include at least ${missingReligion} religion case(s) and ${missingAbortion} abortion case(s) (they may overlap, but both themes must be explicit in title/act/context).`
     : ''
+  const languageConstraint = isPt
+    ? ' LINGUAGEM OBRIGATORIA: escreva de forma simples, direta e popular. Evite juridiquês, termos tecnicos, formalismo excessivo e frases longas. Use vocabulario que qualquer pessoa adulta compreenda na primeira leitura.'
+    : ' LANGUAGE REQUIREMENT: write in simple, direct, plain language. Avoid legal jargon, technical/formal wording, and long complex sentences. Use vocabulary that most adults can understand on first read.'
 
   const system = isPt
-    ? 'Voce e um arquiteto de testes de coerencia moral. Gere dilemas espelhados de alta friccao social em JSON estrito. Proibido produzir conteudo pedagogico neutro, campanhas civicas consensuais ou exemplos universalmente aceitaveis. Responda APENAS com um array JSON valido, sem markdown, sem texto extra e sem comentarios.'
-    : 'You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples. Reply ONLY with a valid JSON array, no markdown, no extra prose, and no comments.'
+    ? `Voce e um arquiteto de testes de coerencia moral. Gere dilemas espelhados de alta friccao social em JSON estrito. Proibido produzir conteudo pedagogico neutro, campanhas civicas consensuais ou exemplos universalmente aceitaveis.${languageConstraint} Responda APENAS com um array JSON valido, sem markdown, sem texto extra e sem comentarios.`
+    : `You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples.${languageConstraint} Reply ONLY with a valid JSON array, no markdown, no extra prose, and no comments.`
 
   const user = isPt
-    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Use estes principios em rotacao: ${principleList}. Cada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
-    : `Generate ${config.count} JSON objects for ${config.countryCode}. Rotate these principles: ${principleList}. Every object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act.${topicConstraint}${escalation}`
+    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Use estes principios em rotacao: ${principleList}. Cada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual; (5) use linguagem simples e popular, com frases curtas e sem jargao tecnico.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
+    : `Generate ${config.count} JSON objects for ${config.countryCode}. Rotate these principles: ${principleList}. Every object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act; (5) use plain language with short sentences and no technical jargon.${topicConstraint}${escalation}`
 
   return [
     { role: 'system', content: system },
@@ -1053,7 +1120,7 @@ export async function generateAIScenariosWithRunpod(
 
     const extracted = extractJsonArray(content)
     const validationMode = resolveValidationModeForAttempt(attempt)
-    const candidate = extracted ? validateScenarios(extracted, validationMode) : []
+    const candidate = extracted ? validateScenarios(extracted, validationMode, language) : []
     const acceptance = selectAcceptedScenarios(candidate, language, attempt, maxAttempts)
     const controversyScore = scoreScenarioSetForControversy(
       acceptance.accepted,
