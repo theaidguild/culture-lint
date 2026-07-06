@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import {
   isMobileSafeAIMode,
+  getCachedRunpodModels,
   MODEL_PRESETS,
   resolveSafeModelId,
   resolveSafeScenarioCount,
@@ -28,7 +29,6 @@ import {
   cancelAIRequest,
   readAIStatusSnapshot,
   requestAIGenerate,
-  requestAIWarmup,
   subscribeAIStatus,
   type AIStatusSnapshot,
 } from '../services/aiWorkerClient'
@@ -58,11 +58,9 @@ const AI_DEBUG_PREFIX = '[ai-debug][ui]'
 
 function debugLog(message: string, meta?: Record<string, unknown>) {
   if (meta) {
-    // eslint-disable-next-line no-console
     console.debug(`${AI_DEBUG_PREFIX} ${message}`, meta)
     return
   }
-  // eslint-disable-next-line no-console
   console.debug(`${AI_DEBUG_PREFIX} ${message}`)
 }
 
@@ -122,10 +120,8 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     label: '',
     uiStage: 'preparing',
   })
-  const [isWarmupInProgress, setIsWarmupInProgress] = useState(false)
-  const [warmupModelId, setWarmupModelId] = useState<ModelPresetId | null>(null)
-  const [warmupProgress, setWarmupProgress] = useState<GenerationProgress | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [detectedServerModel, setDetectedServerModel] = useState<string | null>(null)
 
   const [judgmentSequence, setJudgmentSequence] = useState<JudgmentItem[]>([])
   const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
@@ -135,9 +131,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
   const [aiStatus, setAIStatus] = useState<AIStatusSnapshot | null>(() => readAIStatusSnapshot())
 
   const analysisTimeoutRef = useRef<number | undefined>(undefined)
-  const warmedModelsRef = useRef<Set<ModelPresetId>>(new Set())
   const activeGenerateRequestIdRef = useRef<string | null>(null)
-  const activeWarmupRequestIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     return subscribeAIStatus(() => {
@@ -181,65 +175,21 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
     }
   }, [])
 
-  // Warm up and validate the currently selected model runtime in the background
-  // so generation can reuse a known-good pipeline when the user starts.
-  const scheduleWarmup = useCallback(
-    (targetModelId: ModelPresetId = modelId) => {
-      if (mobileSafeMode) return
-      if (warmedModelsRef.current.has(targetModelId)) return
-      warmedModelsRef.current.add(targetModelId)
-      const requestId = `warmup-${targetModelId}-${i18n.language}`
-      activeWarmupRequestIdRef.current = requestId
-      setWarmupModelId(targetModelId)
-      setIsWarmupInProgress(true)
-      setWarmupProgress({
-        phase: 'downloading',
-        percent: 0,
-        label: isPt ? 'Preparando aquecimento...' : 'Preparing warmup...',
-        uiStage: 'preparing',
-      })
-      debugLog('schedule warmup', {
-        requestId,
-        modelId: targetModelId,
-        language: i18n.language,
-      })
-
-      void requestAIWarmup({
-        modelId: targetModelId,
-        language: i18n.language as 'en-US' | 'pt-BR',
-        onProgress: (nextProgress) => {
-          setWarmupProgress(nextProgress)
-        },
-      })
-        .catch(() => {
-          warmedModelsRef.current.delete(targetModelId)
-          setWarmupProgress((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  label: isPt ? 'Falha ao aquecer modelo.' : 'Model warmup failed.',
-                }
-              : prev
-          )
-        })
-        .finally(() => {
-          if (activeWarmupRequestIdRef.current === requestId) {
-            activeWarmupRequestIdRef.current = null
-            setIsWarmupInProgress(false)
-            setWarmupProgress(null)
-          }
-        })
-    },
-    [i18n.language, isPt, mobileSafeMode, modelId]
-  )
-
   useEffect(() => {
-    const warmupId = window.setTimeout(() => {
-      scheduleWarmup(modelId)
-    }, 250)
+    let cancelled = false
 
-    return () => window.clearTimeout(warmupId)
-  }, [modelId, scheduleWarmup])
+    getCachedRunpodModels()
+      .then((models) => {
+        if (!cancelled) setDetectedServerModel(models[0] ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setDetectedServerModel(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleGenerate = async () => {
     setScreenState('generating')
@@ -320,7 +270,6 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       modelId,
       query: {
         boot: new URLSearchParams(window.location.search).get('boot'),
-        aiWarmup: new URLSearchParams(window.location.search).get('aiWarmup'),
         debug: new URLSearchParams(window.location.search).get('debug'),
       },
     }
@@ -638,34 +587,25 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                     const nextModelId = e.target.value as ModelPresetId
                     const safeModelId = resolveSafeModelId(nextModelId)
                     setModelId(safeModelId)
-                    scheduleWarmup(safeModelId)
                   }}
                   disabled={mobileSafeMode}
                   className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
                 >
-                  <option value="smollm135">SmolLM2-135M-Instruct (mobile-safe)</option>
-                  <option value="smollm2">SmolLM2-360M-Instruct (balanced)</option>
-                  <option value="qwen25">Qwen2.5-0.5B-Instruct (quality)</option>
+                  {Object.entries(MODEL_PRESETS).map(([presetId, modelName]) => (
+                    <option key={presetId} value={presetId}>
+                      {modelName}
+                    </option>
+                  ))}
                 </select>
+                <p className="mt-2 text-[10px] font-mono text-slate-400">
+                  {isPt ? 'Modelo detectado no servidor:' : 'Server detected model:'}{' '}
+                  <span className="text-slate-200">{detectedServerModel ?? 'n/a'}</span>
+                </p>
                 {mobileSafeMode && (
                   <div className="mt-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-mono text-emerald-300">
                     {isPt
                       ? 'Modo seguro mobile ativo: modelo leve, runtime estavel e no maximo 4 casos por rodada.'
                       : 'Mobile safe mode active: lightweight model, stable runtime, and up to 4 cases per run.'}
-                  </div>
-                )}
-                {isWarmupInProgress && warmupModelId === modelId && (
-                  <div className="mt-2 space-y-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
-                      {isPt ? 'Aquecendo modelo' : 'Warming model'}
-                      {warmupProgress ? `(${warmupProgress.percent}%)` : ''}
-                    </div>
-                    {warmupProgress && (
-                      <div className="rounded border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-[10px] font-mono text-cyan-200">
-                        {warmupProgress.label}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -727,11 +667,9 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                         {t('aiStatus.loadingMonitorTitle')}
                       </p>
                       <h3 className="mt-1 text-sm font-black text-white tracking-tight">
-                        {aiStatus?.kind === 'warmup'
-                            ? t('aiStatus.modelLoading')
-                          : aiStatus?.kind === 'generate'
-                              ? t('aiStatus.generationInProgress')
-                              : t('aiStatus.readyToStart')}
+                        {aiStatus?.kind === 'generate'
+                          ? t('aiStatus.generationInProgress')
+                          : t('aiStatus.readyToStart')}
                       </h3>
                     </div>
                     <button
@@ -773,10 +711,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
                   </div>
 
                   <div className="mt-3 rounded border border-cyan-400/15 bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-slate-300">
-                    {aiStatus?.label ||
-                      (mobileSafeMode
-                        ? t('aiStatus.safeModeActiveHint')
-                        : t('aiStatus.noActivity'))}
+                    {aiStatus?.label || t('aiStatus.noActivity')}
                   </div>
 
                   {aiStatus?.message && (
@@ -790,15 +725,10 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={isWarmupInProgress && warmupModelId === modelId}
                 className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-cyan-400 text-[#071018] font-mono text-xs font-black py-4 select-none transition duration-300 transform hover:-translate-y-0.5 shadow-[0_0_30px_rgba(34,211,238,0.25)] hover:bg-cyan-300 animate-pulse disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
               >
                 <Sparkles size={16} />
-                {isWarmupInProgress && warmupModelId === modelId
-                  ? isPt
-                    ? `AQUECENDO MODELO${warmupProgress ? ` ${warmupProgress.percent}%` : '...'}`
-                    : `WARMING MODEL${warmupProgress ? ` ${warmupProgress.percent}%` : '...'}`
-                  : t('aiScreen.generateBtn')}
+                {t('aiScreen.generateBtn')}
               </button>
             </div>
           </div>
