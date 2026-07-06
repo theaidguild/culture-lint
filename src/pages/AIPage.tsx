@@ -42,6 +42,28 @@ export function AIPage() {
         value: t('principles.equality.value'),
         code: 'CHK_088',
       },
+      {
+        id: 'religious-freedom',
+        label: t('principles.religiousFreedom.label'),
+        status: t('principles.religiousFreedom.status'),
+        metadata: [
+          t('principles.religiousFreedom.metadata.expression'),
+          t('principles.religiousFreedom.metadata.state'),
+        ],
+        value: t('principles.religiousFreedom.value'),
+        code: 'CHK_144',
+      },
+      {
+        id: 'reproductive-autonomy',
+        label: t('principles.reproductiveAutonomy.label'),
+        status: t('principles.reproductiveAutonomy.status'),
+        metadata: [
+          t('principles.reproductiveAutonomy.metadata.healthcare'),
+          t('principles.reproductiveAutonomy.metadata.state'),
+        ],
+        value: t('principles.reproductiveAutonomy.value'),
+        code: 'CHK_155',
+      },
     ],
     [t]
   )

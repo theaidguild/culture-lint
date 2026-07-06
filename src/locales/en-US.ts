@@ -332,6 +332,24 @@ const enUS = {
           state: '// State: IMMUTABLE CONSTANT',
         },
       },
+      religiousFreedom: {
+        label: 'RELIGIOUS FREEDOM',
+        status: '[ACTIVE] RULE: RELIGIOUS FREEDOM',
+        value: 'Belief and non-belief must receive equal institutional protection under the same civic rules.',
+        metadata: {
+          expression: '// Interface: FaithExpression.equalProtection()',
+          state: '// State: IMMUTABLE CONSTANT',
+        },
+      },
+      reproductiveAutonomy: {
+        label: 'REPRODUCTIVE AUTONOMY',
+        status: '[ACTIVE] RULE: REPRODUCTIVE AUTONOMY',
+        value: 'Decisions on pregnancy must be judged with consistent standards for rights, safety, and public policy.',
+        metadata: {
+          healthcare: '// Interface: ReproductiveCare.consistentStandard()',
+          state: '// State: IMMUTABLE CONSTANT',
+        },
+      },
     },
     scenarios: {
       'inclusividade-seletiva': {

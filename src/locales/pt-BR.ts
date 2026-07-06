@@ -340,6 +340,24 @@ const ptBR = {
           state: '// Estado: COMPROMISSO INCONDICIONAL',
         },
       },
+      religiousFreedom: {
+        label: 'LIBERDADE RELIGIOSA',
+        status: '[ATIVO] REGRA: LIBERDADE RELIGIOSA',
+        value: 'Crença e não crença devem receber proteção institucional igual sob as mesmas regras civis.',
+        metadata: {
+          expression: '// Interface: ExpressaoDeFe.protecaoIgual()',
+          state: '// Estado: COMPROMISSO INCONDICIONAL',
+        },
+      },
+      reproductiveAutonomy: {
+        label: 'AUTONOMIA REPRODUTIVA',
+        status: '[ATIVO] REGRA: AUTONOMIA REPRODUTIVA',
+        value: 'Decisões sobre gravidez devem ser julgadas com critérios consistentes de direitos, segurança e política pública.',
+        metadata: {
+          healthcare: '// Interface: CuidadoReprodutivo.criterioConsistente()',
+          state: '// Estado: COMPROMISSO INCONDICIONAL',
+        },
+      },
     },
     scenarios: {
       'inclusividade-seletiva': {

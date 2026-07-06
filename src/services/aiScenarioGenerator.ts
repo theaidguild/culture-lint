@@ -888,6 +888,37 @@ function pickAvailableModel(requestedModel: string, availableModels: string[]): 
   return availableModels[0] ?? requestedModel
 }
 
+function describePrincipleForPrompt(principleId: string, language: 'en-US' | 'pt-BR'): string {
+  const isPt = language === 'pt-BR'
+  const normalized = normalizeKey(principleId)
+
+  if (normalized === 'transparency') {
+    return isPt ? 'transparencia institucional e acesso publico a informacao' : 'institutional transparency and public access to information'
+  }
+  if (normalized === 'accountability') {
+    return isPt ? 'responsabilizacao por abuso, mentira e violacao de dever publico' : 'accountability for abuse, deception, and breach of public duty'
+  }
+  if (normalized === 'equality') {
+    return isPt ? 'igualdade de tratamento entre grupos opostos' : 'equal standards across opposing groups'
+  }
+  if (normalized === 'religiousfreedom') {
+    return isPt ? 'liberdade religiosa, conflito entre liberdade de culto e regras civicas' : 'religious freedom, conflict between faith expression and civic rules'
+  }
+  if (normalized === 'reproductiveautonomy') {
+    return isPt ? 'autonomia reprodutiva, conflito sobre aborto e politica publica de saude' : 'reproductive autonomy, abortion conflict and public health policy'
+  }
+
+  return principleId
+}
+
+function buildPrincipleListForPrompt(
+  principleIds: string[],
+  language: 'en-US' | 'pt-BR'
+): string {
+  const labels = principleIds.map((principleId) => describePrincipleForPrompt(principleId, language))
+  return labels.join(', ')
+}
+
 function buildRunpodScenarioMessages(config: {
   countryCode: string
   language: 'en-US' | 'pt-BR'
@@ -897,7 +928,7 @@ function buildRunpodScenarioMessages(config: {
   missingQuotas?: TopicQuota[]
 }): Array<{ role: 'system' | 'user'; content: string }> {
   const isPt = config.language === 'pt-BR'
-  const principleList = config.principleIds.join(', ')
+  const principleList = buildPrincipleListForPrompt(config.principleIds, config.language)
   const missingReligion = config.missingQuotas?.find((quota) => quota.topic === 'religion')?.minimum ?? 0
   const missingAbortion = config.missingQuotas?.find((quota) => quota.topic === 'abortion')?.minimum ?? 0
   const hasTopicTargets = missingReligion > 0 || missingAbortion > 0
