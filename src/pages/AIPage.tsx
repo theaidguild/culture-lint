@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AIScenarioStep } from '../components/AIScenarioStep'
+import { AIScenarioStep, type AIHeaderStep } from '../components/AIScenarioStep'
 import { TopBar } from '../components/TopBar'
 import { type Principle } from '../types/linter'
 
 export function AIPage() {
   const { t } = useTranslation()
+  const [step, setStep] = useState<AIHeaderStep>(1)
 
   const principles = useMemo<Principle[]>(
     () => [
@@ -70,18 +71,18 @@ export function AIPage() {
 
   const progressItems = useMemo(
     () => [
-      { label: t('aiScreen.countryLabel'), active: true, complete: false },
-      { label: t('aiScreen.navLabel'), active: false, complete: false },
-      { label: t('progress.judgment'), active: false, complete: false },
-      { label: t('progress.sessionResults'), active: false, complete: false },
+      { label: t('aiScreen.stepConfigure'), active: step === 1, complete: step > 1 },
+      { label: t('aiScreen.stepGenerate'), active: step === 2, complete: step > 2 },
+      { label: t('aiScreen.stepJudge'), active: step === 3, complete: step > 3 },
+      { label: t('aiScreen.stepReport'), active: step === 4, complete: false },
     ],
-    [t]
+    [step, t]
   )
 
   return (
     <>
-      <TopBar progressItems={progressItems} step={1} hasFailures={false} />
-      <AIScenarioStep principles={principles} />
+      <TopBar progressItems={progressItems} step={step} hasFailures={false} />
+      <AIScenarioStep principles={principles} onStepChange={setStep} />
     </>
   )
 }

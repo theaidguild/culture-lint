@@ -41,10 +41,12 @@ import { SessionResultStep } from './SessionResultStep'
 
 interface AIScenarioStepProps {
   principles: Principle[]
+  onStepChange?: (step: AIHeaderStep) => void
 }
 
 type AIScreenState = 'setup' | 'generating' | 'generated' | 'judging' | 'results'
 type FeedbackMessage = { tone: 'info' | 'error'; text: string }
+export type AIHeaderStep = 1 | 2 | 3 | 4
 
 const DEFAULT_COUNTRY = 'BR'
 const DEFAULT_COUNT = 6
@@ -98,7 +100,7 @@ const normalizeGenerationStage = (
   return 'preparing'
 }
 
-export function AIScenarioStep({ principles }: AIScenarioStepProps) {
+export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
   const isPt = i18n.language === 'pt-BR'
   const [searchParams, setSearchParams] = useSearchParams()
@@ -195,6 +197,20 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!onStepChange) return
+
+    const stepByState: Record<AIScreenState, AIHeaderStep> = {
+      setup: 1,
+      generating: 2,
+      generated: 2,
+      judging: 3,
+      results: 4,
+    }
+
+    onStepChange(stepByState[screenState])
+  }, [onStepChange, screenState])
 
   const handleGenerate = async () => {
     setScreenState('generating')

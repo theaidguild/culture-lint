@@ -248,7 +248,7 @@ export function SessionResultStep({
       </div>
 
       <footer className="mt-8 flex flex-col gap-2 font-mono text-sm text-slate-400 sm:flex-row sm:justify-between">
-        <span className="text-cyan-400">{t('step3.analysisComplete')}</span>
+        <span className="text-cyan-400">{t('sessionResult.analysisComplete')}</span>
         <span>culture-lint v2026.3.2</span>
       </footer>
     </div>
@@ -319,7 +319,7 @@ function JudgmentOutcomeCard({
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <VerdictCell
-              label={t('step2.eventA')}
+              label={t('sessionResult.eventA')}
               caseStudy={scenario.caseStudyA}
               verdict={verdictA}
               highlightDifferences={hasFailed}
@@ -328,7 +328,7 @@ function JudgmentOutcomeCard({
               contextSegments={contextDiff.left}
             />
             <VerdictCell
-              label={t('step2.eventB')}
+              label={t('sessionResult.eventB')}
               caseStudy={scenario.caseStudyB}
               verdict={verdictB}
               highlightDifferences={hasFailed}

@@ -25,7 +25,7 @@ export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
         <span className="text-xs sm:text-sm">{t('appName')}</span>
       </div>
       <div className="rounded border border-[#30363d] px-3 py-1.5 font-mono text-xs text-slate-300 lg:hidden">
-        {`Step ${step} / ${TOTAL_STEPS}`}
+        {t('topbar.stepCounter', { step, total: TOTAL_STEPS })}
       </div>
       <nav className="hidden items-center gap-6 lg:flex">
         {progressItems.map((item, index) => (
