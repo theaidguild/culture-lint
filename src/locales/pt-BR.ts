@@ -268,6 +268,7 @@ const ptBR = {
         'O paralelo com o BDD é intencional e não apenas cosmético. No software, comportamento indefinido é o tipo mais perigoso: o sistema parece funcionar até que não funciona mais, e aí o estrago já está feito. No raciocínio social, comportamento indefinido se parece com "eu vou saber quando ver" — um julgamento que produz resultados diferentes para a mesma entrada dependendo de um contexto que você não admite ser irrelevante. A resposta do BDD ao comportamento indefinido é escrever a especificação primeiro, em exemplos concretos e sem ambiguidade, e depois verificar se o sistema realmente a satisfaz. O <cl>Culture Lint</cl> aplica a mesma disciplina ao julgamento moral: comprometa-se com um princípio, depois execute os cenários.',
       whyGoal:
         'O objetivo não é envergonhar ninguém. Contradições não são prova de maldade — são prova de humanidade. Todos carregamos pontos cegos moldados pela experiência, pela identidade e pelas informações a que fomos expostos. O propósito de revelá-los é o mesmo que o de um teste com falha: não punir o desenvolvedor, mas tornar visível a lacuna entre intenção e comportamento para que ela possa ser corrigida.',
+      backToMain: 'Vale a pena experimentar',
     },
     footer: {
       idLabel: 'ID',

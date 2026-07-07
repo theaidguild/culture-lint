@@ -266,6 +266,7 @@ const enUS = {
         "The BDD parallel is intentional and not just cosmetic. In software, undefined behavior is the most dangerous kind: the system appears to work until it doesn't, and by then the damage is done. In social reasoning, undefined behavior looks like \"I'll know it when I see it\" — a judgment call that produces different outputs for the same input depending on context you won't admit is irrelevant. BDD's answer to undefined behavior is to write the spec first, in concrete, unambiguous examples, and then verify that the system actually satisfies it. <cl>Culture Lint</cl> applies the same discipline to moral judgment: commit to a principle, then run the scenarios.",
       whyGoal:
         'The goal is not to shame anyone. Contradictions are not proof of malice — they are proof of humanity. We all carry blind spots shaped by experience, identity, and the information we were exposed to. The point of surfacing them is the same as the point of a failing test: not to punish the developer, but to make the gap between intention and behavior visible so it can be addressed.',
+      backToMain: "It's worth trying",
     },
     footer: {
       idLabel: 'ID',

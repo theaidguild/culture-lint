@@ -1,4 +1,5 @@
 import { Trans, useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 const cl = <code className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-xs text-cyan-300" />
 const str = <strong className="text-slate-100" />
@@ -81,6 +82,15 @@ export function AboutPage() {
           <Trans i18nKey="about.whyBdd" components={{ cl }} />
         </p>
         <p>{t('about.whyGoal')}</p>
+      </div>
+
+      <div className="mt-10 flex justify-start sm:mt-12">
+        <Link
+          to="/"
+          className="inline-flex items-center rounded-md border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/20"
+        >
+          {t('about.backToMain')}
+        </Link>
       </div>
     </div>
   )
