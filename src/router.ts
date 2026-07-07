@@ -4,6 +4,27 @@ import { Layout } from './components/Layout'
 import { RouteErrorBoundary } from './components/RouteErrorBoundary'
 import Root from './Root'
 
+const SPA_REDIRECT_KEY = 'culture-lint:spa-redirect'
+
+function restoreSpaRoute() {
+  if (typeof window === 'undefined') return
+
+  const base = import.meta.env.BASE_URL
+  const redirectedPath = window.sessionStorage.getItem(SPA_REDIRECT_KEY)
+  if (!redirectedPath) return
+
+  window.sessionStorage.removeItem(SPA_REDIRECT_KEY)
+
+  const isAtBaseRoot =
+    window.location.pathname === base || window.location.pathname === `${base}index.html`
+
+  if (!isAtBaseRoot) return
+
+  window.history.replaceState(null, '', `${base}${redirectedPath}`)
+}
+
+restoreSpaRoute()
+
 const AIPage = lazy(() => import('./pages/AIPage.tsx'))
 const AboutPage = lazy(() => import('./pages/AboutPage.tsx'))
 

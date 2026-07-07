@@ -5,7 +5,6 @@ import './index.css'
 import './i18n'
 import { router } from './router'
 
-const SPA_REDIRECT_KEY = 'culture-lint:spa-redirect'
 const DEBUG_TRACE_KEY = 'culture-lint:debug-trace'
 
 function pushDebugTrace(message: string) {
@@ -22,23 +21,6 @@ function pushDebugTrace(message: string) {
   }
 }
 
-function restoreSpaRoute() {
-  if (typeof window === 'undefined') return
-
-  const base = import.meta.env.BASE_URL
-  const redirectedPath = window.sessionStorage.getItem(SPA_REDIRECT_KEY)
-  if (!redirectedPath) return
-
-  window.sessionStorage.removeItem(SPA_REDIRECT_KEY)
-
-  const isAtBaseRoot =
-    window.location.pathname === base || window.location.pathname === `${base}index.html`
-
-  if (!isAtBaseRoot) return
-
-  window.history.replaceState(null, '', `${base}${redirectedPath}`)
-}
-
 if (typeof window !== 'undefined') {
   pushDebugTrace(`boot ${window.location.pathname}${window.location.search}`)
 
@@ -52,8 +34,6 @@ if (typeof window !== 'undefined') {
     pushDebugTrace(`unhandledrejection ${reason}`)
   })
 }
-
-restoreSpaRoute()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
