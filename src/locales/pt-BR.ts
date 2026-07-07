@@ -173,7 +173,8 @@ const ptBR = {
       protocolActive: 'protocolo ativo',
       potentialContradiction: 'Contradição potencial detectada',
       noContradictionAlert: 'Sem alerta de contradição',
-      complicationFeedback: 'Você julgou o ato simétrico anterior como {{verdict}}. Como consequência, a IA injetou volatilidade: permissões subsequentes enfraquecem regras universais.',
+      complicationFeedback:
+        'Você julgou o ato simétrico anterior como {{verdict}}. Como consequência, a IA injetou volatilidade: permissões subsequentes enfraquecem regras universais.',
     },
     sessionResult: {
       title: 'Etapa 4: Seus Resultados',
@@ -239,7 +240,7 @@ const ptBR = {
         '<cl>Culture Lint</cl> é um aplicativo para testar a consistência moral e social. Sua base conceitual vem diretamente do <str>Desenvolvimento Orientado a Comportamento (BDD)</str>: assim como o BDD pede que equipes definam expectativas de comportamento antes de escrever código — usando exemplos concretos para eliminar ambiguidade — o <cl>Culture Lint</cl> pede que os usuários definam princípios éticos antes de julgar, e então usa <str>cenários estruturalmente idênticos</str> para revelar inconsistências no raciocínio.',
       calloutLabel: 'Importante',
       calloutBody:
-        '<str>Julgar não é condenar.</str> No uso cotidiano, \"julgar\" ganhou uma conotação negativa porque as pessoas confundem isso com proferir uma sentença — como se julgar alguém fosse puni-lo. Não é isso que julgamento significa aqui. Julgamento é um ato cognitivo: o ato de formar uma avaliação. Toda vez que você decide se algo é justo, razoável ou aceitável, você está julgando. Não é possível se recusar a fazer isso. O <cl>Culture Lint</cl> não pede que você condene ninguém; ele pede que você perceba se está aplicando os mesmos critérios de avaliação a situações estruturalmente idênticas. A única coisa que está sendo examinada é <em>consistência — não caráter</em>.',
+        '<str>Julgar não é condenar.</str> No uso cotidiano, "julgar" ganhou uma conotação negativa porque as pessoas confundem isso com proferir uma sentença — como se julgar alguém fosse puni-lo. Não é isso que julgamento significa aqui. Julgamento é um ato cognitivo: o ato de formar uma avaliação. Toda vez que você decide se algo é justo, razoável ou aceitável, você está julgando. Não é possível se recusar a fazer isso. O <cl>Culture Lint</cl> não pede que você condene ninguém; ele pede que você perceba se está aplicando os mesmos critérios de avaliação a situações estruturalmente idênticas. A única coisa que está sendo examinada é <em>consistência — não caráter</em>.',
       insightBody:
         'A percepção central é que <str>duplos padrões culturais e morais</str> se comportam como bugs de software: são invisíveis até que o teste certo seja executado. O <cl>Culture Lint</cl> executa esse teste. Em vez de analisar código-fonte, ele analisa <str>padrões de decisão</str>.',
       engineBody:
@@ -259,12 +260,12 @@ const ptBR = {
         'Revise uma análise completa de consistência: quantos cenários foram julgados de forma coerente, onde apareceram contradições e se o <str>voto linear</str> (marcar tudo como aceitável ou ultrajante) prejudicou a validade da sessão.',
       whyTitle: 'Mas por quê?',
       whyPara1:
-        'A maior parte dos debates públicos sobre ética, política e comportamento social não é realmente sobre princípios — é sobre tribos. As pessoas raramente perguntam \"eu aceitaria isso se o outro lado fizesse?\" Elas não precisam, porque a conversa nunca força a comparação.',
+        'A maior parte dos debates públicos sobre ética, política e comportamento social não é realmente sobre princípios — é sobre tribos. As pessoas raramente perguntam "eu aceitaria isso se o outro lado fizesse?" Elas não precisam, porque a conversa nunca força a comparação.',
       whyForces: 'O <cl>Culture Lint</cl> força essa comparação.',
       whyMotivation:
         'A motivação é simples: <str>consistência é o critério mínimo de justiça</str>. Não é preciso concordar sobre quais princípios são mais importantes. Não é preciso chegar a um consenso sobre temas polêmicos. Basta aplicar o mesmo padrão a situações estruturalmente idênticas, independentemente de quem está envolvido. Se você não consegue fazer isso, não tem um princípio — tem uma preferência disfarada de princípio.',
       whyBdd:
-        'O paralelo com o BDD é intencional e não apenas cosmético. No software, comportamento indefinido é o tipo mais perigoso: o sistema parece funcionar até que não funciona mais, e aí o estrago já está feito. No raciocínio social, comportamento indefinido se parece com \"eu vou saber quando ver\" — um julgamento que produz resultados diferentes para a mesma entrada dependendo de um contexto que você não admite ser irrelevante. A resposta do BDD ao comportamento indefinido é escrever a especificação primeiro, em exemplos concretos e sem ambiguidade, e depois verificar se o sistema realmente a satisfaz. O <cl>Culture Lint</cl> aplica a mesma disciplina ao julgamento moral: comprometa-se com um princípio, depois execute os cenários.',
+        'O paralelo com o BDD é intencional e não apenas cosmético. No software, comportamento indefinido é o tipo mais perigoso: o sistema parece funcionar até que não funciona mais, e aí o estrago já está feito. No raciocínio social, comportamento indefinido se parece com "eu vou saber quando ver" — um julgamento que produz resultados diferentes para a mesma entrada dependendo de um contexto que você não admite ser irrelevante. A resposta do BDD ao comportamento indefinido é escrever a especificação primeiro, em exemplos concretos e sem ambiguidade, e depois verificar se o sistema realmente a satisfaz. O <cl>Culture Lint</cl> aplica a mesma disciplina ao julgamento moral: comprometa-se com um princípio, depois execute os cenários.',
       whyGoal:
         'O objetivo não é envergonhar ninguém. Contradições não são prova de maldade — são prova de humanidade. Todos carregamos pontos cegos moldados pela experiência, pela identidade e pelas informações a que fomos expostos. O propósito de revelá-los é o mesmo que o de um teste com falha: não punir o desenvolvedor, mas tornar visível a lacuna entre intenção e comportamento para que ela possa ser corrigida.',
     },
@@ -304,7 +305,8 @@ const ptBR = {
       religiousFreedom: {
         label: 'LIBERDADE RELIGIOSA',
         status: '[ATIVO] REGRA: LIBERDADE RELIGIOSA',
-        value: 'Crença e não crença devem receber proteção institucional igual sob as mesmas regras civis.',
+        value:
+          'Crença e não crença devem receber proteção institucional igual sob as mesmas regras civis.',
         metadata: {
           expression: '// Interface: ExpressaoDeFe.protecaoIgual()',
           state: '// Estado: COMPROMISSO INCONDICIONAL',
@@ -313,7 +315,8 @@ const ptBR = {
       reproductiveAutonomy: {
         label: 'AUTONOMIA REPRODUTIVA',
         status: '[ATIVO] REGRA: AUTONOMIA REPRODUTIVA',
-        value: 'Decisões sobre gravidez devem ser julgadas com critérios consistentes de direitos, segurança e política pública.',
+        value:
+          'Decisões sobre gravidez devem ser julgadas com critérios consistentes de direitos, segurança e política pública.',
         metadata: {
           healthcare: '// Interface: CuidadoReprodutivo.criterioConsistente()',
           state: '// Estado: COMPROMISSO INCONDICIONAL',

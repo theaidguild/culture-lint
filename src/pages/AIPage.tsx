@@ -83,7 +83,11 @@ export function AIPage() {
   return (
     <>
       <TopBar progressItems={progressItems} step={step} hasFailures={hasFailures} />
-      <AIScenarioStep principles={principles} onStepChange={setStep} onHasFailures={setHasFailures} />
+      <AIScenarioStep
+        principles={principles}
+        onStepChange={setStep}
+        onHasFailures={setHasFailures}
+      />
     </>
   )
 }

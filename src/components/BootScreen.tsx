@@ -138,9 +138,7 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
       </div>
 
       <div className="relative flex h-full w-full items-center justify-center px-5 py-8 sm:px-9 md:px-12">
-        <div
-          className="boot-metadata absolute left-5 right-5 top-6 flex transform-gpu items-start justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 sm:left-12 sm:right-12 sm:top-12"
-        >
+        <div className="boot-metadata absolute left-5 right-5 top-6 flex transform-gpu items-start justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 sm:left-12 sm:right-12 sm:top-12">
           <div className="space-y-2">
             <p>ID: CL-992-0X</p>
             <p>TS: 2026.01.24.04:12</p>
@@ -215,7 +213,9 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
           <span>ENCRYPTION: AES-256 ACTIVE</span>
           <span>USER: GUEST_ANONYMOUS</span>
           <span className="text-cyan-300">{t('boot.clearanceLevel')}</span>
-          <span className="rounded-sm bg-cyan-300 px-2 py-0.5 font-bold text-[#071018]">{t('boot.topSecret')}</span>
+          <span className="rounded-sm bg-cyan-300 px-2 py-0.5 font-bold text-[#071018]">
+            {t('boot.topSecret')}
+          </span>
         </div>
       </div>
     </div>

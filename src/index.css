@@ -6,8 +6,13 @@
 }
 
 @keyframes iconGlowPulse {
-  0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.75)); }
-  50%       { filter: drop-shadow(0 0 24px rgba(0, 240, 255, 1)) drop-shadow(0 0 8px rgba(0, 240, 255, 0.8)); }
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.75));
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(0, 240, 255, 1)) drop-shadow(0 0 8px rgba(0, 240, 255, 0.8));
+  }
 }
 
 @layer utilities {
@@ -83,7 +88,9 @@ body {
 .audit-panel {
   border: 1px solid var(--line-soft);
   background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(10, 14, 22, 0.96));
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08) inset, 0 18px 40px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.08) inset,
+    0 18px 40px rgba(0, 0, 0, 0.45);
 }
 
 .audit-panel-title {
@@ -172,7 +179,9 @@ body {
   will-change: transform, opacity;
   transform: translate3d(0, 8px, 0);
   animation: bootLineIn 750ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--boot-log, 3700ms) + (var(--line-index, 0) * var(--boot-line-stagger, 110ms)));
+  animation-delay: calc(
+    var(--boot-log, 3700ms) + (var(--line-index, 0) * var(--boot-line-stagger, 110ms))
+  );
 }
 
 .boot-title-glow-wrap {
@@ -184,7 +193,8 @@ body {
 
 .boot-title-glow-pulse {
   will-change: transform, opacity;
-  animation: bootGlowBreathDown 10s ease-in-out var(--boot-glow-loop-delay, 2900ms) infinite alternate;
+  animation: bootGlowBreathDown 10s ease-in-out var(--boot-glow-loop-delay, 2900ms) infinite
+    alternate;
 }
 
 @keyframes bootFadeIn {

@@ -146,16 +146,26 @@ export function JudgingStep({
 
           <aside className="audit-panel hidden rounded-lg p-4 lg:block">
             <div className="flex items-center justify-between border-b border-[#253142] pb-2">
-              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-300">{t('judge.valMonitor')}</span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-amber-300">{t('judge.protocolActive')}</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-300">
+                {t('judge.valMonitor')}
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-amber-300">
+                {t('judge.protocolActive')}
+              </span>
             </div>
             <div className="mt-3 rounded border border-amber-500/35 bg-amber-500/10 px-2.5 py-2 font-mono text-[10px] text-amber-200">
               <div className="flex items-start gap-1.5">
                 <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-300" />
-                <span>{activeComplication ? t('judge.potentialContradiction') : t('judge.noContradictionAlert')}</span>
+                <span>
+                  {activeComplication
+                    ? t('judge.potentialContradiction')
+                    : t('judge.noContradictionAlert')}
+                </span>
               </div>
             </div>
-            <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-slate-500">audit_flow</div>
+            <div className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-slate-500">
+              audit_flow
+            </div>
             <div className="mt-2 grid grid-cols-6 gap-1">
               {Array.from({ length: 6 }).map((_, segmentIndex) => (
                 <span

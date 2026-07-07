@@ -130,7 +130,8 @@ const enUS = {
     aiStatus: {
       startGenerate: 'Starting generation...',
       validatingRuntime: 'Validating runtime...',
-      runtimeValidationInconclusive: 'Runtime validation inconclusive. Continuing with safe defaults...',
+      runtimeValidationInconclusive:
+        'Runtime validation inconclusive. Continuing with safe defaults...',
       synthesizingScenarios: 'Synthesizing {{count}} scenarios one at a time...',
       retryingScenario: 'Retrying scenario {{current}}/{{total}} in {{mode}} mode...',
       acceptanceModes: {
@@ -172,7 +173,8 @@ const enUS = {
       protocolActive: 'protocol active',
       potentialContradiction: 'Potential contradiction detected',
       noContradictionAlert: 'No contradiction alert',
-      complicationFeedback: 'You judged the previous symmetric act as {{verdict}}. The compiler injected volatility: subsequent tolerances weaken universal resilience.',
+      complicationFeedback:
+        'You judged the previous symmetric act as {{verdict}}. The compiler injected volatility: subsequent tolerances weaken universal resilience.',
     },
     sessionResult: {
       title: 'Step 4: Session Results',
@@ -236,7 +238,7 @@ const enUS = {
         '<cl>Culture Lint</cl> is an application for stress-testing moral and social consistency. Its conceptual foundation comes directly from <str>Behavior-Driven Development (BDD)</str>: just as BDD asks teams to define behavior expectations before writing code — using concrete examples to expose ambiguity — <cl>Culture Lint</cl> asks users to define ethical principles before passing judgment, then uses <str>structurally identical scenarios</str> to expose inconsistencies in their own reasoning.',
       calloutLabel: 'Important',
       calloutBody:
-        '<str>Judging is not condemning.</str> In everyday language, \"to judge\" has taken on a negative connotation because people intuitively conflate it with passing a sentence — as if to judge someone is to punish them. That is not what judgment means here. Judgment is a cognitive act: the act of forming an evaluation. Every time you decide whether something is fair, reasonable, or acceptable, you are judging. You cannot opt out of it. <cl>Culture Lint</cl> does not ask you to condemn anyone; it asks you to notice whether you are applying the same evaluation criteria to structurally identical situations. The only thing being scrutinized is <em>consistency — not character</em>.',
+        '<str>Judging is not condemning.</str> In everyday language, "to judge" has taken on a negative connotation because people intuitively conflate it with passing a sentence — as if to judge someone is to punish them. That is not what judgment means here. Judgment is a cognitive act: the act of forming an evaluation. Every time you decide whether something is fair, reasonable, or acceptable, you are judging. You cannot opt out of it. <cl>Culture Lint</cl> does not ask you to condemn anyone; it asks you to notice whether you are applying the same evaluation criteria to structurally identical situations. The only thing being scrutinized is <em>consistency — not character</em>.',
       insightBody:
         'The core insight is that <str>cultural and moral double standards</str> behave a lot like software bugs: they are invisible until you run the right test. <cl>Culture Lint</cl> runs that test. Instead of linting source code, it lints <str>decision patterns</str>.',
       engineBody:
@@ -246,21 +248,22 @@ const enUS = {
       step1Desc:
         'Select a country context, one or more ethical principles (e.g. equality, religious freedom, transparency), and the number of scenarios to generate.',
       step2Label: 'Generate',
-      step2Desc: 'The system drafts and refines the paired case studies, streaming progress back to the UI in real time.',
+      step2Desc:
+        'The system drafts and refines the paired case studies, streaming progress back to the UI in real time.',
       step3Label: 'Judge',
       step3Desc:
         'Evaluate each act one at a time. The presentation order is shuffled so mirrored pairs are hard to notice while answering. <str>Complication hints</str> appear when the system detects you already judged the sibling case, and an <str>anti-gaming warning</str> fires when your last several answers are suspiciously uniform.',
       step4Label: 'Report',
       step4Desc:
-        'Review a full consistency analysis: how many scenarios were judged consistently, where contradictions appeared, and whether <str>flat-line voting</str> (marking everything acceptable or outrageous) undermined the session\'s validity.',
+        "Review a full consistency analysis: how many scenarios were judged consistently, where contradictions appeared, and whether <str>flat-line voting</str> (marking everything acceptable or outrageous) undermined the session's validity.",
       whyTitle: 'But why?',
       whyPara1:
-        'Most public debates about ethics, policy, and social behavior are not really about principles — they are about tribes. People rarely ask \"would I accept this if the other side did it?\" They don\'t need to, because the conversation never forces the comparison.',
+        'Most public debates about ethics, policy, and social behavior are not really about principles — they are about tribes. People rarely ask "would I accept this if the other side did it?" They don\'t need to, because the conversation never forces the comparison.',
       whyForces: '<cl>Culture Lint</cl> forces it.',
       whyMotivation:
-        'The motivation is simple: <str>consistency is the minimum bar for fairness</str>. You don\'t need to agree on which principles matter most. You don\'t need to reach consensus on contested topics. You just need to apply the same standard to structurally identical situations regardless of who is involved. If you can\'t do that, you don\'t have a principle — you have a preference dressed up as one.',
+        "The motivation is simple: <str>consistency is the minimum bar for fairness</str>. You don't need to agree on which principles matter most. You don't need to reach consensus on contested topics. You just need to apply the same standard to structurally identical situations regardless of who is involved. If you can't do that, you don't have a principle — you have a preference dressed up as one.",
       whyBdd:
-        'The BDD parallel is intentional and not just cosmetic. In software, undefined behavior is the most dangerous kind: the system appears to work until it doesn\'t, and by then the damage is done. In social reasoning, undefined behavior looks like \"I\'ll know it when I see it\" — a judgment call that produces different outputs for the same input depending on context you won\'t admit is irrelevant. BDD\'s answer to undefined behavior is to write the spec first, in concrete, unambiguous examples, and then verify that the system actually satisfies it. <cl>Culture Lint</cl> applies the same discipline to moral judgment: commit to a principle, then run the scenarios.',
+        "The BDD parallel is intentional and not just cosmetic. In software, undefined behavior is the most dangerous kind: the system appears to work until it doesn't, and by then the damage is done. In social reasoning, undefined behavior looks like \"I'll know it when I see it\" — a judgment call that produces different outputs for the same input depending on context you won't admit is irrelevant. BDD's answer to undefined behavior is to write the spec first, in concrete, unambiguous examples, and then verify that the system actually satisfies it. <cl>Culture Lint</cl> applies the same discipline to moral judgment: commit to a principle, then run the scenarios.",
       whyGoal:
         'The goal is not to shame anyone. Contradictions are not proof of malice — they are proof of humanity. We all carry blind spots shaped by experience, identity, and the information we were exposed to. The point of surfacing them is the same as the point of a failing test: not to punish the developer, but to make the gap between intention and behavior visible so it can be addressed.',
     },
@@ -300,7 +303,8 @@ const enUS = {
       religiousFreedom: {
         label: 'RELIGIOUS FREEDOM',
         status: '[ACTIVE] RULE: RELIGIOUS FREEDOM',
-        value: 'Belief and non-belief must receive equal institutional protection under the same civic rules.',
+        value:
+          'Belief and non-belief must receive equal institutional protection under the same civic rules.',
         metadata: {
           expression: '// Interface: FaithExpression.equalProtection()',
           state: '// State: IMMUTABLE CONSTANT',
@@ -309,7 +313,8 @@ const enUS = {
       reproductiveAutonomy: {
         label: 'REPRODUCTIVE AUTONOMY',
         status: '[ACTIVE] RULE: REPRODUCTIVE AUTONOMY',
-        value: 'Decisions on pregnancy must be judged with consistent standards for rights, safety, and public policy.',
+        value:
+          'Decisions on pregnancy must be judged with consistent standards for rights, safety, and public policy.',
         metadata: {
           healthcare: '// Interface: ReproductiveCare.consistentStandard()',
           state: '// State: IMMUTABLE CONSTANT',

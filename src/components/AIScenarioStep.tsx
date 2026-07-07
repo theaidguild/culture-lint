@@ -20,10 +20,7 @@ import {
   type ModelPresetId,
   suggestDefaultModelId,
 } from '../services/aiScenarioGenerator'
-import {
-  cancelAIRequest,
-  requestAIGenerate,
-} from '../services/aiWorkerClient'
+import { cancelAIRequest, requestAIGenerate } from '../services/aiWorkerClient'
 import {
   type InteractiveSessionRun,
   type JudgmentItem,
@@ -139,7 +136,6 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
   }, [])
 
   useEffect(() => {
-
     if (!onStepChange) return
 
     const stepByState: Record<AIScreenState, AIHeaderStep> = {
@@ -286,7 +282,8 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
       const customComp = (currentItem as { complications?: Record<string, string> })
         .complications?.[`if${verdictCapitalized}`]
       if (customComp) return customComp
-      const verdictText = siblingVerdict === 'ACCEPTABLE' ? t('judge.acceptable') : t('judge.outrageous')
+      const verdictText =
+        siblingVerdict === 'ACCEPTABLE' ? t('judge.acceptable') : t('judge.outrageous')
       return t('judge.complicationFeedback', { verdict: verdictText })
     }
     return undefined
@@ -382,9 +379,7 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
               <Scale size={20} />
             </span>
             <div className="flex-1">
-              <p className="audit-panel-title">
-                {t('aiScreen.setupEyebrow')}
-              </p>
+              <p className="audit-panel-title">{t('aiScreen.setupEyebrow')}</p>
               <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
                 {t('aiScreen.title')}
               </h1>
@@ -472,8 +467,12 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
                         }`}
                       >
                         <div>
-                          <p className="font-mono text-[11px] font-black tracking-wide text-current">{p.label}</p>
-                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400">{p.value}</p>
+                          <p className="font-mono text-[11px] font-black tracking-wide text-current">
+                            {p.label}
+                          </p>
+                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400">
+                            {p.value}
+                          </p>
                         </div>
                         {selectedPrinciples.includes(p.id) && (
                           <CheckCircle2 size={15} className="ml-2 shrink-0 text-cyan-400" />
@@ -508,22 +507,20 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
                     ))}
                   </div>
                 </div>
-
               </div>
             </div>
 
             <button
-                type="button"
-                onClick={handleGenerate}
-                className="audit-primary-btn w-full select-none rounded-xl border border-cyan-300/60 bg-cyan-400 py-4 font-mono text-xs font-black text-[#071018] transition duration-300 hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
-              >
-                <span className="inline-flex items-center justify-center gap-2.5">
-                  <Scale size={16} />
-                  {t('aiScreen.generateBtn')}
-                </span>
-              </button>
+              type="button"
+              onClick={handleGenerate}
+              className="audit-primary-btn w-full select-none rounded-xl border border-cyan-300/60 bg-cyan-400 py-4 font-mono text-xs font-black text-[#071018] transition duration-300 hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
+            >
+              <span className="inline-flex items-center justify-center gap-2.5">
+                <Scale size={16} />
+                {t('aiScreen.generateBtn')}
+              </span>
+            </button>
           </div>
-
         </div>
       )}
 

@@ -20,7 +20,9 @@ export function AboutPage() {
         <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-300/70">
           {t('about.eyebrow')}
         </p>
-        <h1 className="text-2xl font-bold text-slate-100 sm:text-3xl xl:text-4xl">{t('about.title')}</h1>
+        <h1 className="text-2xl font-bold text-slate-100 sm:text-3xl xl:text-4xl">
+          {t('about.title')}
+        </h1>
       </div>
 
       <div className="space-y-6 text-base leading-relaxed text-slate-300 sm:text-lg">

@@ -20,7 +20,9 @@ export function Sidebar() {
           </NavLink>
           <NavLink to="/about" className={({ isActive }) => navLink(isActive)}>
             {({ isActive }) => (
-              <span className={isActive ? '' : 'animate-glow-pulse'}><Info size={22} /></span>
+              <span className={isActive ? '' : 'animate-glow-pulse'}>
+                <Info size={22} />
+              </span>
             )}
           </NavLink>
         </div>
@@ -48,7 +50,9 @@ export function Sidebar() {
             }
           >
             {({ isActive }) => (
-              <span className={isActive ? '' : 'animate-glow-pulse'}><Info size={21} /></span>
+              <span className={isActive ? '' : 'animate-glow-pulse'}>
+                <Info size={21} />
+              </span>
             )}
           </NavLink>
         </div>

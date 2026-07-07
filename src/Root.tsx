@@ -45,7 +45,9 @@ export function Root() {
 
     const syncTrace = () => {
       try {
-        setDebugTrace(JSON.parse(window.sessionStorage.getItem(DEBUG_TRACE_KEY) ?? '[]') as string[])
+        setDebugTrace(
+          JSON.parse(window.sessionStorage.getItem(DEBUG_TRACE_KEY) ?? '[]') as string[]
+        )
       } catch {
         setDebugTrace([])
       }
@@ -79,7 +81,12 @@ export function Root() {
         </div>
       )}
       {!isBootComplete && !isBootDisabled && (
-        <BootScreen onComplete={() => { markBootSeen(); setIsBootComplete(true) }} />
+        <BootScreen
+          onComplete={() => {
+            markBootSeen()
+            setIsBootComplete(true)
+          }}
+        />
       )}
     </>
   )

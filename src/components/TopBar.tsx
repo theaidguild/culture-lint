@@ -92,8 +92,7 @@ export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
       <div className="mt-2 hidden items-center justify-between rounded border border-[#253142] bg-[#070d17]/95 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500 sm:flex">
         <span>session: AX-774</span>
         <span>
-          {t('topbar.stepCounter', { step, total: TOTAL_STEPS })} //{' '}
-          {t('topbar.protocolActive')}
+          {t('topbar.stepCounter', { step, total: TOTAL_STEPS })} // {t('topbar.protocolActive')}
         </span>
         <span
           className={`inline-flex items-center gap-1.5 transition-opacity duration-120 ${

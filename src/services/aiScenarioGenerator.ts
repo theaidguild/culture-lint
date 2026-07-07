@@ -274,7 +274,11 @@ function debugLog(message: string, meta?: Record<string, unknown>) {
   console.debug(`${AI_DEBUG_PREFIX} ${message}`)
 }
 
-function tStatus(language: 'en-US' | 'pt-BR', key: string, options?: Record<string, unknown>): string {
+function tStatus(
+  language: 'en-US' | 'pt-BR',
+  key: string,
+  options?: Record<string, unknown>
+): string {
   return i18n.t(key, { lng: language, ...options })
 }
 
@@ -641,10 +645,7 @@ function includesAnyTerm(text: string, terms: readonly string[]): boolean {
   return terms.some((term) => text.includes(term))
 }
 
-function hasRequiredControversyShape(
-  scenario: RawScenario,
-  language: 'en-US' | 'pt-BR'
-): boolean {
+function hasRequiredControversyShape(scenario: RawScenario, language: 'en-US' | 'pt-BR'): boolean {
   const text = normalizeTextForChecks(`${scenario.title} ${scenario.act} ${scenario.context}`)
   const conflictTerms =
     language === 'pt-BR' ? CONTROVERSY_CONFLICT_TERMS_PT : CONTROVERSY_CONFLICT_TERMS_EN
@@ -659,10 +660,7 @@ function hasRequiredControversyShape(
   return hasConflict && hasInstitution && !isSafeOnly
 }
 
-function hasRelaxedControversyShape(
-  scenario: RawScenario,
-  language: 'en-US' | 'pt-BR'
-): boolean {
+function hasRelaxedControversyShape(scenario: RawScenario, language: 'en-US' | 'pt-BR'): boolean {
   const text = normalizeTextForChecks(`${scenario.title} ${scenario.act} ${scenario.context}`)
   const conflictTerms =
     language === 'pt-BR' ? CONTROVERSY_CONFLICT_TERMS_PT : CONTROVERSY_CONFLICT_TERMS_EN
@@ -815,7 +813,9 @@ function scoreScenarioSetForControversy(
   expectedCount: number
 ): number {
   if (scenarios.length === 0) return 0
-  const matches = scenarios.filter((scenario) => hasRequiredControversyShape(scenario, language)).length
+  const matches = scenarios.filter((scenario) =>
+    hasRequiredControversyShape(scenario, language)
+  ).length
   const denominator = Math.max(1, expectedCount)
   return Math.round((matches / denominator) * 100)
 }
@@ -868,7 +868,9 @@ function resolveRunpodModelName(modelId: ModelPresetId): string {
   if (primaryOverride && primaryOverride.length > 0) return primaryOverride
 
   // Backward compatibility with existing env setup.
-  const legacyQwenOverride = (import.meta.env['VITE_RUNPOD_MODEL_QWEN25'] as string | undefined)?.trim()
+  const legacyQwenOverride = (
+    import.meta.env['VITE_RUNPOD_MODEL_QWEN25'] as string | undefined
+  )?.trim()
   if (legacyQwenOverride && legacyQwenOverride.length > 0) return legacyQwenOverride
 
   return MODEL_PRESETS[modelId]
@@ -986,29 +988,38 @@ function describePrincipleForPrompt(principleId: string, language: 'en-US' | 'pt
   const normalized = normalizeKey(principleId)
 
   if (normalized === 'transparency') {
-    return isPt ? 'transparencia institucional e acesso publico a informacao' : 'institutional transparency and public access to information'
+    return isPt
+      ? 'transparencia institucional e acesso publico a informacao'
+      : 'institutional transparency and public access to information'
   }
   if (normalized === 'accountability') {
-    return isPt ? 'responsabilizacao por abuso, mentira e violacao de dever publico' : 'accountability for abuse, deception, and breach of public duty'
+    return isPt
+      ? 'responsabilizacao por abuso, mentira e violacao de dever publico'
+      : 'accountability for abuse, deception, and breach of public duty'
   }
   if (normalized === 'equality') {
-    return isPt ? 'igualdade de tratamento entre grupos opostos' : 'equal standards across opposing groups'
+    return isPt
+      ? 'igualdade de tratamento entre grupos opostos'
+      : 'equal standards across opposing groups'
   }
   if (normalized === 'religiousfreedom') {
-    return isPt ? 'liberdade religiosa, conflito entre liberdade de culto e regras civicas' : 'religious freedom, conflict between faith expression and civic rules'
+    return isPt
+      ? 'liberdade religiosa, conflito entre liberdade de culto e regras civicas'
+      : 'religious freedom, conflict between faith expression and civic rules'
   }
   if (normalized === 'reproductiveautonomy') {
-    return isPt ? 'autonomia reprodutiva, conflito sobre aborto e politica publica de saude' : 'reproductive autonomy, abortion conflict and public health policy'
+    return isPt
+      ? 'autonomia reprodutiva, conflito sobre aborto e politica publica de saude'
+      : 'reproductive autonomy, abortion conflict and public health policy'
   }
 
   return principleId
 }
 
-function buildPrincipleListForPrompt(
-  principleIds: string[],
-  language: 'en-US' | 'pt-BR'
-): string {
-  const labels = principleIds.map((principleId) => describePrincipleForPrompt(principleId, language))
+function buildPrincipleListForPrompt(principleIds: string[], language: 'en-US' | 'pt-BR'): string {
+  const labels = principleIds.map((principleId) =>
+    describePrincipleForPrompt(principleId, language)
+  )
   return labels.join(', ')
 }
 
@@ -1022,8 +1033,10 @@ function buildRunpodScenarioMessages(config: {
 }): Array<{ role: 'system' | 'user'; content: string }> {
   const isPt = config.language === 'pt-BR'
   const principleList = buildPrincipleListForPrompt(config.principleIds, config.language)
-  const missingReligion = config.missingQuotas?.find((quota) => quota.topic === 'religion')?.minimum ?? 0
-  const missingAbortion = config.missingQuotas?.find((quota) => quota.topic === 'abortion')?.minimum ?? 0
+  const missingReligion =
+    config.missingQuotas?.find((quota) => quota.topic === 'religion')?.minimum ?? 0
+  const missingAbortion =
+    config.missingQuotas?.find((quota) => quota.topic === 'abortion')?.minimum ?? 0
   const hasTopicTargets = missingReligion > 0 || missingAbortion > 0
   const escalation =
     config.attempt > 1
@@ -1201,7 +1214,13 @@ export async function generateAIScenariosWithRunpod(
     const requestedCountForAttempt =
       remainingCount > 0
         ? Math.min(batchSize, remainingCount)
-        : Math.max(2, Math.min(batchSize, missingQuotas.reduce((sum, quota) => sum + quota.minimum, 0)))
+        : Math.max(
+            2,
+            Math.min(
+              batchSize,
+              missingQuotas.reduce((sum, quota) => sum + quota.minimum, 0)
+            )
+          )
 
     const response = await fetchRunpodJson<LocalAIChatCompletionsResponse>({
       path: '/chat/completions',

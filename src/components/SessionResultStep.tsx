@@ -203,9 +203,14 @@ export function SessionResultStep({
             consistency rating
           </div>
           <div className="mt-3 flex items-center gap-3 font-mono">
-            <span className="text-5xl font-black text-cyan-300 sm:text-6xl">{consistencyScore}%</span>
+            <span className="text-5xl font-black text-cyan-300 sm:text-6xl">
+              {consistencyScore}%
+            </span>
             <span className="text-xs uppercase tracking-[0.16em] text-cyan-200">
-              status: {hasContradictions ? t('sessionResult.statusPartial') : t('sessionResult.statusStable')}
+              status:{' '}
+              {hasContradictions
+                ? t('sessionResult.statusPartial')
+                : t('sessionResult.statusStable')}
             </span>
           </div>
         </div>
@@ -215,9 +220,15 @@ export function SessionResultStep({
             {t('sessionResult.auditSummary')}
           </div>
           <ul className="mt-3 space-y-1.5 text-[11px] text-slate-200">
-            <li>• {t('sessionResult.dilemmasProcessed')}: {session.judgments.length}</li>
-            <li>• {t('sessionResult.principlesSealed')}: {session.principleRanking.length}</li>
-            <li className="text-amber-300">• {t('sessionResult.divergences')}: {session.contradictionCount}</li>
+            <li>
+              • {t('sessionResult.dilemmasProcessed')}: {session.judgments.length}
+            </li>
+            <li>
+              • {t('sessionResult.principlesSealed')}: {session.principleRanking.length}
+            </li>
+            <li className="text-amber-300">
+              • {t('sessionResult.divergences')}: {session.contradictionCount}
+            </li>
           </ul>
         </div>
 
@@ -286,10 +297,14 @@ export function SessionResultStep({
                   log_entry #{String(logIndex + 1).padStart(2, '0')} // conflito de vetor
                 </p>
                 <p className="mt-1 leading-6">
-                  [DIFF] {t('sessionResult.diffCase', { count: logIndex + 1 })} // {judgment.scenario.title}. {t('sessionResult.diffPrinciple')}:{' '}
-                  <span className="font-bold text-cyan-300">{formatPrincipleLabel(
-                    principles.find((p) => p.id === judgment.scenario.principleId)?.label ?? judgment.scenario.principleId
-                  )}</span>
+                  [DIFF] {t('sessionResult.diffCase', { count: logIndex + 1 })} //{' '}
+                  {judgment.scenario.title}. {t('sessionResult.diffPrinciple')}:{' '}
+                  <span className="font-bold text-cyan-300">
+                    {formatPrincipleLabel(
+                      principles.find((p) => p.id === judgment.scenario.principleId)?.label ??
+                        judgment.scenario.principleId
+                    )}
+                  </span>
                 </p>
               </article>
             ))
