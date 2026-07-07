@@ -431,25 +431,28 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
   ])
 
   return (
-    <div className="flex-1 bg-[#0a0c10] text-slate-100 flex flex-col justify-start">
+    <div className="audit-scan flex flex-1 flex-col justify-start bg-[#0a0c10] text-slate-100">
       {/* State A: Setup */}
       {screenState === 'setup' && (
-        <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 sm:px-6 md:py-12">
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-7 sm:px-6 md:py-12">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
               <Sparkles size={20} />
             </span>
             <div className="flex-1">
-              <h1 className="text-2xl font-black md:text-3xl text-white tracking-tight">
+              <p className="audit-panel-title">
+                {isPt ? 'Protocolo de auditoria moral // fase de configuracao' : 'Moral audit protocol // setup phase'}
+              </p>
+              <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
                 {t('aiScreen.title')}
               </h1>
-              <p className="text-xs font-mono text-cyan-400/80 mt-1 uppercase tracking-wider">
+              <p className="mt-1 text-[11px] font-mono uppercase tracking-[0.12em] text-cyan-400/80 sm:text-xs sm:tracking-wider">
                 {t('aiScreen.subtitle')}
               </p>
             </div>
           </div>
 
-          <p className="mt-5 text-sm text-slate-400 leading-relaxed max-w-3xl">
+          <p className="mt-5 max-w-3xl text-sm leading-relaxed text-slate-300">
             {t('aiScreen.description')}
           </p>
 
@@ -465,182 +468,180 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             </div>
           )}
 
-          <div className="mt-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)] gap-6 xl:gap-8 items-start">
-            <div className="bg-[#111320] border border-[#21262d] p-5 sm:p-6 rounded-lg space-y-6 shadow-xl">
-              <div>
-                <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Globe size={13} className="text-cyan-400" />
-                  {t('aiScreen.countryLabel')}
-                </label>
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => {
-                    setSelectedCountry(e.target.value)
-                  }}
-                  className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                >
-                  {SUPPORTED_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Layers size={13} className="text-cyan-400" />
-                  {t('aiScreen.principleLabel')}
-                </label>
-                <p className="mb-3 text-[11px] font-mono text-slate-500 uppercase tracking-[0.18em]">
-                  {selectedPrinciples.length} {isPt ? 'selecionado(s)' : 'selected'}
+          <div className="mt-8 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+            <div className="audit-panel rounded-xl border border-[#263144] p-0 shadow-[0_0_35px_rgba(8,15,30,0.45)]">
+              <div className="flex items-center justify-between border-b border-[#263144] px-4 py-3 sm:px-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-cyan-300">
+                  {isPt ? 'parametros_da_simulacao' : 'simulation_parameters'}
                 </p>
-                <div className="grid grid-cols-1 gap-2.5">
-                  {principles.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        const nextSelectedIds = selectedPrinciples.includes(p.id)
-                          ? selectedPrinciples.length === 1
-                            ? selectedPrinciples
-                            : selectedPrinciples.filter((id) => id !== p.id)
-                          : [...selectedPrinciples, p.id]
-                        setSelectedPrincipleIds(nextSelectedIds)
-                      }}
-                      className={`flex items-center justify-between p-3.5 rounded-lg border text-left cursor-pointer transition ${
-                        selectedPrinciples.includes(p.id)
-                          ? 'border-cyan-400 bg-cyan-950/20 text-white shadow-[0_0_12px_rgba(34,211,238,0.15)]'
-                          : 'border-[#21262d] bg-[#0c0f1c] hover:border-slate-700 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-mono text-xs font-black tracking-wide">{p.label}</p>
-                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{p.value}</p>
-                      </div>
-                      {selectedPrinciples.includes(p.id) && (
-                        <CheckCircle2 size={16} className="text-cyan-400 shrink-0 ml-2" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <span className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-300">
+                  {isPt ? 'status: pronto' : 'status: ready'}
+                </span>
               </div>
 
-              <div>
-                <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Settings2 size={13} className="text-cyan-400" />
-                  {t('aiScreen.countLabel')}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {ALLOWED_COUNTS.map((cases) => (
-                    <button
-                      key={cases}
-                      type="button"
-                      onClick={() => setCaseCount(cases)}
-                      className={`min-h-24 rounded-lg border p-3 text-left font-mono transition ${
-                        caseCount === cases
-                          ? 'border-cyan-400 bg-cyan-950/30 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.12)]'
-                          : 'border-[#21262d] bg-[#0c0f1c] text-slate-500 hover:border-slate-700 hover:text-slate-300'
-                      }`}
-                    >
-                      <span className="block text-2xl font-black leading-none">{cases}</span>
-                      <span className="mt-2 block text-[10px] uppercase tracking-[0.18em]">
-                        {isPt ? 'casos' : 'cases'}
-                      </span>
-                      <span className="mt-1 block text-[10px] text-slate-500 leading-tight">
-                        {cases / 2} {isPt ? 'cenários' : 'scenarios'} · {cases}{' '}
-                        {isPt ? 'julgamentos' : 'judgments'}
-                      </span>
-                    </button>
-                  ))}
+              <div className="space-y-5 px-4 py-4 sm:px-5 sm:py-5">
+                <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
+                  <label className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                    <Globe size={12} className="text-cyan-400" />
+                    {t('aiScreen.countryLabel')}
+                  </label>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => {
+                      setSelectedCountry(e.target.value)
+                    }}
+                    className="w-full rounded border border-[#30363d] bg-[#0a0f19] px-3 py-2.5 font-mono text-xs text-slate-100 outline-none focus:border-cyan-400"
+                  >
+                    {SUPPORTED_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block mb-2 font-mono text-xs font-bold text-cyan-300 uppercase tracking-wider">
-                  {isPt ? 'Modelo' : 'Model'}
-                </label>
-                <select
-                  value={modelId}
-                  onChange={(e) => {
-                    const nextModelId = e.target.value as ModelPresetId
-                    setModelId(nextModelId)
-                  }}
-                  className="w-full rounded-md border border-[#30363d] bg-[#0c0f1c] px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                >
-                  {Object.entries(MODEL_PRESETS).map(([presetId, modelName]) => (
-                    <option key={presetId} value={presetId}>
-                      {modelName}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-[10px] font-mono text-slate-400">
-                  {isPt ? 'Modelo detectado no servidor:' : 'Server detected model:'}{' '}
-                  <span className="text-slate-200">{detectedServerModel ?? 'n/a'}</span>
-                </p>
+                <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                      <Layers size={12} className="text-cyan-400" />
+                      {t('aiScreen.principleLabel')}
+                    </label>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500">
+                      {selectedPrinciples.length} {isPt ? 'ativos' : 'active'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {principles.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          const nextSelectedIds = selectedPrinciples.includes(p.id)
+                            ? selectedPrinciples.length === 1
+                              ? selectedPrinciples
+                              : selectedPrinciples.filter((id) => id !== p.id)
+                            : [...selectedPrinciples, p.id]
+                          setSelectedPrincipleIds(nextSelectedIds)
+                        }}
+                        className={`flex min-h-[3.8rem] cursor-pointer items-center justify-between rounded border px-3 py-2.5 text-left transition ${
+                          selectedPrinciples.includes(p.id)
+                            ? 'border-cyan-400 bg-cyan-950/20 text-white'
+                            : 'border-[#21262d] bg-[#0c0f1c] text-slate-300 hover:border-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-mono text-[11px] font-black tracking-wide text-current">{p.label}</p>
+                          <p className="mt-0.5 line-clamp-1 text-[10px] text-slate-400">{p.value}</p>
+                        </div>
+                        {selectedPrinciples.includes(p.id) && (
+                          <CheckCircle2 size={15} className="ml-2 shrink-0 text-cyan-400" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
+                  <label className="mb-2 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                    <Settings2 size={12} className="text-cyan-400" />
+                    {t('aiScreen.countLabel')}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {ALLOWED_COUNTS.map((cases) => (
+                      <button
+                        key={cases}
+                        type="button"
+                        onClick={() => setCaseCount(cases)}
+                        className={`rounded border px-2 py-2.5 text-left font-mono transition ${
+                          caseCount === cases
+                            ? 'border-cyan-400 bg-cyan-950/30 text-cyan-300'
+                            : 'border-[#21262d] bg-[#0c0f1c] text-slate-300 hover:border-slate-700 hover:text-white'
+                        }`}
+                      >
+                        <span className="block text-xl font-black leading-none">{cases}</span>
+                        <span className="mt-1 block text-[9px] uppercase tracking-[0.16em]">
+                          {isPt ? 'casos' : 'cases'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
+                  <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                    {isPt ? 'modelo' : 'model'}
+                  </label>
+                  <select
+                    value={modelId}
+                    onChange={(e) => {
+                      const nextModelId = e.target.value as ModelPresetId
+                      setModelId(nextModelId)
+                    }}
+                    className="w-full rounded border border-[#30363d] bg-[#0a0f19] px-3 py-2.5 font-mono text-xs text-slate-100 outline-none focus:border-cyan-400"
+                  >
+                    {Object.entries(MODEL_PRESETS).map(([presetId, modelName]) => (
+                      <option key={presetId} value={presetId}>
+                        {modelName}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 font-mono text-[10px] text-slate-400">
+                    {isPt ? 'Servidor:' : 'Server:'}{' '}
+                    <span className="text-slate-200">{detectedServerModel ?? 'n/a'}</span>
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-6 xl:sticky xl:top-6">
-              <div className="bg-[#111320] border border-[#21262d] p-5 sm:p-6 rounded-lg space-y-4 shadow-xl">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-cyan-400/80">
-                      {isPt ? 'Resumo rápido' : 'Quick summary'}
-                    </p>
-                    <h2 className="mt-1 text-sm font-black text-white tracking-tight">
-                      {isPt ? 'Visão geral da rodada' : 'Round overview'}
-                    </h2>
-                  </div>
-                  <div className="inline-flex items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-950/20 px-3 py-1.5 text-[10px] font-mono font-bold text-cyan-300 uppercase tracking-[0.18em]">
-                    {selectedPrinciples.length} {isPt ? 'princípios' : 'principles'}
-                  </div>
+            <aside className="space-y-4 xl:sticky xl:top-6">
+              <div className="audit-panel rounded-xl border border-[#253142] p-4">
+                <div className="flex items-center justify-between border-b border-[#253142] pb-2">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300">
+                    {isPt ? 'briefing_rapido' : 'quick_briefing'}
+                  </p>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-amber-300">
+                    monitor_online
+                  </span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 text-[11px] font-mono">
-                  <div className="rounded-lg border border-[#21262d] bg-[#0c0f1c] p-3">
-                    <span className="block text-slate-500 uppercase tracking-[0.18em]">
-                      {isPt ? 'País' : 'Country'}
-                    </span>
-                    <span className="mt-1 block text-slate-100 font-bold">
+                <div className="mt-3 space-y-2 rounded border border-[#253142] bg-[#0a0f19] p-3 font-mono text-[11px] text-slate-200">
+                  <p>
+                    {isPt ? 'Pais' : 'Country'}:{' '}
+                    <span className="text-cyan-300">
                       {SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountry)?.name}
                     </span>
-                  </div>
-                  <div className="rounded-lg border border-[#21262d] bg-[#0c0f1c] p-3">
-                    <span className="block text-slate-500 uppercase tracking-[0.18em]">
-                      {isPt ? 'Casos' : 'Cases'}
-                    </span>
-                    <span className="mt-1 block text-slate-100 font-bold">{caseCount}</span>
-                  </div>
-                  <div className="rounded-lg border border-[#21262d] bg-[#0c0f1c] p-3 col-span-2">
-                    <span className="block text-slate-500 uppercase tracking-[0.18em]">
-                      {isPt ? 'Princípios ativos' : 'Active principles'}
-                    </span>
-                    <span className="mt-1 block text-slate-100 font-bold leading-snug">
-                      {principles
-                        .filter((principle) => selectedPrinciples.includes(principle.id))
-                        .map((principle) => principle.label)
-                        .join(' • ')}
-                    </span>
-                  </div>
+                  </p>
+                  <p>
+                    {isPt ? 'Casos' : 'Cases'}: <span className="text-cyan-300">{caseCount}</span>
+                  </p>
+                  <p>
+                    {isPt ? 'Principios' : 'Principles'}:{' '}
+                    <span className="text-cyan-300">{selectedPrinciples.length}</span>
+                  </p>
                 </div>
 
-                <div className="flex gap-3 text-amber-400/90 text-xs font-mono bg-slate-900 border border-[#21262d] p-3 rounded-lg">
-                  <Flame size={16} className="shrink-0 animate-pulse" />
-                  <p className="leading-relaxed text-[11px]">{t('aiScreen.unreleasedWarning')}</p>
+                <div className="mt-4 flex gap-2 rounded border border-[#2f3545] bg-[#0f1422] p-2.5 font-mono text-[10px] text-amber-300">
+                  <Flame size={14} className="mt-0.5 shrink-0" />
+                  <p className="leading-relaxed">{t('aiScreen.unreleasedWarning')}</p>
                 </div>
-
               </div>
 
               <button
                 type="button"
                 onClick={handleGenerate}
-                className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-cyan-400 text-[#071018] font-mono text-xs font-black py-4 select-none transition duration-300 transform hover:-translate-y-0.5 shadow-[0_0_30px_rgba(34,211,238,0.25)] hover:bg-cyan-300 animate-pulse disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
+                className="audit-primary-btn w-full select-none rounded-xl border border-cyan-300/60 bg-cyan-400 py-4 font-mono text-xs font-black text-[#071018] transition duration-300 hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
               >
-                <Sparkles size={16} />
-                {t('aiScreen.generateBtn')}
+                <span className="inline-flex items-center justify-center gap-2.5">
+                  <Sparkles size={16} />
+                  {t('aiScreen.generateBtn')}
+                </span>
               </button>
-            </div>
+            </aside>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-2 rounded border border-[#263144] bg-[#090d15] px-3 py-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500 sm:grid-cols-3">
+            <span>diag_id: AX-774</span>
+            <span>queue: {isPt ? 'estavel' : 'stable'}</span>
+            <span className="text-amber-300">state: awaiting_generation</span>
           </div>
         </div>
       )}
@@ -763,7 +764,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
 
       {/* State C: Generated Briefing */}
       {screenState === 'generated' && (
-        <div className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 sm:px-6 md:py-12 flex flex-col justify-between gap-8">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-between gap-8 px-4 py-7 sm:px-6 md:py-12">
           <div>
             <div className="flex items-center gap-3">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -797,7 +798,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
 
             <div className="mt-8 space-y-4">
               {scenarios.map((s) => (
-                <div key={s.id} className="border border-[#21262d] bg-[#111320] rounded-lg p-5">
+                <div key={s.id} className="rounded-lg border border-[#21262d] bg-[#111320] p-5">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
                       {s.category}
@@ -806,13 +807,13 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                       {t('aiScreen.codeLabel')} {s.exceptionCode}
                     </span>
                   </div>
-                  <h3 className="text-sm font-black text-white mt-2 tracking-tight">{s.title}</h3>
-                  <div className="mt-3 grid grid-cols-2 gap-4 text-xs font-mono text-slate-400 pt-3 border-t border-[#21262d]/50 leading-relaxed">
+                  <h3 className="mt-2 text-sm font-black tracking-tight text-white">{s.title}</h3>
+                  <div className="mt-3 grid grid-cols-1 gap-4 border-t border-[#21262d]/50 pt-3 font-mono text-xs leading-relaxed text-slate-400 sm:grid-cols-2">
                     <div>
                       <span className="text-[10px] text-red-400/80 font-bold block mb-1">
                         {t('aiScreen.rivalEventLabel')}
                       </span>
-                      <span className="text-slate-300 block">
+                      <span className="block break-words text-slate-300">
                         {s.caseStudyA.subject} - {s.caseStudyA.act}
                       </span>
                     </div>
@@ -820,7 +821,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                       <span className="text-[10px] text-emerald-300/80 font-bold block mb-1">
                         {t('aiScreen.allyEventLabel')}
                       </span>
-                      <span className="text-slate-300 block">
+                      <span className="block break-words text-slate-300">
                         {s.caseStudyB.subject} - {s.caseStudyB.act}
                       </span>
                     </div>
@@ -830,7 +831,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             </div>
           </div>
 
-          <div className="pt-2 border-t border-[#21262d] grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_auto_auto] lg:items-center">
+          <div className="grid grid-cols-1 gap-4 border-t border-[#21262d] pt-2 lg:grid-cols-[minmax(0,1.15fr)_auto_auto] lg:items-center">
             <div className="flex items-start gap-3 rounded-xl border border-[#21262d] bg-[#0d1220] px-4 py-3 text-xs font-mono text-slate-500 shadow-lg">
               <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/20 bg-amber-400/10 text-amber-300">
                 <Zap size={14} className="fill-current" />
@@ -840,7 +841,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             <button
               type="button"
               onClick={() => setScreenState('setup')}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#30363d] bg-[#0c0f1c] px-5 py-3.5 font-mono text-xs font-black text-slate-200 transition hover:border-slate-500 hover:bg-[#121725] hover:text-white cursor-pointer lg:min-w-[170px]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#30363d] bg-[#0c0f1c] px-5 py-3.5 font-mono text-xs font-black text-slate-200 transition hover:border-slate-500 hover:bg-[#121725] hover:text-white lg:min-w-[170px] lg:w-auto"
             >
               <RotateCcw size={14} />
               {t('aiScreen.resetSetup')}
@@ -848,7 +849,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             <button
               type="button"
               onClick={handleStartJudging}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-400 px-5 py-3.5 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(34,211,238,0.22)] transition hover:from-cyan-200 hover:to-cyan-300 cursor-pointer lg:min-w-[220px]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-400 px-5 py-3.5 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(34,211,238,0.22)] transition hover:from-cyan-200 hover:to-cyan-300 lg:min-w-[220px] lg:w-auto"
             >
               <Play size={14} className="fill-current" />
               {t('aiScreen.startBtn')}

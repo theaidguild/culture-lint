@@ -1,17 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
 @import 'tailwindcss';
 
 :root {
   color-scheme: dark;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
   background: #0a0c10;
   color: #f0f6fc;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --surface-0: #0a0c10;
+  --surface-1: #0d1117;
+  --surface-2: #111827;
+  --line-soft: #21262d;
+  --accent-cyan: #22d3ee;
+  --accent-amber: #f59e0b;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,6 +28,7 @@ body {
   min-width: 320px;
   min-height: 100dvh;
   background: #0a0c10;
+  letter-spacing: 0.01em;
 }
 
 #root {
@@ -42,9 +44,52 @@ body {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+.audit-scan {
+  position: relative;
+}
+
+.audit-scan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.03) 0px,
+    transparent 2px,
+    transparent 4px
+  );
+  background-size: 100% 4px;
+  opacity: 0.14;
+}
+
+.audit-panel {
+  border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(10, 14, 22, 0.96));
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08) inset, 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.audit-panel-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(34, 211, 238, 0.84);
+}
+
+.audit-primary-btn {
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.38);
+}
+
 @media (max-height: 560px) {
   .compact-header {
     min-height: 3.25rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .compact-header {
+    min-height: 3.5rem;
   }
 }
 
@@ -60,6 +105,8 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }

@@ -101,7 +101,13 @@ export function SessionResultStep({
   onNewSeedRun,
 }: SessionResultStepProps) {
   const { t } = useTranslation()
+  const isPt = t('language.ptBR') === 'PT-BR'
   const hasContradictions = session.contradictionCount > 0
+  const totalJudgments = Math.max(1, session.judgments.length)
+  const consistencyScore = Math.max(
+    0,
+    Math.round(((session.judgments.length - session.contradictionCount) / totalJudgments) * 100)
+  )
 
   const rankIndexById = useMemo(() => {
     const lookup = new Map<string, number>()
@@ -143,6 +149,11 @@ export function SessionResultStep({
         }
       }),
     [principles, session.judgments, session.principleRanking]
+  )
+
+  const contradictionEntries = useMemo(
+    () => orderedJudgments.filter((judgment) => !judgment.isConsistent),
+    [orderedJudgments]
   )
 
   return (
@@ -187,7 +198,46 @@ export function SessionResultStep({
         </p>
       </div>
 
-      <section className="mt-6 rounded-lg border border-cyan-400/60 bg-[#111320] p-5 shadow-[0_0_25px_rgba(0,240,255,0.12)] sm:p-6">
+      <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px_180px]">
+        <div className="audit-panel rounded-lg p-5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-300/80">
+            consistency rating
+          </div>
+          <div className="mt-3 flex items-center gap-3 font-mono">
+            <span className="text-5xl font-black text-cyan-300 sm:text-6xl">{consistencyScore}%</span>
+            <span className="text-xs uppercase tracking-[0.16em] text-cyan-200">
+              status: {hasContradictions ? (isPt ? 'parcial' : 'partial') : isPt ? 'estavel' : 'stable'}
+            </span>
+          </div>
+        </div>
+
+        <div className="audit-panel rounded-lg p-4 font-mono">
+          <div className="text-[9px] uppercase tracking-[0.18em] text-slate-500">
+            {isPt ? 'resumo da auditoria' : 'audit summary'}
+          </div>
+          <ul className="mt-3 space-y-1.5 text-[11px] text-slate-200">
+            <li>• {isPt ? 'Dilemas Processados' : 'Dilemmas Processed'}: {session.judgments.length}</li>
+            <li>• {isPt ? 'Principios Selados' : 'Principles Sealed'}: {session.principleRanking.length}</li>
+            <li className="text-amber-300">• {isPt ? 'Divergencias' : 'Divergences'}: {session.contradictionCount}</li>
+          </ul>
+        </div>
+
+        <div className="space-y-3">
+          <div className="text-right">
+            <span className="rounded border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-amber-300">
+              {isPt ? 'arquivo selado' : 'sealed archive'}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="w-full rounded border border-[#6b7788] bg-[#8494a8] px-3 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] text-[#0b111a] transition hover:bg-[#94a3b8]"
+          >
+            {isPt ? 'exportar dossie' : 'export dossier'}
+          </button>
+        </div>
+      </section>
+
+      <section className="audit-panel mt-6 rounded-lg border-cyan-400/60 p-4 shadow-[0_0_25px_rgba(0,240,255,0.12)] sm:p-6">
         <div className="flex items-center gap-2 font-mono text-sm font-black text-cyan-300">
           <ShieldCheck size={15} /> {t('sessionResult.rankingRecap')}
         </div>
@@ -195,7 +245,7 @@ export function SessionResultStep({
           {principleStatuses.map((entry, index) => (
             <li
               key={entry.id}
-              className="flex items-center justify-between gap-3 border-b border-[#21262d] pb-2 last:border-0 last:pb-0"
+              className="flex flex-col items-start justify-between gap-2 border-b border-[#21262d] pb-2 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:gap-3"
             >
               <span className="flex items-center gap-3 text-slate-200">
                 <span className="grid h-6 w-6 place-items-center rounded-full border border-cyan-400/50 text-xs text-cyan-300">
@@ -217,6 +267,37 @@ export function SessionResultStep({
         </ul>
       </section>
 
+      <section className="mt-8 rounded border border-amber-600/70 bg-[#1b1408]">
+        <header className="flex items-center justify-between border-b border-amber-600/70 bg-amber-500/90 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#111]">
+          <span>inconsistency_log.diff</span>
+          <span>{isPt ? 'deteccao de contradicoes' : 'contradiction detection'}</span>
+        </header>
+        <div className="space-y-3 p-3">
+          {contradictionEntries.length === 0 ? (
+            <div className="rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 font-mono text-xs text-emerald-300">
+              {isPt ? 'Nenhuma divergencia encontrada nesta rodada.' : 'No divergence entries found in this round.'}
+            </div>
+          ) : (
+            contradictionEntries.slice(0, 3).map((judgment, logIndex) => (
+              <article
+                key={`${judgment.scenario.id}-log`}
+                className="rounded border border-amber-800/80 bg-[#261a0b] px-3 py-2 font-mono text-xs text-amber-100"
+              >
+                <p className="text-[10px] uppercase tracking-[0.12em] text-amber-300">
+                  log_entry #{String(logIndex + 1).padStart(2, '0')} // conflito de vetor
+                </p>
+                <p className="mt-1 leading-6">
+                  [DIFF] {isPt ? 'No caso' : 'Case'} {logIndex + 1} // {judgment.scenario.title}. {isPt ? 'Principio afetado' : 'Impacted principle'}:{' '}
+                  <span className="font-bold text-cyan-300">{formatPrincipleLabel(
+                    principles.find((p) => p.id === judgment.scenario.principleId)?.label ?? judgment.scenario.principleId
+                  )}</span>
+                </p>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
       <h2 className="mt-8 font-mono text-sm font-black text-cyan-300">
         {t('sessionResult.scenarioBreakdown')}
       </h2>
@@ -234,14 +315,14 @@ export function SessionResultStep({
         <button
           type="button"
           onClick={onRerunSameSeed}
-          className="flex items-center justify-center gap-2 rounded-md border border-[#30363d] px-5 py-3 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-[#30363d] px-5 py-3 font-mono text-xs font-black text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-200 sm:w-auto"
         >
           <RefreshCw size={14} /> {t('sessionResult.rerunSameSeed')}
         </button>
         <button
           type="button"
           onClick={onNewSeedRun}
-          className="flex items-center justify-center gap-2 rounded-md bg-cyan-400 px-5 py-3 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-400 px-5 py-3 font-mono text-xs font-black text-[#071018] shadow-[0_0_30px_rgba(0,240,255,0.42)] transition hover:-translate-y-0.5 hover:bg-cyan-300 sm:w-auto"
         >
           <Zap size={14} /> {t('sessionResult.newSeedRun')}
         </button>
@@ -281,22 +362,22 @@ function JudgmentOutcomeCard({
 
   return (
     <section
-      className={`overflow-hidden rounded-lg border bg-[#111320] ${
+      className={`audit-panel overflow-hidden rounded-lg border ${
         hasFailed ? 'border-red-500/50' : 'border-emerald-500/40'
       }`}
     >
       <button
         type="button"
         onClick={() => setExpanded((current) => !current)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
       >
         <span className="min-w-0">
           <span className="block truncate font-bold text-white">{scenario.title}</span>
           <span className="mt-1 block font-mono text-xs text-slate-500">[{scenario.category}]</span>
         </span>
-        <span className="flex shrink-0 items-center gap-3">
+        <span className="flex shrink-0 items-center gap-2 sm:gap-3">
           <span
-            className={`rounded border px-2 py-1 font-mono text-xs font-black ${
+            className={`rounded border px-2 py-1 font-mono text-[10px] font-black sm:text-xs ${
               hasFailed
                 ? 'border-red-400/70 text-red-400'
                 : 'border-emerald-400/70 text-emerald-400'
