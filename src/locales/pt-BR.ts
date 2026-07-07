@@ -98,6 +98,7 @@ const ptBR = {
       progressStageComplete: 'Concluído',
       progressStageActive: 'Em andamento',
       progressStagePending: 'A seguir',
+      resetSetup: 'VOLTAR PARA CONFIGURACAO',
     },
     aiStatus: {
       startGenerate: 'Iniciando geração...',

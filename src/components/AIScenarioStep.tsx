@@ -827,7 +827,7 @@ export function AIScenarioStep({ principles }: AIScenarioStepProps) {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#30363d] bg-[#0c0f1c] px-5 py-3.5 font-mono text-xs font-black text-slate-200 transition hover:border-slate-500 hover:bg-[#121725] hover:text-white cursor-pointer lg:min-w-[170px]"
             >
               <RotateCcw size={14} />
-              {t('sidebar.returnInitialState')}
+              {t('aiScreen.resetSetup')}
             </button>
             <button
               type="button"

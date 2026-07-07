@@ -98,6 +98,7 @@ const enUS = {
       progressStageComplete: 'Complete',
       progressStageActive: 'In progress',
       progressStagePending: 'Up next',
+      resetSetup: 'BACK TO SETUP',
     },
     aiStatus: {
       startGenerate: 'Starting generation...',
