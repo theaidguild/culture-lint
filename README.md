@@ -27,6 +27,20 @@ npm run lint
 npm run build
 ```
 
+## Routing
+
+The app is configured as a root-only SPA route surface:
+
+- Canonical route: `/`
+- Unknown paths: redirected to `/`
+- No dedicated `/ai` route
+
+Supported query params:
+
+- `boot=false`: skip the boot screen
+- `debug=1`: show in-app debug trace overlay
+- AI setup params (deep-linkable): `country`, `principles`, `count`, `model`
+
 ## RunPod Integration
 
 The AI scenario flow calls a RunPod instance using OpenAI-compatible chat

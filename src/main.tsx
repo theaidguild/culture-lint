@@ -1,9 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import './i18n'
-import Root from './Root.tsx'
+import { router } from './router'
 
 const SPA_REDIRECT_KEY = 'culture-lint:spa-redirect'
 const DEBUG_TRACE_KEY = 'culture-lint:debug-trace'
@@ -57,8 +57,6 @@ restoreSpaRoute()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <Root />
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </StrictMode>
 )
