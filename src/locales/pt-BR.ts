@@ -43,6 +43,8 @@ const ptBR = {
       generatingLog4: 'Montando o corredor de julgamentos moras...',
       generationFailed:
         'Não foi possível concluir a criação dos cenários desta vez. Ajuste a seleção e tente novamente.',
+      generationTimeout:
+        'O tempo limite de geração de IA expirou. O servidor RunPod demorou muito para responder. Tente novamente ou selecione menos casos se o servidor estiver sobrecarregado.',
       generationMissingTopics:
         'A IA não conseguiu atingir a mistura obrigatória de temas nesta execução (pelo menos 2 casos sobre religião e 2 sobre aborto quando o pedido é maior que 6). Tente gerar novamente.',
       generationForbidden:

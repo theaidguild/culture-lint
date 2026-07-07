@@ -81,6 +81,191 @@ body {
   box-shadow: 0 0 28px rgba(34, 211, 238, 0.38);
 }
 
+.boot-screen {
+  transition: opacity 850ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: opacity;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.boot-fading-out,
+.boot-fading-out * {
+  animation-play-state: paused !important;
+}
+
+.boot-atmosphere {
+  opacity: 0;
+  will-change: opacity;
+  animation: bootFadeIn 1600ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-atmosphere, 0ms) forwards;
+}
+
+.boot-grid {
+  will-change: opacity;
+  animation: bootGridPulse 5200ms ease-in-out infinite;
+}
+
+.boot-scanlines {
+  animation: bootScanlineDrift 10s linear infinite;
+}
+
+.boot-metadata,
+.boot-title,
+.boot-subtitle,
+.boot-progress-wrap,
+.boot-log,
+.boot-status {
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translate3d(0, 16px, 0);
+}
+
+.boot-metadata {
+  animation: bootFadeUp 1400ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-metadata, 700ms) forwards;
+}
+
+.boot-title {
+  animation: bootFadeUp 1500ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-title, 1400ms) forwards;
+}
+
+.boot-subtitle {
+  animation: bootFadeUp 1300ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-subtitle, 2100ms) forwards;
+}
+
+.boot-progress-wrap {
+  animation: bootFadeUp 1300ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-progress, 2900ms) forwards;
+}
+
+.boot-log {
+  animation: bootFadeUp 1400ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-log, 3700ms) forwards;
+}
+
+.boot-status {
+  animation: bootFadeUp 1300ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-status, 4600ms) forwards;
+}
+
+.boot-progress-fill {
+  transform: scaleX(0);
+  will-change: transform;
+  transform-origin: left;
+}
+
+.boot-log-line {
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translate3d(0, 8px, 0);
+  animation: bootLineIn 750ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--boot-log, 3700ms) + (var(--line-index, 0) * var(--boot-line-stagger, 110ms)));
+}
+
+.boot-title-glow-wrap {
+  opacity: 0;
+  will-change: transform, opacity;
+  transform: translate3d(-50%, -50%, 0) scale(0.8);
+  animation: bootGlowReveal 1800ms cubic-bezier(0.16, 1, 0.3, 1) var(--boot-title, 1400ms) forwards;
+}
+
+.boot-title-glow-pulse {
+  will-change: transform, opacity;
+  animation: bootGlowBreathDown 10s ease-in-out var(--boot-glow-loop-delay, 2900ms) infinite alternate;
+}
+
+@keyframes bootFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bootFadeUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes bootLineIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes bootGlowReveal {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.8);
+  }
+  to {
+    opacity: 0.44;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes bootGlowBreathDown {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 0.58;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes bootScanlineDrift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 4px;
+  }
+}
+
+@keyframes bootGridPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+@media (max-height: 620px) {
+  .boot-screen {
+    overflow-y: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-grid,
+  .boot-scanlines,
+  .boot-log-line,
+  .boot-progress-fill {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .boot-title-glow-wrap {
+    animation: bootGlowReveal 800ms linear var(--boot-title, 1400ms) forwards !important;
+  }
+}
+
 @media (max-height: 560px) {
   .compact-header {
     min-height: 3.25rem;

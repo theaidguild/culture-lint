@@ -43,6 +43,8 @@ const enUS = {
       generatingLog4: 'Assembling cross-partisan judgment gauntlet...',
       generationFailed:
         'We could not finish creating this scenario set just now. Adjust the selection and try again.',
+      generationTimeout:
+        'The AI generation timed out. The RunPod server took too long to complete. Try again, or choose a lower case count if the server is busy.',
       generationMissingTopics:
         'The AI could not meet the required topic mix for this run (at least 2 religion and 2 abortion cases when requesting more than 6). Please retry generation.',
       generationForbidden:

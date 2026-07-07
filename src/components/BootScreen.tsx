@@ -1,313 +1,224 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type LineTone = 'info' | 'warn' | 'ok'
-
-type BootLine = {
-  delay: number
-  tone: LineTone
-  channel: string
-  message: string
-}
-
-const HOLD_AFTER_LAST = 2500
-const FADE_DURATION = 550
-
-const TONE_STYLES: Record<LineTone, { channel: string; message: string; prompt: string }> = {
-  info: { channel: 'text-slate-500', message: 'text-slate-300', prompt: 'text-cyan-400' },
-  warn: { channel: 'text-amber-400/80', message: 'text-amber-400', prompt: 'text-amber-400' },
-  ok: { channel: 'text-emerald-400/80', message: 'text-emerald-300', prompt: 'text-emerald-400' },
-}
-
-function timestamp(index: number): string {
-  const value = (0.001 + index * 0.037 + (index % 3) * 0.004).toFixed(3)
-  return `[${value}s]`
-}
-
-function buildBootLines(t: (key: string, options?: Record<string, string>) => string): BootLine[] {
-  return [
-    { delay: 28, tone: 'info', channel: 'system.core', message: t('boot.lines.coldBoot') },
-    {
-      delay: 34,
-      tone: 'info',
-      channel: 'mem.alloc',
-      message: t('boot.lines.reserveHeap', { heap: '4096MB' }),
-    },
-    { delay: 32, tone: 'info', channel: 'mem.alloc', message: t('boot.lines.mapSpace') },
-    { delay: 36, tone: 'info', channel: 'net.link', message: t('boot.lines.stabilizeMetrics') },
-    { delay: 34, tone: 'info', channel: 'net.link', message: t('boot.lines.handshakeStream') },
-    { delay: 36, tone: 'info', channel: 'logic.core', message: t('boot.lines.loadValidators') },
-    { delay: 34, tone: 'info', channel: 'logic.core', message: t('boot.lines.compileRuleset') },
-    { delay: 36, tone: 'info', channel: 'config.parse', message: t('boot.lines.readManifest') },
-    {
-      delay: 100,
-      tone: 'warn',
-      channel: 'config.parse',
-      message: t('boot.lines.deprecatedModule', { module: 'universal_empathy' }),
-    },
-    {
-      delay: 32,
-      tone: 'warn',
-      channel: 'config.parse',
-      message: t('boot.lines.stripModule', { module: 'universal_empathy' }),
-    },
-    { delay: 40, tone: 'info', channel: 'logic.core', message: t('boot.lines.rebindValidators') },
-    { delay: 36, tone: 'info', channel: 'engine.init', message: t('boot.lines.mountEngine') },
-    { delay: 42, tone: 'ok', channel: 'engine.init', message: t('boot.lines.engineOnline') },
-  ]
-}
+const HOLD_AFTER_LAST = 2400
+const FADE_DURATION = 850
 
 const prefersReducedMotion =
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
 
-const TYPING_SPEED = prefersReducedMotion ? 18 : 16
+const STAGE_TIMINGS = prefersReducedMotion
+  ? {
+      atmosphere: 0,
+      metadata: 450,
+      title: 1050,
+      subtitle: 1650,
+      progress: 2250,
+      log: 3000,
+      status: 3800,
+      timelineEnd: 3800,
+      progressFill: 2200,
+      lineStagger: 110,
+    }
+  : {
+      atmosphere: 250,
+      metadata: 900,
+      title: 1700,
+      subtitle: 2550,
+      progress: 3400,
+      log: 4300,
+      status: 5350,
+      timelineEnd: 5350,
+      progressFill: 2600,
+      lineStagger: 150,
+    }
+
+const BOOT_LOG_LINES = [
+  { text: 'STAGING ENCRYPTION KEYS', state: '[OK]', tone: 'ok' },
+  { text: 'MOUNTING ETHICAL_DATABASE.VLT', state: '[OK]', tone: 'ok' },
+  { text: 'INITIALIZING JUDGMENT_ENGINE.V4.2', state: '[OK]', tone: 'ok' },
+  { text: 'SCANNING MORAL VECTORS', state: '[OK]', tone: 'ok' },
+  { text: 'BYPASSING COGNITIVE SAFEGUARDS', state: '[WARNING]', tone: 'warn' },
+  { text: 'ESTABLISHING SECURE COMM-LINK', state: '[OK]', tone: 'ok' },
+  { text: 'LOADING CULTURE-LINT PROTOCOLS...', state: '', tone: 'info' },
+] as const
 
 export function BootScreen({ onComplete }: { onComplete: () => void }) {
-  const { t } = useTranslation()
-  const bootLines = useMemo(() => buildBootLines(t), [t])
-  const [typedLines, setTypedLines] = useState<string[]>(() => bootLines.map(() => ''))
-  const [activeLineIndex, setActiveLineIndex] = useState(0)
+  const { i18n } = useTranslation()
+  const isPt = i18n.language === 'pt-BR'
   const [isFadingOut, setIsFadingOut] = useState(false)
-  const timers = useRef<number[]>([])
-  const logContainerRef = useRef<HTMLDivElement | null>(null)
+  const [percent, setPercent] = useState(0)
+
+  const bootStyle = {
+    '--boot-atmosphere': `${STAGE_TIMINGS.atmosphere}ms`,
+    '--boot-metadata': `${STAGE_TIMINGS.metadata}ms`,
+    '--boot-title': `${STAGE_TIMINGS.title}ms`,
+    '--boot-subtitle': `${STAGE_TIMINGS.subtitle}ms`,
+    '--boot-progress': `${STAGE_TIMINGS.progress}ms`,
+    '--boot-log': `${STAGE_TIMINGS.log}ms`,
+    '--boot-status': `${STAGE_TIMINGS.status}ms`,
+    '--boot-progress-fill-duration': `${STAGE_TIMINGS.progressFill}ms`,
+    '--boot-line-stagger': `${STAGE_TIMINGS.lineStagger}ms`,
+    '--boot-glow-loop-delay': `${STAGE_TIMINGS.title + 1500}ms`,
+  } as CSSProperties
 
   useEffect(() => {
-    const run = async () => {
-      await new Promise<void>((resolve) => {
-        const startTimeout = window.setTimeout(resolve, 0)
-        timers.current.push(startTimeout)
-      })
+    let animationFrameId: number
+    const startTimeOffset = STAGE_TIMINGS.progress
+    const duration = STAGE_TIMINGS.progressFill
+    let startTimestamp: number | null = null
 
-      setTypedLines(bootLines.map(() => ''))
-      setActiveLineIndex(0)
-      setIsFadingOut(false)
-
-      for (let lineIndex = 0; lineIndex < bootLines.length; lineIndex += 1) {
-        setActiveLineIndex(lineIndex)
-
-        const message = bootLines[lineIndex].message
-        const delay = TYPING_SPEED
-
-        for (let charIndex = 0; charIndex <= message.length; charIndex += 1) {
-          const timeout = window.setTimeout(() => {
-            setTypedLines((currentLines) => {
-              const nextLines = [...currentLines]
-              nextLines[lineIndex] = message.slice(0, charIndex)
-              return nextLines
-            })
-          }, charIndex * delay)
-          timers.current.push(timeout)
-        }
-
-        const lineDuration = message.length * delay
-        const settleTimeout = window.setTimeout(() => {
-          setTypedLines((currentLines) => {
-            const nextLines = [...currentLines]
-            nextLines[lineIndex] = message
-            return nextLines
-          })
-        }, lineDuration + 20)
-        timers.current.push(settleTimeout)
-
-        await new Promise<void>((resolve) => {
-          const nextLineTimeout = window.setTimeout(resolve, lineDuration + 18)
-          timers.current.push(nextLineTimeout)
-        })
+    const updatePercent = (now: number) => {
+      if (startTimestamp === null) {
+        startTimestamp = now
+      }
+      const elapsed = now - startTimestamp
+      if (elapsed < 0) {
+        animationFrameId = requestAnimationFrame(updatePercent)
+        return
       }
 
-      const fadeTimeout = window.setTimeout(() => setIsFadingOut(true), HOLD_AFTER_LAST)
-      // Safety fallback to unmount the boot screen after FADE_DURATION + 400ms buffer if transitionend doesn't trigger
-      const safetyTimeout = window.setTimeout(onComplete, HOLD_AFTER_LAST + FADE_DURATION + 400)
-      timers.current.push(fadeTimeout, safetyTimeout)
+      const progressRatio = Math.min(1, elapsed / duration)
+      // Smooth cubic out easing for percentage text sync
+      const easedRatio = 1 - Math.pow(1 - progressRatio, 3)
+      setPercent(Math.floor(easedRatio * 68))
+
+      if (progressRatio < 1) {
+        animationFrameId = requestAnimationFrame(updatePercent)
+      }
     }
 
-    void run()
+    const startTimeout = window.setTimeout(() => {
+      startTimestamp = performance.now()
+      animationFrameId = requestAnimationFrame(updatePercent)
+    }, startTimeOffset)
 
     return () => {
-      timers.current.forEach((id) => window.clearTimeout(id))
-      timers.current = []
+      window.clearTimeout(startTimeout)
+      cancelAnimationFrame(animationFrameId)
     }
-  }, [bootLines, onComplete])
+  }, [])
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
+    const fadeTimeout = window.setTimeout(
+      () => setIsFadingOut(true),
+      STAGE_TIMINGS.timelineEnd + HOLD_AFTER_LAST
+    )
+    const safetyTimeout = window.setTimeout(
+      onComplete,
+      STAGE_TIMINGS.timelineEnd + HOLD_AFTER_LAST + FADE_DURATION + 350
+    )
+
+    return () => {
+      window.clearTimeout(fadeTimeout)
+      window.clearTimeout(safetyTimeout)
     }
-
-    const isMobile = window.matchMedia('(max-width: 767px)').matches
-    if (!isMobile) {
-      return
-    }
-
-    const container = logContainerRef.current
-    if (!container || container.scrollHeight <= container.clientHeight) {
-      return
-    }
-
-    container.scrollTop = container.scrollHeight
-  }, [typedLines, activeLineIndex])
-
-  const sequenceComplete = typedLines.every((line, index) => line === bootLines[index].message)
+  }, [onComplete])
 
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label={t('boot.ariaLabel')}
+      aria-label={isPt ? 'Inicializacao do sistema Culture-Lint' : 'Culture-Lint system boot sequence'}
+      style={bootStyle}
       onTransitionEnd={(e) => {
         if (e.target === e.currentTarget && e.propertyName === 'opacity') {
           onComplete()
         }
       }}
-      className={`boot-screen fixed inset-0 z-50 overflow-hidden bg-black will-change-opacity ${
-        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      className={`boot-screen fixed inset-0 z-50 overflow-hidden bg-black ${
+        isFadingOut ? 'opacity-0 pointer-events-none boot-fading-out' : 'opacity-100'
       }`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(0,240,255,0.14),transparent_48%),radial-gradient(circle_at_82%_90%,rgba(47,129,247,0.15),transparent_42%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:100%_3px] opacity-70" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.88))]" />
+      <div className="boot-atmosphere pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(0,220,255,0.16),transparent_36%),radial-gradient(circle_at_85%_15%,rgba(53,123,201,0.14),transparent_36%)]" />
+        <div className="boot-grid absolute inset-0 bg-[linear-gradient(0deg,rgba(0,140,170,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(0,140,170,0.09)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        <div className="boot-scanlines absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100%_4px] opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_54%,rgba(0,0,0,0.9))]" />
+      </div>
 
-      <div className="relative flex h-full w-full items-center justify-center px-3 py-4 sm:px-6 sm:py-7 md:px-8 md:py-10">
-        <section
-          className={`boot-terminal flex h-[430px] min-h-[430px] max-h-[430px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-cyan-400/25 bg-[#03060c]/95 shadow-[0_0_48px_rgba(0,240,255,0.12)] sm:h-[500px] sm:min-h-[500px] sm:max-h-[500px] md:h-[560px] md:min-h-[560px] md:max-h-[560px] will-change-transform ${
-            isFadingOut
-              ? prefersReducedMotion
-                ? 'opacity-0'
-                : 'scale-[0.98] opacity-0 translate-y-2'
-              : 'scale-100 opacity-100 translate-y-0'
-          }`}
+      <div className="relative flex h-full w-full items-center justify-center px-5 py-8 sm:px-9 md:px-12">
+        <div
+          className="boot-metadata absolute left-5 right-5 top-6 flex transform-gpu items-start justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500 sm:left-12 sm:right-12 sm:top-12"
         >
-          <header className="flex items-center justify-between border-b border-cyan-400/20 bg-cyan-400/5 px-3 py-2.5 font-mono text-[11px] tracking-wide text-cyan-300 sm:px-4 sm:text-xs">
-            <span>culture-lint://boot</span>
-            <span className="text-slate-400">runtime init</span>
-          </header>
+          <div className="space-y-2">
+            <p>ID: CL-992-0X</p>
+            <p>TS: 2026.01.24.04:12</p>
+          </div>
+          <div className="space-y-2 text-right">
+            <p>{isPt ? 'CONEXAO: SEGURA' : 'CONNECTION: SECURE'}</p>
+            <p>BITRATE: 1.2 GBPS</p>
+          </div>
+        </div>
 
-          <div
-            ref={logContainerRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 font-mono text-[12px] leading-[1.55] sm:px-3 sm:py-3 sm:text-[13px] md:text-sm"
-          >
-            {bootLines.slice(0, activeLineIndex + 1).map((line, index) => {
-              const styles = TONE_STYLES[line.tone]
-              const typedMessage = typedLines[index]
-              const isActiveLine = index === activeLineIndex && !sequenceComplete
+        <section className="relative w-full max-w-4xl text-center">
+          <div className="boot-title-glow-wrap pointer-events-none absolute left-1/2 top-[38%] h-52 w-[min(78vw,640px)] -translate-x-1/2 -translate-y-1/2 transform-gpu">
+            <div className="boot-title-glow-pulse h-full w-full rounded-full bg-cyan-400/28 blur-[56px]" />
+          </div>
 
-              return (
-                <div
-                  key={`${line.channel}-${index}`}
-                  className="mt-0.5 grid grid-cols-[auto_auto_1fr] items-start gap-x-1.5 gap-y-0.5 sm:gap-x-2"
-                >
-                  <span className="text-[10px] text-slate-600 sm:text-[11px]">
-                    {timestamp(index)}
+          <h1 className="boot-title relative transform-gpu font-['Rajdhani'] text-[3.2rem] font-black uppercase tracking-[0.05em] text-cyan-300 drop-shadow-[0_0_24px_rgba(0,245,255,0.42)] sm:text-[5.4rem]">
+            CULTURE-LINT
+          </h1>
+
+          <p className="boot-subtitle mx-auto mt-2 inline-flex transform-gpu items-center gap-4 font-mono text-[11px] uppercase tracking-[0.18em] text-cyan-300/90 sm:text-sm">
+            <span className="h-px w-10 bg-cyan-300/70" />
+            MORAL AUDIT PROTOCOL
+            <span className="h-px w-10 bg-cyan-300/70" />
+          </p>
+
+          <div className="boot-progress-wrap mx-auto mt-14 w-[min(78vw,420px)] transform-gpu">
+            <div className="h-4 overflow-hidden rounded-sm border border-cyan-400/30 bg-[#06121f] p-1">
+              <div
+                style={{ transform: `scaleX(${percent / 100})` }}
+                className="boot-progress-fill h-full w-full origin-left transform-gpu bg-[repeating-linear-gradient(90deg,rgba(34,211,238,0.98)_0_6px,rgba(6,11,20,0.25)_6px_9px)] shadow-[0_0_16px_rgba(34,211,238,0.5)]"
+              />
+            </div>
+            <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300/90">
+              {isPt ? `INICIALIZANDO SISTEMAS CENTRAIS: ${percent}%` : `INITIALIZING CORE SYSTEMS: ${percent}%`}
+            </p>
+          </div>
+
+          <div className="boot-log mx-auto mt-10 w-[min(92vw,560px)] transform-gpu rounded border border-cyan-400/35 bg-[#0a1220]/70 px-5 py-4 text-left font-mono text-[11px] text-slate-400">
+            {BOOT_LOG_LINES.map((line, index) => (
+              <p
+                key={`${line.text}-${index}`}
+                className="boot-log-line mb-1 flex items-center gap-2"
+                style={{ '--line-index': index } as CSSProperties}
+              >
+                <span className="text-slate-600">&gt;</span>
+                <span className="text-slate-500">{line.text}</span>
+                {line.state ? (
+                  <span
+                    className={
+                      line.tone === 'warn'
+                        ? 'font-bold text-amber-400'
+                        : line.tone === 'ok'
+                          ? 'font-bold text-cyan-300'
+                          : 'font-bold text-slate-300'
+                    }
+                  >
+                    {line.state}
                   </span>
-                  <span className={`${styles.prompt} pt-[1px]`}>
-                    {line.tone === 'warn' ? '⚠' : '▸'}
-                  </span>
-                  <div className="min-w-0 break-words">
-                    <span className={styles.channel}>{line.channel}</span>
-                    <span className="mx-1 text-slate-700">::</span>
-                    <span className={styles.message}>
-                      {typedMessage}
-                      {isActiveLine && !prefersReducedMotion ? (
-                        <span className="ml-0.5 inline-block h-[1em] w-[0.5em] translate-y-[0.12em] animate-[bootCursor_900ms_step-end_infinite] bg-current align-baseline" />
-                      ) : null}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+                ) : null}
+              </p>
+            ))}
           </div>
         </section>
       </div>
 
-      <div
-        className={`boot-author-panel absolute bottom-5 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm px-4 py-2.5 rounded-2xl border border-cyan-400/10 bg-black/45 backdrop-blur-[6px] text-center font-mono z-10 flex flex-col items-center gap-1.5 shadow-[0_0_24px_rgba(0,240,255,0.03)] hover:border-cyan-400/30 ${
-          isFadingOut
-            ? prefersReducedMotion
-              ? 'opacity-0'
-              : 'opacity-0 translate-y-3'
-            : 'opacity-100 translate-y-0'
-        }`}
-      >
-        <div className="pointer-events-none text-slate-600 text-[10px] tracking-wide">
-          {t('appName')} <span className="text-slate-700">v2026.3.2</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-300">
-          <span className="pointer-events-none text-slate-400 font-medium">{t('boot.author')}</span>
-          <span className="font-bold text-white tracking-wide pointer-events-none">
-            Guilherme Giani
-          </span>
-          <span className="text-slate-600 pointer-events-none">•</span>
-          <a
-            href="https://www.linkedin.com/in/guilhermegiani/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-semibold transition-all pointer-events-auto hover:underline"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="13"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0"
-            >
-              <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-              <rect x="2" y="9" width="4" height="12" />
-              <circle cx="4" cy="4" r="2" />
-            </svg>
-            <span>LinkedIn</span>
-          </a>
+      <div className="boot-status absolute inset-x-0 bottom-0 transform-gpu border-t border-cyan-400/20 bg-[#030710]/96 px-3 py-3 font-mono text-[10px] uppercase tracking-[0.13em] text-slate-500 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 bg-cyan-300" />
+            <span>SYS: {isPt ? 'INICIALIZANDO' : 'INITIALIZING'}</span>
+          </div>
+          <span>ENCRYPTION: AES-256 ACTIVE</span>
+          <span>USER: GUEST_ANONYMOUS</span>
+          <span className="text-cyan-300">CLEARANCE LEVEL: RESTRICTED</span>
+          <span className="rounded-sm bg-cyan-300 px-2 py-0.5 font-bold text-[#071018]">TOP SECRET</span>
         </div>
       </div>
-
-      <style>{`
-        .boot-screen {
-          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-        }
-
-        .boot-screen .boot-terminal {
-          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1),
-                      transform 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-        }
-
-        .boot-screen .boot-author-panel {
-          transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1),
-                      transform 550ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .boot-screen {
-            transition: opacity 350ms linear !important;
-          }
-          .boot-screen .boot-terminal, 
-          .boot-screen .boot-author-panel {
-            transition: opacity 350ms linear !important;
-            transform: none !important;
-          }
-        }
-
-        @keyframes bootCursor {
-          0%, 49% { opacity: 1; }
-          50%, 100% { opacity: 0; }
-        }
-
-        @media (max-height: 560px) {
-          .boot-screen {
-            overflow-y: auto;
-          }
-
-          .boot-screen .boot-terminal {
-            height: 420px;
-            min-height: 420px;
-            max-height: 420px;
-          }
-        }
-      `}</style>
     </div>
   )
 }

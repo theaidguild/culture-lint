@@ -260,7 +260,7 @@ type LocalAIChatCompletionsResponse = {
 
 const AI_DEBUG_PREFIX = '[ai-debug][generator]'
 const DEFAULT_RUNPOD_BASE_PATH = '/api/runpod'
-const DEFAULT_RUNPOD_TIMEOUT_MS = 45000
+const DEFAULT_RUNPOD_TIMEOUT_MS = 90000
 
 let runpodModelsCache: Promise<string[]> | null = null
 
@@ -838,9 +838,9 @@ function mergeUniqueScenarios(current: RawScenario[], incoming: RawScenario[]): 
   return merged
 }
 
-function resolveRunpodBatchSize(totalCount: number, principleCount: number): number {
-  if (totalCount <= 4) return totalCount
-  return Math.min(totalCount, Math.max(3, Math.min(4, principleCount + 1)))
+function resolveRunpodBatchSize(totalCount: number): number {
+  // Generate all requested scenarios in a single LLM request to avoid the high connection & generation overhead of multiple sequential sequential requests.
+  return totalCount
 }
 
 function parseTimeoutMs(raw: unknown): number {
@@ -918,6 +918,13 @@ async function fetchRunpodJson<T>(config: {
     }
 
     return (await response.json()) as T
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      if (!config.signal || !config.signal.aborted) {
+        throw new Error('runpod-timeout', { cause: err })
+      }
+    }
+    throw err
   } finally {
     composed.cleanup()
   }
@@ -1034,7 +1041,7 @@ export async function generateAIScenariosWithRunpod(
   const requestedModel = resolveRunpodModelName(selectedModelId)
   const generationCount = resolveSafeScenarioCount(count)
   const topicQuotas = resolveTopicQuotas(generationCount)
-  const batchSize = resolveRunpodBatchSize(generationCount, activePrincipleIds.length)
+  const batchSize = resolveRunpodBatchSize(generationCount)
   const maxAttempts = Math.max(
     RUNPOD_MAX_GENERATION_ATTEMPTS + 2,
     Math.ceil(generationCount / Math.max(1, batchSize)) + 8
@@ -1099,6 +1106,9 @@ export async function generateAIScenariosWithRunpod(
         frequency_penalty: 0.25,
         presence_penalty: 0.45,
         stream: false,
+        response_format: { type: 'json_object' },
+        keep_alive: '1h',
+        max_tokens: 3000,
         messages: buildRunpodScenarioMessages({
           countryCode,
           language,

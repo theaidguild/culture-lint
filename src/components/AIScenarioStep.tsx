@@ -64,6 +64,10 @@ function resolveGenerationErrorMessage(
     return t('aiScreen.generationForbidden')
   }
 
+  if (error.message === 'runpod-timeout') {
+    return t('aiScreen.generationTimeout')
+  }
+
   if (error.message === 'runpod-missing-required-topics') {
     return t('aiScreen.generationMissingTopics')
   }
