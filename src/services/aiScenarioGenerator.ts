@@ -764,8 +764,8 @@ function selectFinalScenariosWithQuotas(config: {
   quotas: TopicQuota[]
 }): RawScenario[] | null {
   const { scenarios, generationCount, language, quotas } = config
-  if (scenarios.length < generationCount) return null
   if (quotas.length === 0) return scenarios.slice(0, generationCount)
+  if (scenarios.length < generationCount) return null
 
   const selected: RawScenario[] = []
   const used = new Set<string>()
@@ -838,8 +838,9 @@ function mergeUniqueScenarios(current: RawScenario[], incoming: RawScenario[]): 
 }
 
 function resolveRunpodBatchSize(totalCount: number): number {
-  // Generate all requested scenarios in a single LLM request to avoid the high connection & generation overhead of multiple sequential sequential requests.
-  return totalCount
+  // Cap per-request batch size so the model reliably produces distinct, well-formed
+  // scenarios. The retry loop accumulates results across calls until the target is met.
+  return Math.min(4, totalCount)
 }
 
 function parseTimeoutMs(raw: unknown): number {
