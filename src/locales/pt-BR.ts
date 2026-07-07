@@ -237,7 +237,7 @@ const ptBR = {
       eyebrow: 'Documentação do sistema // visão geral',
       title: 'O que é o Culture Lint?',
       intro:
-        '<cl>Culture Lint</cl> é um aplicativo para testar a consistência moral e social. Sua base conceitual vem diretamente do <str>Desenvolvimento Orientado a Comportamento (BDD)</str>: assim como o BDD pede que equipes definam expectativas de comportamento antes de escrever código — usando exemplos concretos para eliminar ambiguidade — o <cl>Culture Lint</cl> pede que os usuários definam princípios éticos antes de julgar, e então usa <str>cenários estruturalmente idênticos</str> para revelar inconsistências no raciocínio.',
+        '<cl>Culture Lint</cl> é uma estrutura de análise para testar a consistência moral e social. Sua base conceitual vem diretamente do <str>Desenvolvimento Orientado a Comportamento (BDD)</str>: assim como o BDD pede que equipes definam expectativas de comportamento antes de escrever código — usando exemplos concretos para eliminar ambiguidade — o <cl>Culture Lint</cl> pede que os usuários definam princípios éticos antes de julgar, e então usa <str>cenários estruturalmente idênticos</str> para revelar inconsistências no raciocínio.',
       calloutLabel: 'Importante',
       calloutBody:
         '<str>Julgar não é condenar.</str> No uso cotidiano, "julgar" ganhou uma conotação negativa porque as pessoas confundem isso com proferir uma sentença — como se julgar alguém fosse puni-lo. Não é isso que julgamento significa aqui. Julgamento é um ato cognitivo: o ato de formar uma avaliação. Toda vez que você decide se algo é justo, razoável ou aceitável, você está julgando. Não é possível se recusar a fazer isso. O <cl>Culture Lint</cl> não pede que você condene ninguém; ele pede que você perceba se está aplicando os mesmos critérios de avaliação a situações estruturalmente idênticas. A única coisa que está sendo examinada é <em>consistência — não caráter</em>.',
@@ -245,16 +245,16 @@ const ptBR = {
         'A percepção central é que <str>duplos padrões culturais e morais</str> se comportam como bugs de software: são invisíveis até que o teste certo seja executado. O <cl>Culture Lint</cl> executa esse teste. Em vez de analisar código-fonte, ele analisa <str>padrões de decisão</str>.',
       engineBody:
         'O motor gera um conjunto de <str>estudos de caso pareados</str>. Cada par é estruturalmente idêntico — mesma ação, mesmo contexto, mesmo ambiente institucional — mas com <str>identidades dos sujeitos trocadas</str> (ex.: diferentes religiões, gêneros ou afiliações políticas). O usuário avalia cada caso isoladamente, sem saber como os pares se conectam. Depois que todos os vereditos são dados, o motor de análise os compara. Qualquer cenário em que o usuário deu vereditos diferentes para atos estruturalmente equivalentes é sinalizado como uma <str>contradição</str> — evidência de um duplo padrão baseado em identidade.',
-      wizardIntro: 'O assistente de quatro etapas percorre o ciclo completo:',
+      wizardIntro: 'O fluxo de quatro etapas percorre o ciclo completo:',
       step1Label: 'Configurar',
       step1Desc:
         'Selecione um país, um ou mais princípios éticos (ex.: igualdade, liberdade religiosa, transparência) e o número de cenários a gerar.',
       step2Label: 'Gerar',
       step2Desc:
-        'O sistema elabora e refina os estudos de caso pareados, transmitindo o progresso para a interface em tempo real.',
+        'O Culture Lint elabora e refina os estudos de caso pareados, transmitindo o progresso para a interface em tempo real.',
       step3Label: 'Julgar',
       step3Desc:
-        'Avalie cada ato um a um. A ordem de apresentação é embaralhada para que os pares espelhados sejam difíceis de identificar durante as respostas. <str>Dicas de complicação</str> aparecem quando o sistema detecta que você já julgou o caso irmão, e um <str>aviso anti-gaming</str> é acionado quando várias respostas seguidas são suspeitosamente uniformes.',
+        'Avalie cada ato um a um. A ordem de apresentação é embaralhada para que os pares espelhados sejam difíceis de identificar durante as respostas. <str>Dicas de complicação</str> aparecem quando o processo detecta que você já julgou o caso irmão, e um <str>aviso anti-gaming</str> é acionado quando várias respostas seguidas são suspeitosamente uniformes.',
       step4Label: 'Relatório',
       step4Desc:
         'Revise uma análise completa de consistência: quantos cenários foram julgados de forma coerente, onde apareceram contradições e se o <str>voto linear</str> (marcar tudo como aceitável ou ultrajante) prejudicou a validade da sessão.',

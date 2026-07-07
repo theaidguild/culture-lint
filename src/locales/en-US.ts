@@ -235,7 +235,7 @@ const enUS = {
       eyebrow: 'System documentation // overview',
       title: 'What is Culture Lint?',
       intro:
-        '<cl>Culture Lint</cl> is an application for stress-testing moral and social consistency. Its conceptual foundation comes directly from <str>Behavior-Driven Development (BDD)</str>: just as BDD asks teams to define behavior expectations before writing code — using concrete examples to expose ambiguity — <cl>Culture Lint</cl> asks users to define ethical principles before passing judgment, then uses <str>structurally identical scenarios</str> to expose inconsistencies in their own reasoning.',
+        '<cl>Culture Lint</cl> is an analytical framework for stress-testing moral and social consistency. Its conceptual foundation comes directly from <str>Behavior-Driven Development (BDD)</str>: just as BDD asks teams to define behavior expectations before writing code — using concrete examples to expose ambiguity — <cl>Culture Lint</cl> asks users to define ethical principles before passing judgment, then uses <str>structurally identical scenarios</str> to expose inconsistencies in their own reasoning.',
       calloutLabel: 'Important',
       calloutBody:
         '<str>Judging is not condemning.</str> In everyday language, "to judge" has taken on a negative connotation because people intuitively conflate it with passing a sentence — as if to judge someone is to punish them. That is not what judgment means here. Judgment is a cognitive act: the act of forming an evaluation. Every time you decide whether something is fair, reasonable, or acceptable, you are judging. You cannot opt out of it. <cl>Culture Lint</cl> does not ask you to condemn anyone; it asks you to notice whether you are applying the same evaluation criteria to structurally identical situations. The only thing being scrutinized is <em>consistency — not character</em>.',
@@ -243,16 +243,16 @@ const enUS = {
         'The core insight is that <str>cultural and moral double standards</str> behave a lot like software bugs: they are invisible until you run the right test. <cl>Culture Lint</cl> runs that test. Instead of linting source code, it lints <str>decision patterns</str>.',
       engineBody:
         'The engine generates a batch of <str>paired case studies</str>. Each pair is structurally identical — same action, same context, same institutional setting — but with <str>swapped subject identities</str> (e.g. different religions, genders, or political affiliations). The user judges each case in isolation, without knowing how the pairs are connected. After all verdicts are in, the linting engine compares them. Any scenario where the user gave different verdicts to structurally equivalent acts is flagged as a <str>contradiction</str> — evidence of an identity-based double standard.',
-      wizardIntro: 'The four-step wizard walks through the full loop:',
+      wizardIntro: 'The four-step flow walks through the full loop:',
       step1Label: 'Configure',
       step1Desc:
         'Select a country context, one or more ethical principles (e.g. equality, religious freedom, transparency), and the number of scenarios to generate.',
       step2Label: 'Generate',
       step2Desc:
-        'The system drafts and refines the paired case studies, streaming progress back to the UI in real time.',
+        'Culture Lint drafts and refines the paired case studies, streaming progress back to the UI in real time.',
       step3Label: 'Judge',
       step3Desc:
-        'Evaluate each act one at a time. The presentation order is shuffled so mirrored pairs are hard to notice while answering. <str>Complication hints</str> appear when the system detects you already judged the sibling case, and an <str>anti-gaming warning</str> fires when your last several answers are suspiciously uniform.',
+        'Evaluate each act one at a time. The presentation order is shuffled so mirrored pairs are hard to notice while answering. <str>Complication hints</str> appear when the process detects you already judged the sibling case, and an <str>anti-gaming warning</str> fires when your last several answers are suspiciously uniform.',
       step4Label: 'Report',
       step4Desc:
         "Review a full consistency analysis: how many scenarios were judged consistently, where contradictions appeared, and whether <str>flat-line voting</str> (marking everything acceptable or outrageous) undermined the session's validity.",
