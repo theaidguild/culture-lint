@@ -1,6 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
 @import 'tailwindcss';
 
+@theme {
+  --animate-glow-pulse: iconGlowPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes iconGlowPulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.75)); }
+  50%       { filter: drop-shadow(0 0 24px rgba(0, 240, 255, 1)) drop-shadow(0 0 8px rgba(0, 240, 255, 0.8)); }
+}
+
+@layer utilities {
+  .animate-glow-pulse {
+    animation: iconGlowPulse 2.4s ease-in-out infinite;
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
 :root {
   color-scheme: dark;
   font-family: 'Rajdhani', 'Segoe UI', sans-serif;

@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
 import {
   CheckCircle2,
-  Flame,
   Globe,
   Layers,
   Play,
   RotateCcw,
   Settings2,
-  Sparkles,
+  Scale,
   X,
   Zap,
 } from 'lucide-react'
 import {
-  getCachedRunpodModels,
-  MODEL_PRESETS,
   resolveSafeModelId,
   resolveSafeScenarioCount,
   SUPPORTED_COUNTRIES,
@@ -42,6 +38,7 @@ import { SessionResultStep } from './SessionResultStep'
 interface AIScenarioStepProps {
   principles: Principle[]
   onStepChange?: (step: AIHeaderStep) => void
+  onHasFailures?: (value: boolean) => void
 }
 
 type AIScreenState = 'setup' | 'generating' | 'generated' | 'judging' | 'results'
@@ -83,19 +80,6 @@ function debugLog(message: string, meta?: Record<string, unknown>) {
   console.debug(`${AI_DEBUG_PREFIX} ${message}`)
 }
 
-const parsePrinciplesParam = (raw: string | null): string[] =>
-  raw
-    ? raw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : []
-
-const parseCountParam = (raw: string | null): number => {
-  const parsed = raw ? Number.parseInt(raw, 10) : NaN
-  return (ALLOWED_COUNTS as readonly number[]).includes(parsed) ? parsed : DEFAULT_COUNT
-}
-
 const normalizeGenerationStage = (
   stage?: GenerationUiStage
 ): (typeof GENERATION_STAGE_ORDER)[number] => {
@@ -104,29 +88,14 @@ const normalizeGenerationStage = (
   return 'preparing'
 }
 
-export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps) {
+export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
-  const [searchParams, setSearchParams] = useSearchParams()
   const defaultModelId = useMemo(() => suggestDefaultModelId(), [])
 
-  // Setup form state, hydrated from URL params (and pushed back on change).
-  const [selectedCountry, setSelectedCountry] = useState(
-    () => searchParams.get('country') || DEFAULT_COUNTRY
-  )
-  const [selectedPrincipleIds, setSelectedPrincipleIds] = useState<string[]>(() => {
-    const fromUrl = parsePrinciplesParam(searchParams.get('principles'))
-    return fromUrl.length > 0 ? fromUrl : ['equality']
-  })
-  const [caseCount, setCaseCount] = useState<number>(() =>
-    parseCountParam(searchParams.get('count'))
-  )
-  const [modelId, setModelId] = useState<ModelPresetId>(() => {
-    const fromUrl = searchParams.get('model')
-    if (fromUrl && fromUrl in MODEL_PRESETS) {
-      return fromUrl as ModelPresetId
-    }
-    return defaultModelId
-  })
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY)
+  const [selectedPrincipleIds, setSelectedPrincipleIds] = useState<string[]>(['equality'])
+  const [caseCount, setCaseCount] = useState<number>(DEFAULT_COUNT)
+  const [modelId] = useState<ModelPresetId>(defaultModelId)
 
   const [screenState, setScreenState] = useState<AIScreenState>('setup')
   const [scenarios, setScenarios] = useState<ScenarioPreset[]>([])
@@ -138,7 +107,6 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
     uiStage: 'preparing',
   })
   const [isCancelling, setIsCancelling] = useState(false)
-  const [detectedServerModel, setDetectedServerModel] = useState<string | null>(null)
 
   const [judgmentSequence, setJudgmentSequence] = useState<JudgmentItem[]>([])
   const [answers, setAnswers] = useState<Record<string, JudgmentVerdict>>({})
@@ -160,21 +128,6 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
     return [principles[0].id]
   }, [selectedPrincipleIds, principles])
 
-  // Round-trip form state to the URL so the setup is deep-linkable.
-  useEffect(() => {
-    const next = new URLSearchParams(searchParams)
-    next.set('country', selectedCountry)
-    next.set('principles', selectedPrinciples.join(','))
-    next.set('count', String(caseCount))
-    if (modelId !== defaultModelId) {
-      next.set('model', modelId)
-    } else {
-      next.delete('model')
-    }
-    setSearchParams(next, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCountry, selectedPrinciples, caseCount, modelId, defaultModelId])
-
   useEffect(() => {
     return () => {
       if (analysisTimeoutRef.current) window.clearTimeout(analysisTimeoutRef.current)
@@ -186,22 +139,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
   }, [])
 
   useEffect(() => {
-    let cancelled = false
 
-    getCachedRunpodModels()
-      .then((models) => {
-        if (!cancelled) setDetectedServerModel(models[0] ?? null)
-      })
-      .catch(() => {
-        if (!cancelled) setDetectedServerModel(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
     if (!onStepChange) return
 
     const stepByState: Record<AIScreenState, AIHeaderStep> = {
@@ -214,6 +152,10 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
 
     onStepChange(stepByState[screenState])
   }, [onStepChange, screenState])
+
+  useEffect(() => {
+    onHasFailures?.((sessionResult?.contradictionCount ?? 0) > 0)
+  }, [onHasFailures, sessionResult])
 
   const handleGenerate = async () => {
     setScreenState('generating')
@@ -437,7 +379,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-7 sm:px-6 md:py-12">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
-              <Sparkles size={20} />
+              <Scale size={20} />
             </span>
             <div className="flex-1">
               <p className="audit-panel-title">
@@ -468,7 +410,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             </div>
           )}
 
-          <div className="mt-8 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="mt-8 flex flex-col gap-5">
             <div className="audit-panel rounded-xl border border-[#263144] p-0 shadow-[0_0_35px_rgba(8,15,30,0.45)]">
               <div className="flex items-center justify-between border-b border-[#263144] px-4 py-3 sm:px-5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-cyan-300">
@@ -567,82 +509,21 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                   </div>
                 </div>
 
-                <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
-                  <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
-                    {t('aiScreen.modelLabel')}
-                  </label>
-                  <select
-                    value={modelId}
-                    onChange={(e) => {
-                      const nextModelId = e.target.value as ModelPresetId
-                      setModelId(nextModelId)
-                    }}
-                    className="w-full rounded border border-[#30363d] bg-[#0a0f19] px-3 py-2.5 font-mono text-xs text-slate-100 outline-none focus:border-cyan-400"
-                  >
-                    {Object.entries(MODEL_PRESETS).map(([presetId, modelName]) => (
-                      <option key={presetId} value={presetId}>
-                        {modelName}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-2 font-mono text-[10px] text-slate-400">
-                    {t('aiScreen.serverLabel')}{' '}
-                    <span className="text-slate-200">{detectedServerModel ?? 'n/a'}</span>
-                  </p>
-                </div>
               </div>
             </div>
 
-            <aside className="space-y-4 xl:sticky xl:top-6">
-              <div className="audit-panel rounded-xl border border-[#253142] p-4">
-                <div className="flex items-center justify-between border-b border-[#253142] pb-2">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300">
-                    {t('aiScreen.quickBriefing')}
-                  </p>
-                  <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-amber-300">
-                    monitor_online
-                  </span>
-                </div>
-                <div className="mt-3 space-y-2 rounded border border-[#253142] bg-[#0a0f19] p-3 font-mono text-[11px] text-slate-200">
-                  <p>
-                    {t('aiScreen.briefCountry')}:{' '}
-                    <span className="text-cyan-300">
-                      {SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountry)?.name}
-                    </span>
-                  </p>
-                  <p>
-                    {t('aiScreen.briefCases')}: <span className="text-cyan-300">{caseCount}</span>
-                  </p>
-                  <p>
-                    {t('aiScreen.briefPrinciples')}:{' '}
-                    <span className="text-cyan-300">{selectedPrinciples.length}</span>
-                  </p>
-                </div>
-
-                <div className="mt-4 flex gap-2 rounded border border-[#2f3545] bg-[#0f1422] p-2.5 font-mono text-[10px] text-amber-300">
-                  <Flame size={14} className="mt-0.5 shrink-0" />
-                  <p className="leading-relaxed">{t('aiScreen.unreleasedWarning')}</p>
-                </div>
-              </div>
-
-              <button
+            <button
                 type="button"
                 onClick={handleGenerate}
                 className="audit-primary-btn w-full select-none rounded-xl border border-cyan-300/60 bg-cyan-400 py-4 font-mono text-xs font-black text-[#071018] transition duration-300 hover:-translate-y-0.5 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:transform-none disabled:bg-cyan-500/40 disabled:text-slate-200 disabled:shadow-none"
               >
                 <span className="inline-flex items-center justify-center gap-2.5">
-                  <Sparkles size={16} />
+                  <Scale size={16} />
                   {t('aiScreen.generateBtn')}
                 </span>
               </button>
-            </aside>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-2 rounded border border-[#263144] bg-[#090d15] px-3 py-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500 sm:grid-cols-3">
-            <span>diag_id: AX-774</span>
-            <span>queue: {t('aiScreen.queueStable')}</span>
-            <span className="text-amber-300">state: {t('aiScreen.stateAwaiting')}</span>
-          </div>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { RouteErrorBoundary } from './components/RouteErrorBoundary'
 import Root from './Root'
 
 const AIPage = lazy(() => import('./pages/AIPage.tsx'))
+const AboutPage = lazy(() => import('./pages/AboutPage.tsx'))
 
 export const router = createBrowserRouter(
   [
@@ -19,6 +20,10 @@ export const router = createBrowserRouter(
             {
               index: true,
               element: createElement(Suspense, { fallback: null }, createElement(AIPage)),
+            },
+            {
+              path: 'about',
+              element: createElement(Suspense, { fallback: null }, createElement(AboutPage)),
             },
             { path: '*', element: createElement(Navigate, { to: '/', replace: true }) },
           ],

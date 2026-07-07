@@ -1,16 +1,36 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, useSearchParams } from 'react-router-dom'
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import BootScreen from './components/BootScreen.tsx'
 
 const DEBUG_TRACE_KEY = 'culture-lint:debug-trace'
+const BOOT_TIMESTAMP_KEY = 'culture-lint:last-boot'
+const BOOT_COOLDOWN_MS = 15 * 60 * 1000
+
+const isBootFresh = () => {
+  try {
+    const last = localStorage.getItem(BOOT_TIMESTAMP_KEY)
+    return last !== null && Date.now() - parseInt(last, 10) < BOOT_COOLDOWN_MS
+  } catch {
+    return false
+  }
+}
+
+const markBootSeen = () => {
+  try {
+    localStorage.setItem(BOOT_TIMESTAMP_KEY, String(Date.now()))
+  } catch {
+    // ignore – storage may be unavailable
+  }
+}
 
 export function Root() {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
-  const isBootDisabled = searchParams.get('boot') === 'false'
+  const { pathname } = useLocation()
+  const isBootDisabled = searchParams.get('boot') === 'false' || pathname === '/about'
   const isDebugVisible = searchParams.get('debug') === '1'
-  const [isBootComplete, setIsBootComplete] = useState(false)
+  const [isBootComplete, setIsBootComplete] = useState(() => isBootFresh())
   const [debugTrace, setDebugTrace] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -59,7 +79,7 @@ export function Root() {
         </div>
       )}
       {!isBootComplete && !isBootDisabled && (
-        <BootScreen onComplete={() => setIsBootComplete(true)} />
+        <BootScreen onComplete={() => { markBootSeen(); setIsBootComplete(true) }} />
       )}
     </>
   )

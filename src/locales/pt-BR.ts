@@ -230,6 +230,43 @@ const ptBR = {
     },
     sidebar: {
       sparklesTitle: 'Gerador de Polêmicas por IA',
+      aboutTitle: 'Sobre',
+    },
+    about: {
+      eyebrow: 'Documentação do sistema // visão geral',
+      title: 'O que é o Culture Lint?',
+      intro:
+        '<cl>Culture Lint</cl> é um aplicativo para testar a consistência moral e social. Sua base conceitual vem diretamente do <str>Desenvolvimento Orientado a Comportamento (BDD)</str>: assim como o BDD pede que equipes definam expectativas de comportamento antes de escrever código — usando exemplos concretos para eliminar ambiguidade — o <cl>Culture Lint</cl> pede que os usuários definam princípios éticos antes de julgar, e então usa <str>cenários estruturalmente idênticos</str> para revelar inconsistências no raciocínio.',
+      calloutLabel: 'Importante',
+      calloutBody:
+        '<str>Julgar não é condenar.</str> No uso cotidiano, \"julgar\" ganhou uma conotação negativa porque as pessoas confundem isso com proferir uma sentença — como se julgar alguém fosse puni-lo. Não é isso que julgamento significa aqui. Julgamento é um ato cognitivo: o ato de formar uma avaliação. Toda vez que você decide se algo é justo, razoável ou aceitável, você está julgando. Não é possível se recusar a fazer isso. O <cl>Culture Lint</cl> não pede que você condene ninguém; ele pede que você perceba se está aplicando os mesmos critérios de avaliação a situações estruturalmente idênticas. A única coisa que está sendo examinada é <em>consistência — não caráter</em>.',
+      insightBody:
+        'A percepção central é que <str>duplos padrões culturais e morais</str> se comportam como bugs de software: são invisíveis até que o teste certo seja executado. O <cl>Culture Lint</cl> executa esse teste. Em vez de analisar código-fonte, ele analisa <str>padrões de decisão</str>.',
+      engineBody:
+        'O motor gera um conjunto de <str>estudos de caso pareados</str>. Cada par é estruturalmente idêntico — mesma ação, mesmo contexto, mesmo ambiente institucional — mas com <str>identidades dos sujeitos trocadas</str> (ex.: diferentes religiões, gêneros ou afiliações políticas). O usuário avalia cada caso isoladamente, sem saber como os pares se conectam. Depois que todos os vereditos são dados, o motor de análise os compara. Qualquer cenário em que o usuário deu vereditos diferentes para atos estruturalmente equivalentes é sinalizado como uma <str>contradição</str> — evidência de um duplo padrão baseado em identidade.',
+      wizardIntro: 'O assistente de quatro etapas percorre o ciclo completo:',
+      step1Label: 'Configurar',
+      step1Desc:
+        'Selecione um país, um ou mais princípios éticos (ex.: igualdade, liberdade religiosa, transparência) e o número de cenários a gerar.',
+      step2Label: 'Gerar',
+      step2Desc:
+        'O sistema elabora e refina os estudos de caso pareados, transmitindo o progresso para a interface em tempo real.',
+      step3Label: 'Julgar',
+      step3Desc:
+        'Avalie cada ato um a um. A ordem de apresentação é embaralhada para que os pares espelhados sejam difíceis de identificar durante as respostas. <str>Dicas de complicação</str> aparecem quando o sistema detecta que você já julgou o caso irmão, e um <str>aviso anti-gaming</str> é acionado quando várias respostas seguidas são suspeitosamente uniformes.',
+      step4Label: 'Relatório',
+      step4Desc:
+        'Revise uma análise completa de consistência: quantos cenários foram julgados de forma coerente, onde apareceram contradições e se o <str>voto linear</str> (marcar tudo como aceitável ou ultrajante) prejudicou a validade da sessão.',
+      whyTitle: 'Mas por quê?',
+      whyPara1:
+        'A maior parte dos debates públicos sobre ética, política e comportamento social não é realmente sobre princípios — é sobre tribos. As pessoas raramente perguntam \"eu aceitaria isso se o outro lado fizesse?\" Elas não precisam, porque a conversa nunca força a comparação.',
+      whyForces: 'O <cl>Culture Lint</cl> força essa comparação.',
+      whyMotivation:
+        'A motivação é simples: <str>consistência é o critério mínimo de justiça</str>. Não é preciso concordar sobre quais princípios são mais importantes. Não é preciso chegar a um consenso sobre temas polêmicos. Basta aplicar o mesmo padrão a situações estruturalmente idênticas, independentemente de quem está envolvido. Se você não consegue fazer isso, não tem um princípio — tem uma preferência disfarada de princípio.',
+      whyBdd:
+        'O paralelo com o BDD é intencional e não apenas cosmético. No software, comportamento indefinido é o tipo mais perigoso: o sistema parece funcionar até que não funciona mais, e aí o estrago já está feito. No raciocínio social, comportamento indefinido se parece com \"eu vou saber quando ver\" — um julgamento que produz resultados diferentes para a mesma entrada dependendo de um contexto que você não admite ser irrelevante. A resposta do BDD ao comportamento indefinido é escrever a especificação primeiro, em exemplos concretos e sem ambiguidade, e depois verificar se o sistema realmente a satisfaz. O <cl>Culture Lint</cl> aplica a mesma disciplina ao julgamento moral: comprometa-se com um princípio, depois execute os cenários.',
+      whyGoal:
+        'O objetivo não é envergonhar ninguém. Contradições não são prova de maldade — são prova de humanidade. Todos carregamos pontos cegos moldados pela experiência, pela identidade e pelas informações a que fomos expostos. O propósito de revelá-los é o mesmo que o de um teste com falha: não punir o desenvolvedor, mas tornar visível a lacuna entre intenção e comportamento para que ela possa ser corrigida.',
     },
     footer: {
       idLabel: 'ID',

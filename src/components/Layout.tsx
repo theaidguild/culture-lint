@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 
 export function Layout() {
   const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const showFooter = pathname !== '/about'
 
   return (
     <main className="safe-screen min-h-dvh overflow-x-clip bg-[#0a0c10] text-slate-100 selection:bg-cyan-400/30">
@@ -15,6 +17,7 @@ export function Layout() {
           <Outlet />
         </section>
       </div>
+      {showFooter && (
       <footer className="pointer-events-none fixed inset-x-0 bottom-[4.6rem] z-10 border-t border-[#1c2230] bg-[#070a12]/85 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500 md:bottom-0 md:px-5">
         <div className="flex items-center justify-between">
           <span>{t('footer.idLabel')}: Proto-X-2026-07</span>
@@ -22,6 +25,7 @@ export function Layout() {
           <span className="text-amber-400">{t('footer.classification')}</span>
         </div>
       </footer>
+      )}
     </main>
   )
 }

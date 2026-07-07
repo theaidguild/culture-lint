@@ -7,6 +7,7 @@ import { type Principle } from '../types/linter'
 export function AIPage() {
   const { t } = useTranslation()
   const [step, setStep] = useState<AIHeaderStep>(1)
+  const [hasFailures, setHasFailures] = useState(false)
 
   const principles = useMemo<Principle[]>(
     () => [
@@ -81,8 +82,8 @@ export function AIPage() {
 
   return (
     <>
-      <TopBar progressItems={progressItems} step={step} hasFailures={false} />
-      <AIScenarioStep principles={principles} onStepChange={setStep} />
+      <TopBar progressItems={progressItems} step={step} hasFailures={hasFailures} />
+      <AIScenarioStep principles={principles} onStepChange={setStep} onHasFailures={setHasFailures} />
     </>
   )
 }
