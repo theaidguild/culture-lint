@@ -101,7 +101,6 @@ export function SessionResultStep({
   onNewSeedRun,
 }: SessionResultStepProps) {
   const { t } = useTranslation()
-  const isPt = t('language.ptBR') === 'PT-BR'
   const hasContradictions = session.contradictionCount > 0
   const totalJudgments = Math.max(1, session.judgments.length)
   const consistencyScore = Math.max(
@@ -206,33 +205,33 @@ export function SessionResultStep({
           <div className="mt-3 flex items-center gap-3 font-mono">
             <span className="text-5xl font-black text-cyan-300 sm:text-6xl">{consistencyScore}%</span>
             <span className="text-xs uppercase tracking-[0.16em] text-cyan-200">
-              status: {hasContradictions ? (isPt ? 'parcial' : 'partial') : isPt ? 'estavel' : 'stable'}
+              status: {hasContradictions ? t('sessionResult.statusPartial') : t('sessionResult.statusStable')}
             </span>
           </div>
         </div>
 
         <div className="audit-panel rounded-lg p-4 font-mono">
           <div className="text-[9px] uppercase tracking-[0.18em] text-slate-500">
-            {isPt ? 'resumo da auditoria' : 'audit summary'}
+            {t('sessionResult.auditSummary')}
           </div>
           <ul className="mt-3 space-y-1.5 text-[11px] text-slate-200">
-            <li>• {isPt ? 'Dilemas Processados' : 'Dilemmas Processed'}: {session.judgments.length}</li>
-            <li>• {isPt ? 'Principios Selados' : 'Principles Sealed'}: {session.principleRanking.length}</li>
-            <li className="text-amber-300">• {isPt ? 'Divergencias' : 'Divergences'}: {session.contradictionCount}</li>
+            <li>• {t('sessionResult.dilemmasProcessed')}: {session.judgments.length}</li>
+            <li>• {t('sessionResult.principlesSealed')}: {session.principleRanking.length}</li>
+            <li className="text-amber-300">• {t('sessionResult.divergences')}: {session.contradictionCount}</li>
           </ul>
         </div>
 
         <div className="space-y-3">
           <div className="text-right">
             <span className="rounded border border-amber-500/60 bg-amber-500/10 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-amber-300">
-              {isPt ? 'arquivo selado' : 'sealed archive'}
+              {t('sessionResult.sealedArchive')}
             </span>
           </div>
           <button
             type="button"
             className="w-full rounded border border-[#6b7788] bg-[#8494a8] px-3 py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] text-[#0b111a] transition hover:bg-[#94a3b8]"
           >
-            {isPt ? 'exportar dossie' : 'export dossier'}
+            {t('sessionResult.exportDossier')}
           </button>
         </div>
       </section>
@@ -270,12 +269,12 @@ export function SessionResultStep({
       <section className="mt-8 rounded border border-amber-600/70 bg-[#1b1408]">
         <header className="flex items-center justify-between border-b border-amber-600/70 bg-amber-500/90 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[#111]">
           <span>inconsistency_log.diff</span>
-          <span>{isPt ? 'deteccao de contradicoes' : 'contradiction detection'}</span>
+          <span>{t('sessionResult.contradictionDetection')}</span>
         </header>
         <div className="space-y-3 p-3">
           {contradictionEntries.length === 0 ? (
             <div className="rounded border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 font-mono text-xs text-emerald-300">
-              {isPt ? 'Nenhuma divergencia encontrada nesta rodada.' : 'No divergence entries found in this round.'}
+              {t('sessionResult.noDivergences')}
             </div>
           ) : (
             contradictionEntries.slice(0, 3).map((judgment, logIndex) => (
@@ -287,7 +286,7 @@ export function SessionResultStep({
                   log_entry #{String(logIndex + 1).padStart(2, '0')} // conflito de vetor
                 </p>
                 <p className="mt-1 leading-6">
-                  [DIFF] {isPt ? 'No caso' : 'Case'} {logIndex + 1} // {judgment.scenario.title}. {isPt ? 'Principio afetado' : 'Impacted principle'}:{' '}
+                  [DIFF] {t('sessionResult.diffCase', { count: logIndex + 1 })} // {judgment.scenario.title}. {t('sessionResult.diffPrinciple')}:{' '}
                   <span className="font-bold text-cyan-300">{formatPrincipleLabel(
                     principles.find((p) => p.id === judgment.scenario.principleId)?.label ?? judgment.scenario.principleId
                   )}</span>

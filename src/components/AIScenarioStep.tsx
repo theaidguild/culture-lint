@@ -106,7 +106,6 @@ const normalizeGenerationStage = (
 
 export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps) {
   const { t, i18n } = useTranslation()
-  const isPt = i18n.language === 'pt-BR'
   const [searchParams, setSearchParams] = useSearchParams()
   const defaultModelId = useMemo(() => suggestDefaultModelId(), [])
 
@@ -345,14 +344,11 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
       const customComp = (currentItem as { complications?: Record<string, string> })
         .complications?.[`if${verdictCapitalized}`]
       if (customComp) return customComp
-      return isPt
-        ? `Você julgou o ato simétrico anterior como ${
-            verdictCapitalized === 'Acceptable' ? 'ACEITÁVEL' : 'ULTRAJANTE'
-          }. Como consequência, a IA injetou volatilidade: permissões subsequentes enfraquecem regras universais.`
-        : `You judged the previous symmetric act as ${verdictCapitalized.toUpperCase()}. The compiler injected volatility: subsequent tolerances weaken universal resilience.`
+      const verdictText = siblingVerdict === 'ACCEPTABLE' ? t('judge.acceptable') : t('judge.outrageous')
+      return t('judge.complicationFeedback', { verdict: verdictText })
     }
     return undefined
-  }, [currentIndex, judgmentSequence, answers, isPt])
+  }, [currentIndex, judgmentSequence, answers, t])
 
   const activeAntiGamingWarning = useMemo(() => {
     if (currentIndex < 3) return undefined
@@ -445,7 +441,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             </span>
             <div className="flex-1">
               <p className="audit-panel-title">
-                {isPt ? 'Protocolo de auditoria moral // fase de configuracao' : 'Moral audit protocol // setup phase'}
+                {t('aiScreen.setupEyebrow')}
               </p>
               <h1 className="text-2xl font-black tracking-tight text-white md:text-3xl">
                 {t('aiScreen.title')}
@@ -476,10 +472,10 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
             <div className="audit-panel rounded-xl border border-[#263144] p-0 shadow-[0_0_35px_rgba(8,15,30,0.45)]">
               <div className="flex items-center justify-between border-b border-[#263144] px-4 py-3 sm:px-5">
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-cyan-300">
-                  {isPt ? 'parametros_da_simulacao' : 'simulation_parameters'}
+                  {t('aiScreen.simulationParameters')}
                 </p>
                 <span className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-300">
-                  {isPt ? 'status: pronto' : 'status: ready'}
+                  {t('aiScreen.statusReady')}
                 </span>
               </div>
 
@@ -511,7 +507,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                       {t('aiScreen.principleLabel')}
                     </label>
                     <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500">
-                      {selectedPrinciples.length} {isPt ? 'ativos' : 'active'}
+                      {selectedPrinciples.length} {t('aiScreen.activeCount')}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
@@ -564,7 +560,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                       >
                         <span className="block text-xl font-black leading-none">{cases}</span>
                         <span className="mt-1 block text-[9px] uppercase tracking-[0.16em]">
-                          {isPt ? 'casos' : 'cases'}
+                          {t('aiScreen.countCases')}
                         </span>
                       </button>
                     ))}
@@ -573,7 +569,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
 
                 <div className="rounded border border-[#253142] bg-[#0b1220] p-3">
                   <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
-                    {isPt ? 'modelo' : 'model'}
+                    {t('aiScreen.modelLabel')}
                   </label>
                   <select
                     value={modelId}
@@ -590,7 +586,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                     ))}
                   </select>
                   <p className="mt-2 font-mono text-[10px] text-slate-400">
-                    {isPt ? 'Servidor:' : 'Server:'}{' '}
+                    {t('aiScreen.serverLabel')}{' '}
                     <span className="text-slate-200">{detectedServerModel ?? 'n/a'}</span>
                   </p>
                 </div>
@@ -601,7 +597,7 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
               <div className="audit-panel rounded-xl border border-[#253142] p-4">
                 <div className="flex items-center justify-between border-b border-[#253142] pb-2">
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300">
-                    {isPt ? 'briefing_rapido' : 'quick_briefing'}
+                    {t('aiScreen.quickBriefing')}
                   </p>
                   <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-amber-300">
                     monitor_online
@@ -609,16 +605,16 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
                 </div>
                 <div className="mt-3 space-y-2 rounded border border-[#253142] bg-[#0a0f19] p-3 font-mono text-[11px] text-slate-200">
                   <p>
-                    {isPt ? 'Pais' : 'Country'}:{' '}
+                    {t('aiScreen.briefCountry')}:{' '}
                     <span className="text-cyan-300">
                       {SUPPORTED_COUNTRIES.find((c) => c.code === selectedCountry)?.name}
                     </span>
                   </p>
                   <p>
-                    {isPt ? 'Casos' : 'Cases'}: <span className="text-cyan-300">{caseCount}</span>
+                    {t('aiScreen.briefCases')}: <span className="text-cyan-300">{caseCount}</span>
                   </p>
                   <p>
-                    {isPt ? 'Principios' : 'Principles'}:{' '}
+                    {t('aiScreen.briefPrinciples')}:{' '}
                     <span className="text-cyan-300">{selectedPrinciples.length}</span>
                   </p>
                 </div>
@@ -644,8 +640,8 @@ export function AIScenarioStep({ principles, onStepChange }: AIScenarioStepProps
 
           <div className="mt-5 grid grid-cols-1 gap-2 rounded border border-[#263144] bg-[#090d15] px-3 py-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500 sm:grid-cols-3">
             <span>diag_id: AX-774</span>
-            <span>queue: {isPt ? 'estavel' : 'stable'}</span>
-            <span className="text-amber-300">state: awaiting_generation</span>
+            <span>queue: {t('aiScreen.queueStable')}</span>
+            <span className="text-amber-300">state: {t('aiScreen.stateAwaiting')}</span>
           </div>
         </div>
       )}

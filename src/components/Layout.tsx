@@ -1,7 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 
 export function Layout() {
+  const { t } = useTranslation()
+
   return (
     <main className="safe-screen min-h-dvh overflow-x-clip bg-[#0a0c10] text-slate-100 selection:bg-cyan-400/30">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,240,255,0.08),transparent_34%),linear-gradient(90deg,rgba(88,166,255,0.04)_1px,transparent_1px),linear-gradient(rgba(88,166,255,0.04)_1px,transparent_1px)] bg-[size:auto,44px_44px,44px_44px] opacity-70 sm:opacity-100" />
@@ -14,9 +17,9 @@ export function Layout() {
       </div>
       <footer className="pointer-events-none fixed inset-x-0 bottom-[4.6rem] z-10 border-t border-[#1c2230] bg-[#070a12]/85 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500 md:bottom-0 md:px-5">
         <div className="flex items-center justify-between">
-          <span>ID: Proto-X-2026-07</span>
-          <span>Timestamp: 23:55:122</span>
-          <span className="text-amber-400">Classificacao: Pendente</span>
+          <span>{t('footer.idLabel')}: Proto-X-2026-07</span>
+          <span>{t('footer.timestampLabel')}: 23:55:122</span>
+          <span className="text-amber-400">{t('footer.classification')}</span>
         </div>
       </footer>
     </main>

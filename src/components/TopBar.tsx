@@ -17,7 +17,6 @@ interface TopBarProps {
 
 export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
   const { t, i18n } = useTranslation()
-  const isPt = i18n.language === 'pt-BR'
 
   return (
     <header className="compact-header border-b border-[#21262d] bg-[#04070f]/94 px-4 py-2.5 text-sm text-slate-400 backdrop-blur sm:px-5 lg:px-9">
@@ -28,7 +27,7 @@ export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
           </span>
           <div className="min-w-0">
             <span className="block truncate font-mono text-[10px] uppercase tracking-[0.2em] text-cyan-300/80">
-              {isPt ? 'Moral Audit Protocol' : 'Moral Audit Protocol'}
+              {t('topbar.auditProtocol')}
             </span>
             <span className="block truncate text-xs font-semibold sm:text-sm">{t('appName')}</span>
           </div>
@@ -91,7 +90,7 @@ export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
         <span>session: AX-774</span>
         <span>
           {t('topbar.stepCounter', { step, total: TOTAL_STEPS })} //{' '}
-          {isPt ? 'protocolo ativo' : 'protocol active'}
+          {t('topbar.protocolActive')}
         </span>
         <span className="inline-flex items-center gap-1.5 text-cyan-300">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />

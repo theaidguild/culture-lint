@@ -34,19 +34,18 @@ const STAGE_TIMINGS = prefersReducedMotion
       lineStagger: 150,
     }
 
-const BOOT_LOG_LINES = [
-  { text: 'STAGING ENCRYPTION KEYS', state: '[OK]', tone: 'ok' },
-  { text: 'MOUNTING ETHICAL_DATABASE.VLT', state: '[OK]', tone: 'ok' },
-  { text: 'INITIALIZING JUDGMENT_ENGINE.V4.2', state: '[OK]', tone: 'ok' },
-  { text: 'SCANNING MORAL VECTORS', state: '[OK]', tone: 'ok' },
-  { text: 'BYPASSING COGNITIVE SAFEGUARDS', state: '[WARNING]', tone: 'warn' },
-  { text: 'ESTABLISHING SECURE COMM-LINK', state: '[OK]', tone: 'ok' },
-  { text: 'LOADING CULTURE-LINT PROTOCOLS...', state: '', tone: 'info' },
+const BOOT_LOG_LINES_CONFIG = [
+  { textKey: 'boot.logLines.stagingKeys', stateKey: 'boot.states.ok', tone: 'ok' },
+  { textKey: 'boot.logLines.mountingDb', stateKey: 'boot.states.ok', tone: 'ok' },
+  { textKey: 'boot.logLines.initEngine', stateKey: 'boot.states.ok', tone: 'ok' },
+  { textKey: 'boot.logLines.scanningVectors', stateKey: 'boot.states.ok', tone: 'ok' },
+  { textKey: 'boot.logLines.bypassingSafeguards', stateKey: 'boot.states.warning', tone: 'warn' },
+  { textKey: 'boot.logLines.establishingCommlink', stateKey: 'boot.states.ok', tone: 'ok' },
+  { textKey: 'boot.logLines.loadingProtocols', stateKey: '', tone: 'info' },
 ] as const
 
 export function BootScreen({ onComplete }: { onComplete: () => void }) {
-  const { i18n } = useTranslation()
-  const isPt = i18n.language === 'pt-BR'
+  const { t } = useTranslation()
   const [isFadingOut, setIsFadingOut] = useState(false)
   const [percent, setPercent] = useState(0)
 
@@ -120,7 +119,7 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
     <div
       role="status"
       aria-live="polite"
-      aria-label={isPt ? 'Inicializacao do sistema Culture-Lint' : 'Culture-Lint system boot sequence'}
+      aria-label={t('boot.ariaLabel')}
       style={bootStyle}
       onTransitionEnd={(e) => {
         if (e.target === e.currentTarget && e.propertyName === 'opacity') {
@@ -147,7 +146,7 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
             <p>TS: 2026.01.24.04:12</p>
           </div>
           <div className="space-y-2 text-right">
-            <p>{isPt ? 'CONEXAO: SEGURA' : 'CONNECTION: SECURE'}</p>
+            <p>{t('boot.connection')}</p>
             <p>BITRATE: 1.2 GBPS</p>
           </div>
         </div>
@@ -175,20 +174,20 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
               />
             </div>
             <p className="mt-3 font-mono text-xs uppercase tracking-[0.16em] text-cyan-300/90">
-              {isPt ? `INICIALIZANDO SISTEMAS CENTRAIS: ${percent}%` : `INITIALIZING CORE SYSTEMS: ${percent}%`}
+              {t('boot.initCoreSystems', { percent })}
             </p>
           </div>
 
           <div className="boot-log mx-auto mt-10 w-[min(92vw,560px)] transform-gpu rounded border border-cyan-400/35 bg-[#0a1220]/70 px-5 py-4 text-left font-mono text-[11px] text-slate-400">
-            {BOOT_LOG_LINES.map((line, index) => (
+            {BOOT_LOG_LINES_CONFIG.map((line, index) => (
               <p
-                key={`${line.text}-${index}`}
+                key={`${line.textKey}-${index}`}
                 className="boot-log-line mb-1 flex items-center gap-2"
                 style={{ '--line-index': index } as CSSProperties}
               >
                 <span className="text-slate-600">&gt;</span>
-                <span className="text-slate-500">{line.text}</span>
-                {line.state ? (
+                <span className="text-slate-500">{t(line.textKey)}</span>
+                {line.stateKey ? (
                   <span
                     className={
                       line.tone === 'warn'
@@ -198,7 +197,7 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
                           : 'font-bold text-slate-300'
                     }
                   >
-                    {line.state}
+                    {t(line.stateKey)}
                   </span>
                 ) : null}
               </p>
@@ -211,12 +210,12 @@ export function BootScreen({ onComplete }: { onComplete: () => void }) {
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 bg-cyan-300" />
-            <span>SYS: {isPt ? 'INICIALIZANDO' : 'INITIALIZING'}</span>
+            <span>SYS: {t('boot.sysStatus')}</span>
           </div>
           <span>ENCRYPTION: AES-256 ACTIVE</span>
           <span>USER: GUEST_ANONYMOUS</span>
-          <span className="text-cyan-300">CLEARANCE LEVEL: RESTRICTED</span>
-          <span className="rounded-sm bg-cyan-300 px-2 py-0.5 font-bold text-[#071018]">TOP SECRET</span>
+          <span className="text-cyan-300">{t('boot.clearanceLevel')}</span>
+          <span className="rounded-sm bg-cyan-300 px-2 py-0.5 font-bold text-[#071018]">{t('boot.topSecret')}</span>
         </div>
       </div>
     </div>

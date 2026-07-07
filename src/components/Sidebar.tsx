@@ -1,7 +1,9 @@
 import { ShieldCheck, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const navLink = (isActive: boolean) =>
     `grid h-11 w-11 place-items-center rounded-md transition ${
       isActive
@@ -25,7 +27,7 @@ export function Sidebar() {
         <div className="flex flex-1 flex-col gap-5">
           <NavLink
             to="/"
-            title="AI Controversy Generator"
+            title={t('sidebar.sparklesTitle')}
             className={({ isActive }) =>
               `${navLink(isActive)} ${isActive ? 'shadow-[0_0_12px_rgba(0,240,255,0.15)]' : ''}`
             }
