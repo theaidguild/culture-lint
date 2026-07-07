@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useNavigation } from 'react-router-dom'
 
 const TOTAL_STEPS = 4
 
@@ -17,6 +18,8 @@ interface TopBarProps {
 
 export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation()
+  const isNavigating = navigation.state !== 'idle'
 
   return (
     <header className="compact-header border-b border-[#21262d] bg-[#04070f]/94 px-4 py-2.5 text-sm text-slate-400 backdrop-blur sm:px-5 lg:px-9">
@@ -92,9 +95,18 @@ export function TopBar({ progressItems, step, hasFailures }: TopBarProps) {
           {t('topbar.stepCounter', { step, total: TOTAL_STEPS })} //{' '}
           {t('topbar.protocolActive')}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-cyan-300">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />
-          monitor_linked
+        <span
+          className={`inline-flex items-center gap-1.5 transition-opacity duration-120 ${
+            isNavigating ? 'text-amber-300 opacity-100' : 'text-cyan-300 opacity-90'
+          }`}
+          style={{ transitionDelay: isNavigating ? '120ms' : '0ms' }}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isNavigating ? 'animate-pulse bg-amber-300' : 'animate-pulse bg-cyan-300'
+            }`}
+          />
+          {isNavigating ? 'monitor_syncing' : 'monitor_linked'}
         </span>
       </div>
     </header>

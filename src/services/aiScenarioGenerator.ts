@@ -261,6 +261,8 @@ type LocalAIChatCompletionsResponse = {
 const AI_DEBUG_PREFIX = '[ai-debug][generator]'
 const DEFAULT_RUNPOD_BASE_PATH = '/api/runpod'
 const DEFAULT_RUNPOD_TIMEOUT_MS = 90000
+const GENERATION_PROGRESS_START = 35
+const GENERATION_PROGRESS_END = 80
 
 let runpodModelsCache: Promise<string[]> | null = null
 
@@ -959,6 +961,26 @@ function pickAvailableModel(requestedModel: string, availableModels: string[]): 
   return availableModels[0] ?? requestedModel
 }
 
+function calculateGenerationPercent(config: {
+  completed: number
+  total: number
+  attempt: number
+  maxAttempts: number
+}): number {
+  const total = Math.max(1, config.total)
+  const completedRatio = Math.min(1, Math.max(0, config.completed / total))
+  const attemptRatio =
+    config.maxAttempts > 1
+      ? Math.min(1, Math.max(0, (config.attempt - 1) / (config.maxAttempts - 1)))
+      : 1
+
+  const progressRatio = completedRatio * 0.75 + attemptRatio * 0.25
+  return Math.round(
+    GENERATION_PROGRESS_START +
+      (GENERATION_PROGRESS_END - GENERATION_PROGRESS_START) * progressRatio
+  )
+}
+
 function describePrincipleForPrompt(principleId: string, language: 'en-US' | 'pt-BR'): string {
   const isPt = language === 'pt-BR'
   const normalized = normalizeKey(principleId)
@@ -1061,7 +1083,7 @@ export async function generateAIScenariosWithRunpod(
 
   onProgress?.({
     phase: 'generating',
-    percent: 35,
+    percent: GENERATION_PROGRESS_START,
     label: tStatus(language, 'aiStatus.synthesizingScenarios', { count: generationCount }),
     uiStage: 'drafting',
     itemsCompleted: 0,
@@ -1070,26 +1092,111 @@ export async function generateAIScenariosWithRunpod(
 
   let parsed: RawScenario[] = []
   let lastContentPreview = ''
+  let latestGenerationPercent = GENERATION_PROGRESS_START
+  let heartbeatTimerId: number | undefined
+
+  const emitGenerationProgress = (config: {
+    attempt: number
+    uiStage: GenerationUiStage
+    label: string
+    itemsCompleted: number
+  }) => {
+    const computedPercent = calculateGenerationPercent({
+      completed: config.itemsCompleted,
+      total: generationCount,
+      attempt: config.attempt,
+      maxAttempts,
+    })
+
+    latestGenerationPercent = Math.min(
+      GENERATION_PROGRESS_END,
+      Math.max(latestGenerationPercent, computedPercent)
+    )
+
+    onProgress?.({
+      phase: 'generating',
+      percent: latestGenerationPercent,
+      label: config.label,
+      uiStage: config.uiStage,
+      itemsCompleted: config.itemsCompleted,
+      itemsTotal: generationCount,
+    })
+  }
+
+  const stopHeartbeat = () => {
+    if (heartbeatTimerId !== undefined) {
+      window.clearInterval(heartbeatTimerId)
+      heartbeatTimerId = undefined
+    }
+  }
+
+  const startHeartbeat = (config: {
+    attempt: number
+    uiStage: GenerationUiStage
+    label: string
+    itemsCompleted: number
+  }) => {
+    stopHeartbeat()
+
+    const heartbeatCap = Math.min(
+      GENERATION_PROGRESS_END - 1,
+      Math.max(
+        latestGenerationPercent + 1,
+        calculateGenerationPercent({
+          completed: Math.min(generationCount, config.itemsCompleted + 1),
+          total: generationCount,
+          attempt: config.attempt,
+          maxAttempts,
+        })
+      )
+    )
+
+    heartbeatTimerId = window.setInterval(() => {
+      if (latestGenerationPercent >= heartbeatCap) {
+        stopHeartbeat()
+        return
+      }
+
+      latestGenerationPercent = Math.min(heartbeatCap, latestGenerationPercent + 1)
+      onProgress?.({
+        phase: 'generating',
+        percent: latestGenerationPercent,
+        label: config.label,
+        uiStage: config.uiStage,
+        itemsCompleted: config.itemsCompleted,
+        itemsTotal: generationCount,
+      })
+    }, 1200)
+  }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const remainingCount = generationCount - parsed.length
     const missingQuotas = resolveMissingTopicQuotas(parsed, language, topicQuotas)
     if (remainingCount <= 0 && missingQuotas.length === 0) break
 
-    if (attempt > 1) {
-      onProgress?.({
-        phase: 'generating',
-        percent: 35,
-        label: tStatus(language, 'aiStatus.retryingScenario', {
-          current: attempt,
-          total: maxAttempts,
-          mode: tAcceptanceMode(language, resolveAcceptanceModeForAttempt(attempt)),
-        }),
-        uiStage: 'refining',
-        itemsCompleted: parsed.length,
-        itemsTotal: generationCount,
-      })
-    }
+    const progressStage = attempt > 1 ? 'refining' : 'drafting'
+    const progressLabel =
+      attempt > 1
+        ? tStatus(language, 'aiStatus.retryingScenario', {
+            current: attempt,
+            total: maxAttempts,
+            mode: tAcceptanceMode(language, resolveAcceptanceModeForAttempt(attempt)),
+          })
+        : tStatus(language, 'aiStatus.synthesizingScenarios', { count: generationCount })
+
+    emitGenerationProgress({
+      attempt,
+      uiStage: progressStage,
+      label: progressLabel,
+      itemsCompleted: parsed.length,
+    })
+
+    startHeartbeat({
+      attempt,
+      uiStage: progressStage,
+      label: progressLabel,
+      itemsCompleted: parsed.length,
+    })
 
     const requestedCountForAttempt =
       remainingCount > 0
@@ -1119,6 +1226,8 @@ export async function generateAIScenariosWithRunpod(
         }),
       },
       signal,
+    }).finally(() => {
+      stopHeartbeat()
     })
 
     const content = response.choices?.[0]?.message?.content ?? ''
@@ -1152,8 +1261,20 @@ export async function generateAIScenariosWithRunpod(
 
     if (merged.length > parsed.length) {
       parsed = merged
+
+      emitGenerationProgress({
+        attempt,
+        uiStage: attempt > 1 ? 'refining' : 'drafting',
+        label: tStatus(language, 'aiStatus.generatedScenarios', {
+          got: Math.min(generationCount, parsed.length),
+          total: generationCount,
+        }),
+        itemsCompleted: parsed.length,
+      })
     }
   }
+
+  stopHeartbeat()
 
   if (parsed.length === 0) {
     debugLog('runpod invalid/low-controversy response', {
