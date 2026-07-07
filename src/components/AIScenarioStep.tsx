@@ -506,6 +506,26 @@ export function AIScenarioStep({ principles, onStepChange, onHasFailures }: AISc
                       </button>
                     ))}
                   </div>
+                  {selectedPrinciples.length > 0 && (
+                    <p
+                      className={`mt-2 font-mono text-[10px] leading-snug ${
+                        caseCount < selectedPrinciples.length
+                          ? 'text-amber-400'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {caseCount < selectedPrinciples.length
+                        ? t('aiScreen.casesHintUnderCovered', {
+                            principleCount: selectedPrinciples.length,
+                          })
+                        : caseCount === selectedPrinciples.length
+                          ? t('aiScreen.casesHintSingle')
+                          : t('aiScreen.casesHintCoverage', {
+                              ratio: Math.floor(caseCount / selectedPrinciples.length),
+                              caseCount,
+                            })}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

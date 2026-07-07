@@ -118,6 +118,10 @@ const ptBR = {
       statusReady: 'status: pronto',
       activeCount: 'ativos',
       countCases: 'casos',
+      casesHintUnderCovered:
+        'Com {{principleCount}} princípios ativos, selecione pelo menos {{principleCount}} casos para todos aparecerem.',
+      casesHintCoverage: 'Cada princípio terá ~{{ratio}}x de cobertura nos {{caseCount}} casos.',
+      casesHintSingle: 'Cada princípio terá um caso. Adicione mais casos para cobertura repetida.',
       modelLabel: 'modelo',
       serverLabel: 'Servidor:',
       quickBriefing: 'briefing_rápido',

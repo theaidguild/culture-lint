@@ -118,6 +118,10 @@ const enUS = {
       statusReady: 'status: ready',
       activeCount: 'active',
       countCases: 'cases',
+      casesHintUnderCovered:
+        'With {{principleCount}} principles active, select at least {{principleCount}} cases so every principle appears.',
+      casesHintCoverage: 'Each principle gets ~{{ratio}}x coverage across the {{caseCount}} cases.',
+      casesHintSingle: 'Each principle gets one case. Add more cases for repeated coverage.',
       modelLabel: 'model',
       serverLabel: 'Server:',
       quickBriefing: 'quick_briefing',
