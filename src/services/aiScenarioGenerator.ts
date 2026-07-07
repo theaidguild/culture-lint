@@ -1014,11 +1014,20 @@ function describePrincipleForPrompt(principleId: string, language: 'en-US' | 'pt
   return principleId
 }
 
-function buildPrincipleListForPrompt(principleIds: string[], language: 'en-US' | 'pt-BR'): string {
-  const labels = principleIds.map((principleId) =>
-    describePrincipleForPrompt(principleId, language)
-  )
-  return labels.join(', ')
+function buildScenarioAssignmentList(config: {
+  principleIds: string[]
+  count: number
+  offset: number
+  language: 'en-US' | 'pt-BR'
+}): string {
+  const isPt = config.language === 'pt-BR'
+  const lines: string[] = []
+  for (let i = 0; i < config.count; i++) {
+    const principleId = config.principleIds[(config.offset + i) % config.principleIds.length]
+    const label = describePrincipleForPrompt(principleId, config.language)
+    lines.push(isPt ? `  Cenario ${i + 1}: ${label}` : `  Scenario ${i + 1}: ${label}`)
+  }
+  return lines.join('\n')
 }
 
 function buildRunpodScenarioMessages(config: {
@@ -1027,10 +1036,17 @@ function buildRunpodScenarioMessages(config: {
   principleIds: string[]
   count: number
   attempt: number
+  parsedCount?: number
   missingQuotas?: TopicQuota[]
 }): Array<{ role: 'system' | 'user'; content: string }> {
   const isPt = config.language === 'pt-BR'
-  const principleList = buildPrincipleListForPrompt(config.principleIds, config.language)
+  const offset = config.parsedCount ?? 0
+  const assignmentList = buildScenarioAssignmentList({
+    principleIds: config.principleIds,
+    count: config.count,
+    offset,
+    language: config.language,
+  })
   const missingReligion =
     config.missingQuotas?.find((quota) => quota.topic === 'religion')?.minimum ?? 0
   const missingAbortion =
@@ -1056,8 +1072,8 @@ function buildRunpodScenarioMessages(config: {
     : `You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples.${languageConstraint} Reply ONLY with a valid JSON array, no markdown, no extra prose, and no comments.`
 
   const user = isPt
-    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Use estes principios em rotacao: ${principleList}. Cada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual; (5) use linguagem simples e popular, com frases curtas e sem jargao tecnico.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
-    : `Generate ${config.count} JSON objects for ${config.countryCode}. Rotate these principles: ${principleList}. Every object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act; (5) use plain language with short sentences and no technical jargon.${topicConstraint}${escalation}`
+    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Cada cenario deve tratar EXATAMENTE do principio atribuido abaixo — nao troque ou ignore o principio designado:\n${assignmentList}\nCada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual; (5) use linguagem simples e popular, com frases curtas e sem jargao tecnico.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
+    : `Generate ${config.count} JSON objects for ${config.countryCode}. Each scenario MUST address exactly the assigned principle below — do not swap or ignore the designated principle:\n${assignmentList}\nEvery object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act; (5) use plain language with short sentences and no technical jargon.${topicConstraint}${escalation}`
 
   return [
     { role: 'system', content: system },
@@ -1239,6 +1255,7 @@ export async function generateAIScenariosWithRunpod(
           principleIds: activePrincipleIds,
           count: requestedCountForAttempt,
           attempt,
+          parsedCount: parsed.length,
           missingQuotas,
         }),
       },
