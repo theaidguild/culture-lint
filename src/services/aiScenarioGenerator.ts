@@ -708,11 +708,8 @@ function resolveAcceptanceModeForAttempt(attempt: number): ControversyAcceptance
 }
 
 function resolveTopicQuotas(expectedCount: number): TopicQuota[] {
-  if (expectedCount <= 6) return []
-  return [
-    { topic: 'religion', minimum: 2 },
-    { topic: 'abortion', minimum: 2 },
-  ]
+  void expectedCount
+  return []
 }
 
 function getTopicTerms(language: 'en-US' | 'pt-BR', topic: ScenarioTopic): readonly string[] {
