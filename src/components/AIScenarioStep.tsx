@@ -44,7 +44,7 @@ export type AIHeaderStep = 1 | 2 | 3 | 4
 
 const DEFAULT_COUNTRY = 'BR'
 const DEFAULT_COUNT = 6
-const ALLOWED_COUNTS = [4, 6, 8, 10, 12, 16, 18] as const
+const ALLOWED_COUNTS = [4, 6, 8, 10, 12, 16, 18, 20] as const
 const GENERATION_STAGE_ORDER = ['preparing', 'drafting', 'finalizing'] as const
 const AI_DEBUG_PREFIX = '[ai-debug][ui]'
 
