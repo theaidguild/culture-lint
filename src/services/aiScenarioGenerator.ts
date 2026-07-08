@@ -259,8 +259,8 @@ type LocalAIChatCompletionsResponse = {
 }
 
 const AI_DEBUG_PREFIX = '[ai-debug][generator]'
-const DEFAULT_RUNPOD_BASE_PATH = '/api/runpod'
-const DEFAULT_RUNPOD_TIMEOUT_MS = 90000
+const DEFAULT_AI_BASE_PATH = '/api/ai'
+const DEFAULT_AI_TIMEOUT_MS = 90000
 const GENERATION_PROGRESS_START = 35
 const GENERATION_PROGRESS_END = 80
 
@@ -844,30 +844,30 @@ function resolveRunpodBatchSize(totalCount: number): number {
 }
 
 function parseTimeoutMs(raw: unknown): number {
-  if (typeof raw !== 'string' || raw.trim().length === 0) return DEFAULT_RUNPOD_TIMEOUT_MS
+  if (typeof raw !== 'string' || raw.trim().length === 0) return DEFAULT_AI_TIMEOUT_MS
   const parsed = Number.parseInt(raw, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_RUNPOD_TIMEOUT_MS
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_AI_TIMEOUT_MS
 }
 
-function runpodBasePath(): string {
-  const fromEnv = (import.meta.env['VITE_RUNPOD_BASE_PATH'] as string | undefined)?.trim()
-  return fromEnv && fromEnv.length > 0 ? fromEnv : DEFAULT_RUNPOD_BASE_PATH
+function aiBasePath(): string {
+  const fromEnv = (import.meta.env['VITE_AI_BASE_PATH'] as string | undefined)?.trim()
+  return fromEnv && fromEnv.length > 0 ? fromEnv : DEFAULT_AI_BASE_PATH
 }
 
-function runpodTimeoutMs(): number {
-  return parseTimeoutMs(import.meta.env['VITE_RUNPOD_TIMEOUT_MS'])
+function aiTimeoutMs(): number {
+  return parseTimeoutMs(import.meta.env['VITE_AI_TIMEOUT_MS'])
 }
 
 function resolveRunpodModelName(modelId: ModelPresetId): string {
   const overrideKeys: Record<ModelPresetId, string> = {
-    qwen257b: 'VITE_RUNPOD_MODEL_QWEN257B',
+    qwen257b: 'VITE_AI_MODEL_QWEN257B',
   }
   const primaryOverride = (import.meta.env[overrideKeys[modelId]] as string | undefined)?.trim()
   if (primaryOverride && primaryOverride.length > 0) return primaryOverride
 
   // Backward compatibility with existing env setup.
   const legacyQwenOverride = (
-    import.meta.env['VITE_RUNPOD_MODEL_QWEN25'] as string | undefined
+    import.meta.env['VITE_AI_MODEL_QWEN25'] as string | undefined
   )?.trim()
   if (legacyQwenOverride && legacyQwenOverride.length > 0) return legacyQwenOverride
 
@@ -875,12 +875,12 @@ function resolveRunpodModelName(modelId: ModelPresetId): string {
 }
 
 function joinRunpodPath(path: string): string {
-  const base = runpodBasePath().replace(/\/+$/, '')
+  const base = aiBasePath().replace(/\/+$/, '')
   const suffix = path.startsWith('/') ? path : `/${path}`
   return `${base}${suffix}`
 }
 
-function composeAbortSignal(signal?: AbortSignal, timeoutMs = runpodTimeoutMs()) {
+function composeAbortSignal(signal?: AbortSignal, timeoutMs = aiTimeoutMs()) {
   const controller = new AbortController()
   const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs)
 

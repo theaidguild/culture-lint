@@ -39,7 +39,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_RUNPOD_BASE_PATH: ${{ vars.VITE_RUNPOD_BASE_PATH }}
+          VITE_AI_BASE_PATH: ${{ vars.VITE_AI_BASE_PATH }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           if [[ "$REPO_NAME" == *.github.io ]]; then
@@ -49,7 +49,7 @@ jobs:
           fi
 
           # Keep CI builds deterministic even when repository variables are not set.
-          export VITE_RUNPOD_BASE_PATH="${VITE_RUNPOD_BASE_PATH:-/api/runpod}"
+          export VITE_AI_BASE_PATH="${VITE_AI_BASE_PATH:-/api/ai}"
 
           echo "Building with base path: $BASE_PATH"
           pnpm exec tsc -b

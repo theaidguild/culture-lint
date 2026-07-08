@@ -70,37 +70,37 @@ completions.
 
 Default setup:
 
-- Browser base path: `VITE_RUNPOD_BASE_PATH`
+- Browser base path: `VITE_AI_BASE_PATH`
 - Generation endpoint: `POST /v1/chat/completions`
 - Model discovery endpoint: `GET /v1/models`
 
 Recommended setups:
 
-1. Direct browser access: set `VITE_RUNPOD_BASE_PATH` to your RunPod `/v1` URL and enable CORS upstream, for example with `OLLAMA_ORIGINS=*`.
-2. Local proxy access: set `VITE_RUNPOD_BASE_PATH=/api/runpod` and `RUNPOD_PROXY_TARGET` to your RunPod origin. Vite will proxy `/api/runpod/*` to `${RUNPOD_PROXY_TARGET}/v1/*`.
+1. Direct browser access: set `VITE_AI_BASE_PATH` to your RunPod `/v1` URL and enable CORS upstream, for example with `OLLAMA_ORIGINS=*`.
+2. Local proxy access: set `VITE_AI_BASE_PATH=/api/ai` and `AI_PROXY_TARGET` to your RunPod origin. Vite will proxy `/api/ai/*` to `${AI_PROXY_TARGET}/v1/*`.
 
-If `VITE_RUNPOD_BASE_PATH` is unset, the app falls back to `/api/runpod`.
+If `VITE_AI_BASE_PATH` is unset, the app falls back to `/api/ai`.
 
 Optional environment variables:
 
-- `VITE_RUNPOD_BASE_PATH` (default: `/api/runpod`)
-- `RUNPOD_PROXY_TARGET` (used only by `vite.config.ts` for local proxying)
-- `VITE_RUNPOD_TIMEOUT_MS` (default: `45000`)
-- `VITE_RUNPOD_MODEL_QWEN257B`
+- `VITE_AI_BASE_PATH` (default: `/api/ai`)
+- `AI_PROXY_TARGET` (used only by `vite.config.ts` for local proxying)
+- `VITE_AI_TIMEOUT_MS` (default: `45000`)
+- `VITE_AI_MODEL_QWEN257B`
 
 Examples:
 
 ```sh
 # direct browser calls
-VITE_RUNPOD_BASE_PATH=https://your-runpod-host.example.net/v1
-VITE_RUNPOD_TIMEOUT_MS=45000
-VITE_RUNPOD_MODEL_QWEN257B=qwen2.5:7b
+VITE_AI_BASE_PATH=https://your-runpod-host.example.net/v1
+VITE_AI_TIMEOUT_MS=45000
+VITE_AI_MODEL_QWEN257B=qwen2.5:7b
 ```
 
 ```sh
 # local vite proxy
-VITE_RUNPOD_BASE_PATH=/api/runpod
-RUNPOD_PROXY_TARGET=https://your-runpod-host.example.net
-VITE_RUNPOD_TIMEOUT_MS=45000
-VITE_RUNPOD_MODEL_QWEN257B=qwen2.5:7b
+VITE_AI_BASE_PATH=/api/ai
+AI_PROXY_TARGET=https://your-runpod-host.example.net
+VITE_AI_TIMEOUT_MS=45000
+VITE_AI_MODEL_QWEN257B=qwen2.5:7b
 ```

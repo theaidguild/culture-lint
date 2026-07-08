@@ -4,19 +4,19 @@ import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const runpodBasePath = env.VITE_RUNPOD_BASE_PATH?.trim() || '/api/runpod'
-  const runpodProxyTarget = env.RUNPOD_PROXY_TARGET?.trim()
+  const aiBasePath = env.VITE_AI_BASE_PATH?.trim() || '/api/ai'
+  const aiProxyTarget = env.AI_PROXY_TARGET?.trim()
 
   return {
     server:
-      runpodProxyTarget && runpodBasePath.startsWith('/')
+      aiProxyTarget && aiBasePath.startsWith('/')
         ? {
             proxy: {
-              [runpodBasePath]: {
-                target: runpodProxyTarget,
+              [aiBasePath]: {
+                target: aiProxyTarget,
                 changeOrigin: true,
                 rewrite: (path) => {
-                  const suffix = path.slice(runpodBasePath.length)
+                  const suffix = path.slice(aiBasePath.length)
                   return suffix ? `/v1${suffix}` : '/v1'
                 },
               },
