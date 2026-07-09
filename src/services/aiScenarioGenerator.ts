@@ -246,6 +246,291 @@ const ABORTION_TERMS_PT = [
   'pro-vida',
 ]
 
+const EQUALITY_TERMS_EN = [
+  'equal',
+  'equality',
+  'gender',
+  'quota',
+  'minority',
+  'discrim',
+  'bias',
+  'privilege',
+  'fairness',
+  'inclusion',
+  'lgbt',
+  'diversity',
+]
+
+const EQUALITY_TERMS_PT = [
+  'igual',
+  'igualdade',
+  'genero',
+  'cota',
+  'minorias',
+  'minoritari',
+  'discrim',
+  'preconceito',
+  'privilegio',
+  'equidade',
+  'inclusao',
+  'lgbt',
+  'diversidade',
+]
+
+const TRANSPARENCY_TERMS_EN = [
+  'secret',
+  'private',
+  'transparen',
+  'leak',
+  'disclos',
+  'hide',
+  'hidden',
+  'confidential',
+  'access to info',
+  'audit',
+]
+
+const TRANSPARENCY_TERMS_PT = [
+  'segredo',
+  'sigilo',
+  'privado',
+  'transparen',
+  'vazar',
+  'vazamento',
+  'revelar',
+  'ocultar',
+  'esconder',
+  'confidencial',
+  'acesso a informacao',
+  'auditoria',
+]
+
+const ACCOUNTABILITY_TERMS_EN = [
+  'accountab',
+  'punish',
+  'penal',
+  'liab',
+  'prosecut',
+  'abuse',
+  'misconduct',
+  'bribe',
+  'corrupt',
+  'fraud',
+  'investigat',
+]
+
+const ACCOUNTABILITY_TERMS_PT = [
+  'responsabili',
+  'punir',
+  'punicao',
+  'penal',
+  'processar',
+  'abuso',
+  'conduta',
+  'propina',
+  'suborno',
+  'corrupcao',
+  'fraude',
+  'investigacao',
+]
+
+const JUDGEABILITY_VERDICT_TERMS_EN = [
+  'acceptable',
+  'outrageous',
+  'right',
+  'wrong',
+  'evil',
+  'heroic',
+  'coward',
+  'monster',
+  'villain',
+  'obviously',
+  'clearly',
+]
+
+const JUDGEABILITY_VERDICT_TERMS_PT = [
+  'aceitavel',
+  'revoltante',
+  'certo',
+  'errado',
+  'heroico',
+  'vilao',
+  'monstro',
+  'obviamente',
+  'claramente',
+]
+
+const JUDGEABILITY_CONTEXT_BIAS_TERMS_EN = [
+  'inevitably',
+  'proves that',
+  'no doubt',
+  'undeniable',
+  'social cost:',
+  'therefore',
+  'so everyone',
+]
+
+const JUDGEABILITY_CONTEXT_BIAS_TERMS_PT = [
+  'inevitavelmente',
+  'prova que',
+  'sem duvida',
+  'indiscutivel',
+  'custo social:',
+  'portanto',
+  'logo todos',
+]
+
+const JUDGEABILITY_SUBJECT_BIAS_TERMS_EN = [
+  'pro-choice',
+  'pro life',
+  'left-wing',
+  'right-wing',
+  'anti-',
+]
+
+const JUDGEABILITY_SUBJECT_BIAS_TERMS_PT = [
+  'pro-aborto',
+  'pro aborto',
+  'pro-vida',
+  'antiaborto',
+  'esquerdista',
+  'direitista',
+  'anti-',
+]
+
+const ACTOR_LEADING_TERMS_EN = [
+  'secretary',
+  'minister',
+  'senator',
+  'judge',
+  'doctor',
+  'pastor',
+  'priest',
+  'mayor',
+  'council',
+  'group',
+  'church',
+  'company',
+]
+
+const ACTOR_LEADING_TERMS_PT = [
+  'secretario',
+  'secretaria',
+  'ministro',
+  'ministra',
+  'senador',
+  'senadora',
+  'juiz',
+  'juiza',
+  'medico',
+  'medica',
+  'pastor',
+  'padre',
+  'prefeito',
+  'prefeita',
+  'vereador',
+  'vereadora',
+  'camara',
+  'grupo',
+  'grupos',
+  'igreja',
+  'empresa',
+]
+
+const ACT_VERB_STARTERS_EN = [
+  'use',
+  'uses',
+  'deny',
+  'denies',
+  'block',
+  'blocks',
+  'ban',
+  'bans',
+  'leak',
+  'leaks',
+  'hide',
+  'hides',
+  'pressure',
+  'pressures',
+  'favor',
+  'favors',
+  'censor',
+  'censors',
+  'manipulate',
+  'manipulates',
+  'restrict',
+  'restricts',
+  'force',
+  'forces',
+  'coerce',
+  'coerces',
+]
+
+const ACT_VERB_STARTERS_PT = [
+  'usar',
+  'usa',
+  'negar',
+  'nega',
+  'vetar',
+  'veta',
+  'proibir',
+  'proibe',
+  'vazar',
+  'vaza',
+  'omitir',
+  'omite',
+  'pressionar',
+  'pressiona',
+  'favorecer',
+  'favorece',
+  'censurar',
+  'censura',
+  'manipular',
+  'manipula',
+  'restringir',
+  'restringe',
+  'forcar',
+  'forca',
+  'coagir',
+  'coage',
+]
+
+const SUBJECT_STOPWORDS_EN = new Set([
+  'the',
+  'a',
+  'an',
+  'of',
+  'and',
+  'for',
+  'to',
+  'in',
+  'on',
+  'with',
+  'local',
+  'national',
+])
+
+const SUBJECT_STOPWORDS_PT = new Set([
+  'o',
+  'a',
+  'os',
+  'as',
+  'de',
+  'do',
+  'da',
+  'dos',
+  'das',
+  'e',
+  'em',
+  'no',
+  'na',
+  'nos',
+  'nas',
+  'com',
+  'local',
+  'nacional',
+])
+
 type LocalAIModelListResponse = {
   data?: Array<{ id?: string }>
 }
@@ -341,18 +626,42 @@ function tryParse(slice: string): unknown[] | null {
 }
 
 function parseDirectJson(text: string): unknown[] | null {
+  const extractScenarioArrayFromObject = (value: Record<string, unknown>): unknown[] | null => {
+    const preferredKeys = ['scenarios', 'items', 'cases', 'data', 'results']
+    for (const key of preferredKeys) {
+      const candidate = value[key]
+      if (Array.isArray(candidate)) return candidate
+    }
+
+    for (const candidate of Object.values(value)) {
+      if (Array.isArray(candidate)) return candidate
+    }
+
+    return null
+  }
+
   const attempts = [text, repairMalformedJson(text)]
   for (const candidate of attempts) {
     try {
       const parsed = JSON.parse(candidate)
       if (Array.isArray(parsed)) return parsed
-      if (parsed && typeof parsed === 'object') return [parsed]
+      if (parsed && typeof parsed === 'object') {
+        const fromWrapper = extractScenarioArrayFromObject(parsed as Record<string, unknown>)
+        if (fromWrapper) return fromWrapper
+        return [parsed]
+      }
       if (typeof parsed === 'string') {
         const inner = parsed.trim()
         if (!inner) return null
         const parsedInner = JSON.parse(repairMalformedJson(inner))
         if (Array.isArray(parsedInner)) return parsedInner
-        if (parsedInner && typeof parsedInner === 'object') return [parsedInner]
+        if (parsedInner && typeof parsedInner === 'object') {
+          const fromInnerWrapper = extractScenarioArrayFromObject(
+            parsedInner as Record<string, unknown>
+          )
+          if (fromInnerWrapper) return fromInnerWrapper
+          return [parsedInner]
+        }
       }
     } catch {
       // fall through
@@ -629,6 +938,8 @@ function validateScenarios(
     )
       continue
 
+    if (!isJudgeableScenario(plainLanguage, language, mode)) continue
+
     valid.push(plainLanguage)
   }
   return valid
@@ -645,6 +956,90 @@ function includesAnyTerm(text: string, terms: readonly string[]): boolean {
   return terms.some((term) => text.includes(term))
 }
 
+function tokenizeNormalizedWords(value: string): string[] {
+  const normalized = normalizeTextForChecks(value)
+  return normalized.split(/[^a-z0-9]+/).filter(Boolean)
+}
+
+function startsWithActorNoun(act: string, language: 'en-US' | 'pt-BR'): boolean {
+  const words = tokenizeNormalizedWords(act)
+  if (words.length === 0) return false
+  const first = words[0]
+  const actorTerms = language === 'pt-BR' ? ACTOR_LEADING_TERMS_PT : ACTOR_LEADING_TERMS_EN
+  return actorTerms.includes(first)
+}
+
+function startsWithVerbLikeAct(act: string, language: 'en-US' | 'pt-BR'): boolean {
+  const words = tokenizeNormalizedWords(act)
+  if (words.length === 0) return false
+  const first = words[0]
+  const starters = language === 'pt-BR' ? ACT_VERB_STARTERS_PT : ACT_VERB_STARTERS_EN
+
+  if (starters.includes(first)) return true
+  if (language === 'pt-BR') return /(ar|er|ir)$/.test(first)
+  return /(ed|ing)$/.test(first)
+}
+
+function extractSubjectMeaningfulTokens(
+  subject: string,
+  language: 'en-US' | 'pt-BR'
+): Set<string> {
+  const stopwords = language === 'pt-BR' ? SUBJECT_STOPWORDS_PT : SUBJECT_STOPWORDS_EN
+  return new Set(
+    tokenizeNormalizedWords(subject).filter((token) => token.length >= 4 && !stopwords.has(token))
+  )
+}
+
+function actMentionsSubject(act: string, subject: string, language: 'en-US' | 'pt-BR'): boolean {
+  const actTokens = new Set(tokenizeNormalizedWords(act))
+  const subjectTokens = extractSubjectMeaningfulTokens(subject, language)
+  if (subjectTokens.size === 0) return false
+  for (const token of subjectTokens) {
+    if (actTokens.has(token)) return true
+  }
+  return false
+}
+
+function hasJudgeabilityVerdictLanguage(text: string, language: 'en-US' | 'pt-BR'): boolean {
+  const terms = language === 'pt-BR' ? JUDGEABILITY_VERDICT_TERMS_PT : JUDGEABILITY_VERDICT_TERMS_EN
+  return includesAnyTerm(normalizeTextForChecks(text), terms)
+}
+
+function hasBiasedContextFraming(context: string, language: 'en-US' | 'pt-BR'): boolean {
+  const normalized = normalizeTextForChecks(context)
+  const terms =
+    language === 'pt-BR' ? JUDGEABILITY_CONTEXT_BIAS_TERMS_PT : JUDGEABILITY_CONTEXT_BIAS_TERMS_EN
+  if (includesAnyTerm(normalized, terms)) return true
+  if (context.includes(':')) return true
+  return false
+}
+
+function hasBiasedSubjectLabel(subject: string, language: 'en-US' | 'pt-BR'): boolean {
+  const terms =
+    language === 'pt-BR' ? JUDGEABILITY_SUBJECT_BIAS_TERMS_PT : JUDGEABILITY_SUBJECT_BIAS_TERMS_EN
+  return includesAnyTerm(normalizeTextForChecks(subject), terms)
+}
+
+function isJudgeableScenario(
+  scenario: RawScenario,
+  language: 'en-US' | 'pt-BR',
+  mode: ScenarioValidationMode
+): boolean {
+  if (startsWithActorNoun(scenario.act, language)) return false
+  if (!startsWithVerbLikeAct(scenario.act, language)) return false
+  if (actMentionsSubject(scenario.act, scenario.rival, language)) return false
+  if (actMentionsSubject(scenario.act, scenario.ally, language)) return false
+  if (hasJudgeabilityVerdictLanguage(`${scenario.act} ${scenario.context}`, language)) return false
+  if (hasBiasedContextFraming(scenario.context, language)) return false
+
+  if (mode === 'strict') {
+    if (hasBiasedSubjectLabel(scenario.rival, language)) return false
+    if (hasBiasedSubjectLabel(scenario.ally, language)) return false
+  }
+
+  return true
+}
+
 function hasRequiredControversyShape(scenario: RawScenario, language: 'en-US' | 'pt-BR'): boolean {
   const text = normalizeTextForChecks(`${scenario.title} ${scenario.act} ${scenario.context}`)
   const conflictTerms =
@@ -657,7 +1052,15 @@ function hasRequiredControversyShape(scenario: RawScenario, language: 'en-US' | 
   const hasInstitution = includesAnyTerm(text, institutionTerms)
   const isSafeOnly = includesAnyTerm(text, safeTerms) && !hasConflict
 
-  return hasConflict && hasInstitution && !isSafeOnly
+  const hasReligion = includesAnyTerm(text, language === 'pt-BR' ? RELIGION_TERMS_PT : RELIGION_TERMS_EN)
+  const hasAbortion = includesAnyTerm(text, language === 'pt-BR' ? ABORTION_TERMS_PT : ABORTION_TERMS_EN)
+  const hasEquality = includesAnyTerm(text, language === 'pt-BR' ? EQUALITY_TERMS_PT : EQUALITY_TERMS_EN)
+  const hasTransparency = includesAnyTerm(text, language === 'pt-BR' ? TRANSPARENCY_TERMS_PT : TRANSPARENCY_TERMS_EN)
+  const hasAccountability = includesAnyTerm(text, language === 'pt-BR' ? ACCOUNTABILITY_TERMS_PT : ACCOUNTABILITY_TERMS_EN)
+
+  const isIntrinsicControversy = hasReligion || hasAbortion || hasEquality || hasTransparency || hasAccountability
+
+  return !isSafeOnly && (hasConflict || isIntrinsicControversy) && (hasInstitution || isIntrinsicControversy)
 }
 
 function hasRelaxedControversyShape(scenario: RawScenario, language: 'en-US' | 'pt-BR'): boolean {
@@ -672,7 +1075,15 @@ function hasRelaxedControversyShape(scenario: RawScenario, language: 'en-US' | '
   const hasInstitution = includesAnyTerm(text, institutionTerms)
   const isSafeOnly = includesAnyTerm(text, safeTerms) && !hasConflict
 
-  return !isSafeOnly && (hasConflict || hasInstitution)
+  const hasReligion = includesAnyTerm(text, language === 'pt-BR' ? RELIGION_TERMS_PT : RELIGION_TERMS_EN)
+  const hasAbortion = includesAnyTerm(text, language === 'pt-BR' ? ABORTION_TERMS_PT : ABORTION_TERMS_EN)
+  const hasEquality = includesAnyTerm(text, language === 'pt-BR' ? EQUALITY_TERMS_PT : EQUALITY_TERMS_EN)
+  const hasTransparency = includesAnyTerm(text, language === 'pt-BR' ? TRANSPARENCY_TERMS_PT : TRANSPARENCY_TERMS_EN)
+  const hasAccountability = includesAnyTerm(text, language === 'pt-BR' ? ACCOUNTABILITY_TERMS_PT : ACCOUNTABILITY_TERMS_EN)
+
+  const isIntrinsicControversy = hasReligion || hasAbortion || hasEquality || hasTransparency || hasAccountability
+
+  return !isSafeOnly && (hasConflict || hasInstitution || isIntrinsicControversy)
 }
 
 function selectAcceptedScenarios(
@@ -1068,12 +1479,12 @@ function buildRunpodScenarioMessages(config: {
     : ' LANGUAGE REQUIREMENT: write in simple, direct, plain language. Avoid legal jargon, technical/formal wording, and long complex sentences. Use vocabulary that most adults can understand on first read.'
 
   const system = isPt
-    ? `Voce e um arquiteto de testes de coerencia moral. Gere dilemas espelhados de alta friccao social em JSON estrito. Proibido produzir conteudo pedagogico neutro, campanhas civicas consensuais ou exemplos universalmente aceitaveis.${languageConstraint} Responda APENAS com um array JSON valido, sem markdown, sem texto extra e sem comentarios.`
-    : `You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples.${languageConstraint} Reply ONLY with a valid JSON array, no markdown, no extra prose, and no comments.`
+    ? `Voce e um arquiteto de testes de coerencia moral. Gere dilemas espelhados de alta friccao social em JSON estrito. Proibido produzir conteudo pedagogico neutro, campanhas civicas consensuais ou exemplos universalmente aceitaveis.${languageConstraint} Responda APENAS com JSON valido no formato {"scenarios":[...]}, sem markdown, sem texto extra e sem comentarios.`
+    : `You are a moral-consistency stress-test architect. Generate high-friction mirrored dilemmas in strict JSON. Do NOT output neutral educational civic content, consensus campaigns, or universally acceptable examples.${languageConstraint} Reply ONLY with valid JSON in the shape {"scenarios":[...]}, no markdown, no extra prose, and no comments.`
 
   const user = isPt
-    ? `Gere ${config.count} objetos JSON para ${config.countryCode}. Cada cenario deve tratar EXATAMENTE do principio atribuido abaixo — nao troque ou ignore o principio designado:\n${assignmentList}\nCada objeto deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local; (3) context deve citar instituicao realista (governo, empresa, escola, plataforma, sistema de justica etc.) e o custo social da decisao; (4) evite qualquer ato genericamente virtuoso ou consensual; (5) use linguagem simples e popular, com frases curtas e sem jargao tecnico.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
-    : `Generate ${config.count} JSON objects for ${config.countryCode}. Each scenario MUST address exactly the assigned principle below — do not swap or ignore the designated principle:\n${assignmentList}\nEvery object must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) rival and ally must be clearly different actors with opposing social/political alignment in local context; (3) context must include a realistic institution (government, company, school, platform, justice system, etc.) and societal tradeoff; (4) avoid any universally virtuous or consensus-safe act; (5) use plain language with short sentences and no technical jargon.${topicConstraint}${escalation}`
+    ? `Gere ${config.count} cenarios para ${config.countryCode}. Cada cenario deve tratar EXATAMENTE do principio atribuido abaixo — nao troque ou ignore o principio designado:\n${assignmentList}\nRetorne um unico objeto JSON com a chave "scenarios" contendo um array de ${config.count} itens. Cada item deve ter as chaves EXATAS: title, act, rival, ally, context. Regras obrigatorias: (1) o act deve descrever uma conduta controversa (abuso de poder, censura, favorecimento, corrupcao, discriminacao, vigilancia, conflito de interesse ou equivalente); (2) o act precisa ser uma frase verbal neutra, sem citar nomes/cargos/grupos (ex.: "usar informacao privilegiada para influenciar votacao"); (3) rival e ally devem ser atores nitidamente diferentes e politicamente/socialmente opostos no contexto local, com rotulo neutro (sem tags ideologicas como pro/anti); (4) context deve descrever apenas o cenario factual e institucional (onde/quando/regra em disputa), sem conclusao moral, sem previsao de impacto e sem expressao como "custo social:"; (5) evite qualquer ato genericamente virtuoso ou consensual; (6) use linguagem simples e popular, com frases curtas e sem jargao tecnico.${topicConstraint} Escreva em portugues brasileiro.${escalation}`
+    : `Generate ${config.count} scenarios for ${config.countryCode}. Each scenario MUST address exactly the assigned principle below — do not swap or ignore the designated principle:\n${assignmentList}\nReturn a single JSON object with key "scenarios" containing an array of ${config.count} items. Each item must use EXACT keys: title, act, rival, ally, context. Required rules: (1) act must describe a controversial conduct (power abuse, censorship, favoritism, corruption, discrimination, surveillance, conflict of interest, or equivalent); (2) act must be an actor-neutral verb phrase and must not include names/titles/groups (e.g., "use privileged information to influence a vote"); (3) rival and ally must be clearly different actors with opposing social/political alignment in local context, using neutral labels (no pro/anti ideological tags); (4) context must describe only factual institutional setting (where/when/rule under dispute), with no moral conclusion, no impact prediction, and no wording like "social cost:"; (5) avoid any universally virtuous or consensus-safe act; (6) use plain language with short sentences and no technical jargon.${topicConstraint}${escalation}`
 
   return [
     { role: 'system', content: system },

@@ -156,9 +156,9 @@ const ptBR = {
     judge: {
       title: 'Leia a situação abaixo e dê a sua opinião sincera.',
       caseFile: 'FICHA DO CASO',
-      subjectLabel: 'QUEM FAZ A AÇÃO',
-      actLabel: 'AÇÃO PRATICADA',
-      contextLabel: 'EM QUE SITUAÇÃO',
+      subjectLabel: 'QUEM PRATICA O ATO',
+      actLabel: 'QUAL É O ATO',
+      contextLabel: 'EM QUAL CONTEXTO',
       prompt: 'Na sua opinião, esta ação é aceitável ou revoltante?',
       acceptable: 'ACEITÁVEL',
       outrageous: 'REVOLTANTE',

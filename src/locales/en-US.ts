@@ -156,9 +156,9 @@ const enUS = {
     judge: {
       title: 'Read the situation. Deliver your verdict.',
       caseFile: 'CASE FILE',
-      subjectLabel: 'SUBJECT',
-      actLabel: 'ACT',
-      contextLabel: 'CONTEXT',
+      subjectLabel: 'WHO PERFORMS THE ACT',
+      actLabel: 'WHAT THE ACT IS',
+      contextLabel: 'IN WHAT CONTEXT',
       prompt: 'Is this act acceptable, or outrageous?',
       acceptable: 'ACCEPTABLE',
       outrageous: 'OUTRAGEOUS',
